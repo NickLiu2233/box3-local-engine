@@ -321,15 +321,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Download server image archive from Aliyun OSS
+      - name: Download Server Manager image catalog from Aliyun OSS
         run: |
           mkdir -p apps/local-engine/dist/images
           if ! command -v ossutil >/dev/null 2>&1; then
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
-            apps/local-engine/dist/images/
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog"
       - name: Install headless package tools
         run: sudo apt-get update && sudo apt-get install -y zip
       - name: Build headless Linux server package
@@ -338,19 +338,8 @@ jobs:
           BOX_BUILD_SOURCE: github-actions
         run: |
           export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
-          source_archive="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
-          server_archive="apps/local-engine/dist/images/box3-engine-play-server-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
-          test -f "$source_archive"
-          docker load -i "$source_archive"
-          docker image save \
-            "box-local-engine-player-service:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-player-auth-portal:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-server-manager:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-creator:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-play:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-voxa:${{ github.ref_name }}-linux-${{ matrix.architecture }}" \
-            | gzip -1 > "$server_archive"
-          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' --catalog "$catalog"
           version=$(node -p "require('./package.json').version")
           node scripts/verify-headless-server-package.js \
             "apps/local-engine/dist/server-packages/BOX3-Engine-Server-${version}-linux-${{ matrix.architecture }}"

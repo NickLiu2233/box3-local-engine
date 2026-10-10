@@ -31,7 +31,7 @@ pub async fn apply_ssl_config(app: AppHandle, config: ssl::Import) -> Result<Val
         ssl::validate_path_images(&config.settings,&runtime,&mut docker)?;
         let source=std::fs::read_to_string(super::compose_path(&app)?).map_err(|error|error.to_string())?;
         let mut transition=ssl::UpstreamTransition::new(&root,"box-local-engine-desktop",&config.settings)?;
-        ssl::apply_with_transition(&root,&root,"box-local-engine-desktop_default",&environment,config,&mut docker,&mut |rollback| {
+        ssl::apply_with_transition_progress(&root,&root,"box-local-engine-desktop_default",&environment,config,&mut docker,&mut |image, progress| super::docker::pull_image(image, "Nginx", progress),&mut |percent, message| super::emit_progress(&app, "dependency-image-download", &message, percent),&mut |rollback| {
             if rollback {transition.rollback(&source,&mut |file,args|super::compose_file_output(&app,file,args))}
             else {transition.apply(&mut docker,&mut |args|super::compose_output(&app,&args.iter().map(String::as_str).collect::<Vec<_>>()))}
         })
@@ -104,10 +104,14 @@ fn choose_export() -> Result<Option<std::path::PathBuf>, String> {
 }
 
 #[tauri::command]
-pub async fn install_nginx_image() -> Result<(), String> {
+pub async fn install_nginx_image(app: AppHandle) -> Result<(), String> {
     tauri::async_runtime::spawn_blocking(move || {
         let _lock = box_manager_core::operation::mutation_guard()?;
-        ssl::install_image(&mut docker)
+        ssl::install_image_with_progress(
+            &mut docker,
+            &mut |image, progress| super::docker::pull_image(image, "Nginx", progress),
+            &mut |percent, message| super::emit_progress(&app, "dependency-image-download", &message, percent),
+        )
     })
     .await
     .map_err(|e| e.to_string())?

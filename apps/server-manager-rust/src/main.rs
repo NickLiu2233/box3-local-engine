@@ -91,6 +91,12 @@ impl App {
             self.operations.update(id, stage, message, percent, false);
         }
     }
+
+    fn image_progress(&self, image: &str, bytes: u64, total: u64) {
+        if let Some(id) = &self.operation_id {
+            self.operations.update_download(id, image, bytes, total);
+        }
+    }
 }
 struct WebRuntime<'a>(&'a App);
 /// Adapter from the shared service-control module to this manager's local
@@ -114,7 +120,48 @@ impl ServiceRuntime for WebRuntime<'_> {
                 .unwrap_or("linux/amd64"),
             docker,
             |stage, message, percent| self.0.progress(stage, message, percent),
-        )
+        )?;
+        let values = parse_env(&fs::read_to_string(env_path(self.0)).map_err(|error| error.to_string())?);
+        let image_tag = values.get("BOX_IMAGE_TAG").map(String::as_str).ok_or("镜像版本未配置")?;
+        let mut missing = Vec::new();
+        for service in _services {
+            if *service == "player-auth-portal"
+                && values.get("BOX_AUTH_PORTAL_IMAGE").is_some_and(|image| !image.trim().is_empty())
+            {
+                continue;
+            }
+            let image = format!("box-local-engine-{service}:{image_tag}");
+            if docker(&["image", "inspect", &image]).is_err() {
+                missing.push(((*service).to_owned(), image_tag.to_owned()));
+            }
+        }
+        std::thread::scope(|scope| {
+            let workers = missing
+                .iter()
+                .map(|(service, tag)| {
+                    scope.spawn(move || {
+                        platform::configuration::ensure_application_image(
+                            self.0,
+                            service,
+                            tag,
+                            |bytes, total| self.0.image_progress(service, bytes, total),
+                        )
+                    })
+                })
+                .collect::<Vec<_>>();
+            let mut first_error = None;
+            for worker in workers {
+                match worker.join() {
+                    Ok(Ok(())) => {}
+                    Ok(Err(error)) if first_error.is_none() => first_error = Some(error),
+                    Err(_) if first_error.is_none() => {
+                        first_error = Some("镜像下载任务异常结束".to_string())
+                    }
+                    _ => {}
+                }
+            }
+            first_error.map_or(Ok(()), Err)
+        })
     }
     fn managed_enabled(&self, service: &str) -> bool {
         let key = match service {

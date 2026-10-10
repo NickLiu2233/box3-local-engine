@@ -6,6 +6,203 @@ pub(crate) fn env_path(app: &App) -> PathBuf {
     app.environment_file.clone()
 }
 use box_manager_core::environment::parse_env;
+use serde::Deserialize;
+use sha2::{Digest, Sha256};
+use std::io::{Read, Write};
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoteImageCatalog {
+    format_version: u8,
+    platform: String,
+    image_tag: String,
+    images: Vec<RemoteImage>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RemoteImage {
+    image: String,
+    image_id: String,
+    image_ids: Vec<String>,
+    archive: String,
+    sha256: String,
+    image_tag: String,
+    platform: String,
+    size: u64,
+}
+
+fn valid_sha256(value: &str) -> bool {
+    value.len() == 64 && value.bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
+fn image_catalog(app: &App, service: &str, image_tag: &str) -> Result<RemoteImage, String> {
+    let catalog_path = app.root.join("BOX3-IMAGE-CATALOG.json");
+    let catalog: RemoteImageCatalog = serde_json::from_slice(
+        &fs::read(&catalog_path).map_err(|_| "缺少按需镜像清单，请更新 Linux 管理器安装包".to_string())?,
+    )
+    .map_err(|error| format!("按需镜像清单无效：{error}"))?;
+    let architecture = match std::env::consts::ARCH {
+        "x86_64" => "amd64",
+        "aarch64" => "arm64",
+        _ => return Err("当前服务器架构不支持按需下载镜像".into()),
+    };
+    let platform = format!("linux/{architecture}");
+    if catalog.format_version != 2
+        || catalog.platform != platform
+        || catalog.image_tag != image_tag
+    {
+        return Err("按需镜像清单与当前版本或服务器架构不匹配".into());
+    }
+    let image_name = format!("box-local-engine-{service}");
+    let mut matches = catalog.images.into_iter().filter(|image| image.image == image_name);
+    let image = matches.next().ok_or_else(|| format!("镜像清单缺少 {service}"))?;
+    if matches.next().is_some()
+        || image.platform != platform
+        || image.image_tag != image_tag
+        || image.size == 0
+        || !valid_sha256(&image.sha256)
+        || image.image_id.strip_prefix("sha256:").is_none_or(|digest| !valid_sha256(digest))
+        || image.image_ids.is_empty()
+        || image.image_ids.len() > 2
+        || !image.image_ids.contains(&image.image_id)
+        || image.image_ids.iter().any(|id| {
+            id.strip_prefix("sha256:")
+                .is_none_or(|digest| !valid_sha256(digest))
+        })
+        || image.archive
+            != format!("box-local-engine-image-{service}-{architecture}-{}.tar.gz", image.sha256)
+    {
+        return Err(format!("{service} 镜像清单字段无效"));
+    }
+    Ok(image)
+}
+
+fn verified_archive(path: &FsPath, image: &RemoteImage) -> bool {
+    if fs::metadata(path).map(|metadata| metadata.len()).ok() != Some(image.size) {
+        return false;
+    }
+    let Ok(mut file) = fs::File::open(path) else { return false };
+    let mut hash = Sha256::new();
+    let mut buffer = [0u8; 128 * 1024];
+    loop {
+        match file.read(&mut buffer) {
+            Ok(0) => break,
+            Ok(length) => hash.update(&buffer[..length]),
+            Err(_) => return false,
+        }
+    }
+    format!("{:x}", hash.finalize()).eq_ignore_ascii_case(&image.sha256)
+}
+
+fn download_image_archive(
+    app: &App,
+    image: &RemoteImage,
+    service: &str,
+    progress: &mut dyn FnMut(u64, u64),
+) -> Result<PathBuf, String> {
+    let cache = app.root.join("cache/engine-images");
+    fs::create_dir_all(&cache).map_err(|error| format!("无法创建镜像缓存目录：{error}"))?;
+    let destination = cache.join(&image.archive);
+    if verified_archive(&destination, image) {
+        progress(image.size, image.size);
+        return Ok(destination);
+    }
+    let partial = destination.with_extension("part");
+    let mut offset = fs::metadata(&partial).map(|metadata| metadata.len()).unwrap_or(0);
+    if offset >= image.size {
+        fs::remove_file(&partial).map_err(|error| error.to_string())?;
+        offset = 0;
+    }
+    progress(offset, image.size);
+    let client = reqwest::blocking::Client::builder()
+        .connect_timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(3600))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let url = format!("https://assets.box3.fun/local-engine/{}", image.archive);
+    let request = |offset: u64| {
+        let mut request = client.get(&url).header(reqwest::header::ACCEPT_ENCODING, "identity");
+        if offset > 0 {
+            request = request.header(reqwest::header::RANGE, format!("bytes={offset}-"));
+        }
+        request.send().map_err(|error| format!("无法下载 {service} 镜像，下载进度已保留：{error}"))
+    };
+    let mut response = request(offset)?;
+    if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE && offset > 0 {
+        offset = 0;
+        response = request(0)?;
+    }
+    if !matches!(response.status(), reqwest::StatusCode::OK | reqwest::StatusCode::PARTIAL_CONTENT) {
+        return Err(format!("下载 {service} 镜像失败（HTTP {}）", response.status()));
+    }
+    if response.status() == reqwest::StatusCode::OK {
+        offset = 0;
+    } else {
+        let expected_prefix = format!("bytes {offset}-");
+        let range = response.headers().get(reqwest::header::CONTENT_RANGE).and_then(|value| value.to_str().ok()).unwrap_or("");
+        if !range.starts_with(&expected_prefix) || !range.ends_with(&format!("/{}", image.size)) {
+            return Err("镜像续传响应范围无效，请重试".into());
+        }
+    }
+    let mut file = if offset == 0 {
+        fs::File::create(&partial)
+    } else {
+        fs::OpenOptions::new().append(true).open(&partial)
+    }.map_err(|error| error.to_string())?;
+    let mut total = offset;
+    let mut buffer = [0u8; 128 * 1024];
+    loop {
+        let length = response.read(&mut buffer).map_err(|error| format!("镜像下载中断，已保留进度：{error}"))?;
+        if length == 0 { break; }
+        file.write_all(&buffer[..length]).map_err(|error| error.to_string())?;
+        total = total.saturating_add(length as u64);
+        progress(total, image.size);
+    }
+    file.sync_all().map_err(|error| error.to_string())?;
+    if total != image.size || !verified_archive(&partial, image) {
+        return Err(format!("{service} 镜像下载校验失败；重试时会重新校验缓存"));
+    }
+    fs::rename(&partial, &destination).map_err(|error| error.to_string())?;
+    progress(image.size, image.size);
+    Ok(destination)
+}
+
+pub(crate) fn ensure_application_image(
+    app: &App,
+    service: &str,
+    image_tag: &str,
+    mut progress: impl FnMut(u64, u64),
+) -> Result<(), String> {
+    let image = image_catalog(app, service, image_tag)?;
+    let target = format!("{}:{}", image.image, image.image_tag);
+    let content_tag = image.image_id.strip_prefix("sha256:").ok_or("镜像摘要无效")?;
+    let content = format!("{}:launcher-content-{content_tag}", image.image);
+    let current_id = docker(&["image", "inspect", "--format", "{{.Id}}", &content])
+        .ok()
+        .map(|value| value.trim().to_owned());
+    if !current_id
+        .as_ref()
+        .is_some_and(|id| image.image_ids.iter().any(|expected| expected == id))
+    {
+        let archive = download_image_archive(app, &image, service, &mut progress)?;
+        docker(&["load", "-i", archive.to_str().ok_or("镜像缓存路径无效")?])?;
+    }
+    let loaded_id = docker(&["image", "inspect", "--format", "{{.Id}}", &content])?;
+    if !image
+        .image_ids
+        .iter()
+        .any(|expected| expected == loaded_id.trim())
+    {
+        return Err(format!("{service} 镜像摘要与发行清单不匹配"));
+    }
+    docker(&["tag", &content, &target])?;
+    let target_id = docker(&["image", "inspect", "--format", "{{.Id}}", &target])?;
+    if target_id.trim() != loaded_id.trim() {
+        return Err(format!("{service} 目标镜像标签指向错误的摘要"));
+    }
+    Ok(())
+}
 
 pub(crate) fn set_env(mut source: String, key: &str, value: &str) -> Result<String, String> {
     box_manager_core::environment::set_env(&mut source, key, value)?;
@@ -189,6 +386,112 @@ pub(crate) fn docker(args: &[&str]) -> Result<String, String> {
     } else {
         Err(String::from_utf8_lossy(&output.stderr).trim().to_string())
     }
+}
+
+pub(crate) fn pull_image_with_progress(
+    image: &str,
+    label: &str,
+    progress: &mut dyn FnMut(u8, String),
+) -> Result<(), String> {
+    let mut command = Command::new("docker");
+    command.args(["pull", image]);
+    box_manager_core::docker_pull::run(command, label, progress).map(|_| ())
+}
+
+fn stable_version(value: &str) -> Option<[u64; 3]> {
+    let mut parts = value.strip_prefix('v').unwrap_or(value).split('.');
+    let parsed = [parts.next()?, parts.next()?, parts.next()?]
+        .map(|part| {
+            (!part.is_empty()
+                && (part.len() == 1 || !part.starts_with('0'))
+                && part.bytes().all(|byte| byte.is_ascii_digit()))
+            .then(|| part.parse::<u64>().ok())
+            .flatten()
+        });
+    if parts.next().is_some() || parsed.iter().any(Option::is_none) {
+        return None;
+    }
+    Some([parsed[0]?, parsed[1]?, parsed[2]?])
+}
+
+pub(crate) fn start_server_update(app: &App, requested_version: &str) -> Result<String, String> {
+    let requested = requested_version.trim().trim_start_matches('v');
+    let target_version = stable_version(requested).ok_or("更新版本格式无效")?;
+    let current_version = option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+    let current = stable_version(current_version).ok_or("当前管理器版本格式无效")?;
+    if target_version <= current {
+        return Err("当前 Web 管理器已经是该版本或更新版本".into());
+    }
+    let values = parse_env(&fs::read_to_string(env_path(app)).map_err(|error| error.to_string())?);
+    let image_tag = values
+        .get("BOX_IMAGE_TAG")
+        .filter(|tag| tag.bytes().all(|byte| byte.is_ascii_alphanumeric() || b"._-".contains(&byte)))
+        .ok_or("当前服务器镜像版本配置无效")?;
+    let manager_image = format!("box-local-engine-server-manager:{image_tag}");
+    docker(&["image", "inspect", &manager_image])
+        .map_err(|_| "当前 Web 管理器镜像不可用，无法安全启动更新任务".to_string())?;
+
+    let host_root = host_project_root(app)?;
+    let host_root_text = host_root
+        .to_str()
+        .filter(|value| value.starts_with('/') && !value.contains([',', '\n', '\r']))
+        .ok_or("安装目录必须是有效的 Linux 绝对路径")?;
+    let socket = values
+        .get("BOX_DOCKER_SOCKET")
+        .filter(|value| value.starts_with('/') && !value.contains([',', '\n', '\r']))
+        .map(String::as_str)
+        .unwrap_or("/var/run/docker.sock");
+    let bind_ip = values
+        .get("BOX_SERVER_MANAGER_BIND_IP")
+        .map(String::as_str)
+        .unwrap_or("0.0.0.0");
+    if !matches!(bind_ip, "127.0.0.1" | "0.0.0.0") {
+        return Err("管理器监听地址无效，无法启动更新任务".into());
+    }
+    let updater_name = format!("box3-server-manager-updater-{}", random_hex(8));
+    let socket_mount = format!("type=bind,source={socket},target=/var/run/docker.sock");
+    let root_mount = format!("type=bind,source={host_root_text},target={host_root_text}");
+    let directory = format!("BOX3_INSTALL_DIRECTORY={host_root_text}");
+    let version = format!("BOX3_VERSION={requested}");
+    let bind = format!("BOX3_MANAGER_BIND_IP={bind_ip}");
+    let helper_name = format!("BOX3_UPDATE_HELPER_NAME={updater_name}");
+    let web_update = "BOX3_WEB_UPDATE=1";
+    let output = Command::new("docker")
+        .args([
+            "run",
+            "--detach",
+            "--name",
+            &updater_name,
+            "--network",
+            "host",
+            "--mount",
+            &socket_mount,
+            "--mount",
+            &root_mount,
+            "--env",
+            &directory,
+            "--env",
+            &version,
+            "--env",
+            &bind,
+            "--env",
+            &helper_name,
+            "--env",
+            web_update,
+            &manager_image,
+            "/bin/sh",
+            "/app/bootstrap.sh",
+        ])
+        .output()
+        .map_err(|error| format!("无法启动 Web 管理器更新任务：{error}"))?;
+    if !output.status.success() {
+        return Err(String::from_utf8_lossy(&output.stderr).trim().to_string());
+    }
+    let container = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if container.is_empty() {
+        return Err("Docker 未返回更新任务容器 ID".into());
+    }
+    Ok(updater_name)
 }
 
 pub(crate) fn linux_data_directory(value: &str) -> Result<PathBuf, String> {
@@ -942,8 +1245,15 @@ pub(crate) fn prepare_managed_service(app: &App, service: &str) -> Result<(), St
     let image = managed_image(&values, service)?;
     docker(&["info", "--format", "{{.ServerVersion}}"])?;
     if docker(&["image", "inspect", &image]).is_err() {
-        app.progress("managed-image", "正在下载内置服务镜像…", 20);
-        docker(&["pull", &image])?;
+        app.progress(
+            "dependency-image-download",
+            "正在准备下载内置服务镜像，可能需要几分钟，请耐心等待…",
+            1,
+        );
+        let label = if service == "postgresql" { "PostgreSQL" } else { "Redis" };
+        pull_image_with_progress(&image, label, &mut |percent, message| {
+            app.progress("dependency-image-download", &message, percent)
+        })?;
     }
     Ok(())
 }

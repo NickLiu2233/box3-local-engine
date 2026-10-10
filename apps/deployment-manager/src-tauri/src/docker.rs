@@ -138,6 +138,17 @@ pub(crate) fn output(args: &[&str]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
 }
 
+pub(crate) fn pull_image(
+    image: &str,
+    label: &str,
+    progress: impl FnMut(u8, String),
+) -> Result<(), String> {
+    let mut command = command();
+    command.args(["pull", image]);
+    hide_window(&mut command);
+    box_manager_core::docker_pull::run(command, label, progress).map(|_| ())
+}
+
 pub(crate) fn unavailable_message(error: String) -> String {
     let normalized = error.to_lowercase();
     if normalized.contains("cannot connect")

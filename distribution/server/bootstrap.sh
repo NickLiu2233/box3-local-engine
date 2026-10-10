@@ -335,9 +335,7 @@ existing_installation_matches_target() {
   [ "$installed_image_tag" = "$expected_image_tag" ] || return 1
   [ "$installed_platform" = "linux/${architecture}" ] || return 1
 
-  for service in player-service player-auth-portal server-manager creator play voxa; do
-    docker image inspect "box-local-engine-${service}:${expected_image_tag}" >/dev/null 2>&1 || return 1
-  done
+  docker image inspect "box-local-engine-server-manager:${expected_image_tag}" >/dev/null 2>&1 || return 1
 }
 
 install_download_tools
@@ -377,6 +375,12 @@ chmod +x "$package_directory"/*.sh
 # Databases, Redis and map runtime containers keep their own lifecycle and are
 # never removed by the updater.
 previously_running_services=$(running_application_services || true)
+previous_image_tag=$(read_env_value BOX_IMAGE_TAG)
+previous_manager_image_id=''
+if [ -n "$previous_image_tag" ]; then
+  previous_manager_image_id=$(docker image inspect --format '{{.Id}}' \
+    "box-local-engine-server-manager:$previous_image_tag" 2>/dev/null || true)
+fi
 
 info "安装到 $INSTALL_DIRECTORY"
 mkdir -p "$INSTALL_DIRECTORY"
@@ -406,20 +410,60 @@ if ! ./install.sh; then
   fail '新版本安装失败，已恢复原配置。'
 fi
 
+# New server packages keep only manifests. Remove full archives left by older
+# packages after the new manager image has been downloaded and verified.
+rm -f "$INSTALL_DIRECTORY"/box-local-engine-images-v*-linux-*.tar.gz \
+  "$INSTALL_DIRECTORY"/box3-engine-play-server-images-v*-linux-*.tar.gz
+
 set_env_value BOX_SERVER_MANAGER_BIND_IP "$MANAGER_BIND_IP"
 docker compose --env-file .env -f compose.yml up -d --no-build \
   --remove-orphans --force-recreate --wait server-manager
 
-if [ -n "$previously_running_services" ]; then
-  # Service names come from the fixed allow-list in
-  # running_application_services, so intentional word splitting is safe here.
-  # shellcheck disable=SC2086
-  docker compose --env-file .env -f compose.yml up -d --no-build \
-    --force-recreate --wait $previously_running_services
-fi
-
 manager_port=$(read_env_value BOX_SERVER_MANAGER_PORT)
 manager_port=${manager_port:-3130}
+manager_token=$(read_env_value BOX_SERVER_MANAGER_TOKEN)
+if [ -n "$previously_running_services" ]; then
+  for service in player-service player-auth-portal creator voxa play; do
+    case " $previously_running_services " in
+      *" $service "*)
+        info "通过 Web 管理器恢复 $service（缺少的镜像会按需下载）"
+        if ! curl --silent --show-error --fail --retry 20 --retry-delay 2 --retry-connrefused \
+          -H "Authorization: Bearer $manager_token" \
+          -H 'Content-Type: application/json' \
+          -d "{\"service\":\"$service\",\"action\":\"start\"}" \
+          "http://127.0.0.1:$manager_port/api/commands/control_service" >/dev/null; then
+          fail "恢复 $service 失败；请登录 Web 管理器查看状态后手动启动。"
+        fi
+        ;;
+    esac
+  done
+fi
+new_image_tag=$(read_env_value BOX_IMAGE_TAG)
+if [ -n "$previous_image_tag" ] && [ "$previous_image_tag" != "$new_image_tag" ]; then
+  for service in player-service player-auth-portal creator play voxa; do
+    docker image rm "box-local-engine-$service:$previous_image_tag" >/dev/null 2>&1 || true
+  done
+  # The detached updater still runs from the old manager image; remove its old
+  # tag now. Docker reclaims the layers after the helper exits.
+  docker image rm --force "box-local-engine-server-manager:$previous_image_tag" >/dev/null 2>&1 || true
+fi
+if [ -n "${BOX3_UPDATE_HELPER_NAME:-}" ] && [ -n "$previous_manager_image_id" ]; then
+  new_manager_image="box-local-engine-server-manager:$new_image_tag"
+  new_manager_image_id=$(docker image inspect --format '{{.Id}}' "$new_manager_image" 2>/dev/null || true)
+  if [ -n "$new_manager_image_id" ] && [ "$new_manager_image_id" != "$previous_manager_image_id" ]; then
+    socket=$(read_env_value BOX_DOCKER_SOCKET)
+    socket=${socket:-/var/run/docker.sock}
+    cleanup_name="box3-image-cleanup-$$"
+    cleanup_mount="type=bind,source=$socket,target=/var/run/docker.sock"
+    docker run --detach --rm --name "$cleanup_name" --network host \
+      --mount "$cleanup_mount" "$new_manager_image" /bin/sh -c '
+        helper=$1
+        old_image=$2
+        while docker container inspect "$helper" >/dev/null 2>&1; do sleep 2; done
+        docker image rm --force "$old_image" >/dev/null 2>&1 || true
+      ' sh "$BOX3_UPDATE_HELPER_NAME" "$previous_manager_image_id" >/dev/null 2>&1 || true
+  fi
+fi
 open_manager_firewall "$manager_port"
 lan_ip=$(read_env_value BOX_LAN_IP)
 if [ -z "$lan_ip" ] && command -v hostname >/dev/null 2>&1; then
@@ -429,7 +473,6 @@ public_ip=${BOX3_PUBLIC_IP:-}
 if [ -z "$public_ip" ]; then
   public_ip=$(detect_public_ipv4 || true)
 fi
-manager_token=$(read_env_value BOX_SERVER_MANAGER_TOKEN)
 owner_token=$(read_env_value BOX_PLAY_ADMIN_TOKEN)
 
 INSTALL_FINISHED_AT=$(date +%s)
@@ -458,10 +501,18 @@ if [ "$MANAGER_BIND_IP" = '0.0.0.0' ]; then
 else
   printf '\n本机面板地址：http://127.0.0.1:%s\n' "$manager_port"
 fi
-printf '\n%s管理端登录密钥：%s%s\n' "$COLOR_LABEL" "$COLOR_RESET" "$manager_token"
-printf '%s服主管理密钥：  %s%s\n' "$COLOR_LABEL" "$COLOR_RESET" "$owner_token"
-printf '\n请立即保存以上信息。密钥只应交给服主，不要截图或公开。\n'
+if [ -z "${BOX3_WEB_UPDATE:-}" ]; then
+  printf '\n%s管理端登录密钥：%s%s\n' "$COLOR_LABEL" "$COLOR_RESET" "$manager_token"
+  printf '%s服主管理密钥：  %s%s\n' "$COLOR_LABEL" "$COLOR_RESET" "$owner_token"
+  printf '\n请立即保存以上信息。密钥只应交给服主，不要截图或公开。\n'
+else
+  printf '\nWeb 管理器更新流程已完成。\n'
+fi
 printf '%s========================================================================%s\n' \
   "$COLOR_TITLE" "$COLOR_RESET"
 printf '%s安装耗时：%s%d 分 %d 秒\n' \
   "$COLOR_SUCCESS" "$COLOR_RESET" "$INSTALL_ELAPSED_MINUTES" "$INSTALL_ELAPSED_REMAINDER"
+
+if [ -n "${BOX3_UPDATE_HELPER_NAME:-}" ]; then
+  docker rm -f "$BOX3_UPDATE_HELPER_NAME" >/dev/null 2>&1 || true
+fi

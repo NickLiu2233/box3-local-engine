@@ -56,7 +56,7 @@ rush export-images
 | 桌面包         | `apps/local-engine/dist/desktop-installers/BOX-Local-Engine-<version>-<target>.zip`    |
 | Linux 服务器包 | `apps/local-engine/dist/server-packages/BOX3-Engine-Server-<version>-linux-<arch>.zip` |
 
-Linux 服务器包包含 Creator、Play、VOXA、Player Service、参考登录门户和 Rust Server Manager，不包含迁移器或 PostgreSQL/Redis 镜像。选择内置数据库或 Redis 时，管理端会在用户确认后联网下载基础镜像。
+桌面启动器包只包含启动器程序和单镜像清单，不内置业务镜像。Linux 服务器 ZIP 只包含脚本、配置模板和清单；安装时从 OSS 下载 Server Manager 镜像，Creator、Play、VOXA、Player Service 和参考登录门户镜像会在首次启动对应服务时按需下载。PostgreSQL、Redis 和托管 Nginx 镜像也只在用户选择启用时下载。
 
 ## 本地增量测试包
 
@@ -93,7 +93,7 @@ Release 工作流只在 `v*` Tag 推送时执行。它先确认发行应用与 R
 - Linux ARM64：`linux-arm64`；
 - Linux 服务器：`amd64`、`arm64`。
 
-镜像在原生 Linux amd64/arm64 Runner 上各构建一次。桌面与服务器任务复用同一架构归档，避免重复构建 Docker 镜像。Server Manager 只在 Linux 服务器运行；桌面安装包仍携带完整镜像集合，以保持统一离线包格式。
+镜像在原生 Linux amd64/arm64 Runner 上各构建一次，并拆分为带 SHA-256 清单的单镜像归档上传到 OSS。桌面启动器只携带清单；Linux 服务器 ZIP 也只携带清单，安装脚本根据清单下载并校验 Server Manager，其余服务在运行时按需下载。安装包本身不携带 Docker 镜像。
 
 ## OSS 与 CDN
 

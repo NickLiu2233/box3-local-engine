@@ -76,6 +76,7 @@ const PROGRESS_COMMANDS = new Set([
   'export_diagnostics',
   'destroy_project_runtime',
   'relocate_data_storage',
+  'start_server_update',
 ])
 
 const progressHandlers = new Set()

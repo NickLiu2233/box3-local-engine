@@ -535,6 +535,7 @@ fn emit_progress(app: &AppHandle, stage: &str, message: &str, percent: u8) {
             stage: stage.into(),
             message: message.into(),
             percent,
+            downloads: None,
         },
     );
 }
@@ -1564,7 +1565,9 @@ async fn prepare_managed_database(app: AppHandle) -> Result<(), String> {
             "正在从国内镜像源下载 PostgreSQL 16…",
             20,
         );
-        docker_output(&["pull", &image])?;
+        docker::pull_image(&image, "PostgreSQL", |percent, message| {
+            emit_progress(&app, "dependency-image-download", &message, percent)
+        })?;
         emit_progress(&app, "database-image-ready", "PostgreSQL 下载完成", 60);
         Ok(())
     })
@@ -1686,7 +1689,9 @@ async fn prepare_managed_redis(app: AppHandle) -> Result<(), String> {
             return Ok(());
         }
         emit_progress(&app, "redis-image", "正在从国内镜像源下载 Redis 7…", 20);
-        docker_output(&["pull", &image])?;
+        docker::pull_image(&image, "Redis", |percent, message| {
+            emit_progress(&app, "dependency-image-download", &message, percent)
+        })?;
         emit_progress(&app, "redis-image-ready", "Redis 下载完成", 60);
         Ok(())
     })

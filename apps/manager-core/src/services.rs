@@ -17,6 +17,17 @@ pub struct InstallProgress {
     pub stage: String,
     pub message: String,
     pub percent: u8,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub downloads: Option<Vec<ImageDownloadProgress>>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageDownloadProgress {
+    pub image: String,
+    pub bytes: u64,
+    pub total: u64,
+    pub percent: u8,
 }
 
 pub trait Runtime {

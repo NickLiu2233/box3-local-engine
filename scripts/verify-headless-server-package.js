@@ -1,26 +1,8 @@
 'use strict'
 
 const assert = require('node:assert/strict')
-const crypto = require('node:crypto')
 const fs = require('node:fs')
 const path = require('node:path')
-const { spawnSync } = require('node:child_process')
-
-function sha256(file) {
-  const hash = crypto.createHash('sha256')
-  const descriptor = fs.openSync(file, 'r')
-  const buffer = Buffer.allocUnsafe(1024 * 1024)
-  try {
-    let bytes
-    do {
-      bytes = fs.readSync(descriptor, buffer, 0, buffer.length, null)
-      if (bytes) hash.update(buffer.subarray(0, bytes))
-    } while (bytes)
-  } finally {
-    fs.closeSync(descriptor)
-  }
-  return hash.digest('hex')
-}
 
 function main() {
   const packageRoot = path.resolve(process.argv[2] || '')
@@ -29,23 +11,29 @@ function main() {
     'package directory missing',
   )
 
-  const manifestPath = path.join(packageRoot, 'BOX3-OFFLINE-IMAGE.json')
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  assert.equal(manifest.formatVersion, 1)
-  assert.match(manifest.version, /^\d+\.\d+\.\d+/)
-  assert.match(manifest.platform, /^linux\/(amd64|arm64)$/)
-  assert.equal(manifest.imageTag, `v${manifest.version}-${manifest.platform.replace('/', '-')}`)
-  assert.equal(manifest.images.length, 6)
-
-  const archive = path.join(packageRoot, manifest.archive)
-  assert.ok(fs.statSync(archive, { throwIfNoEntry: false })?.isFile(), 'image archive missing')
-  assert.equal(sha256(archive), manifest.archiveSha256, 'image archive checksum mismatch')
-
-  const result = spawnSync('tar', ['-xOzf', archive, 'manifest.json'], { encoding: 'utf8' })
-  assert.equal(result.status, 0, result.stderr || 'cannot read Docker archive manifest')
-  const dockerManifest = JSON.parse(result.stdout)
-  const tags = new Set(dockerManifest.flatMap((entry) => entry.RepoTags || []))
-  for (const image of manifest.images) assert.ok(tags.has(image), `Docker archive missing ${image}`)
+  const manager = JSON.parse(
+    fs.readFileSync(path.join(packageRoot, 'BOX3-MANAGER-IMAGE.json'), 'utf8'),
+  )
+  const catalog = JSON.parse(
+    fs.readFileSync(path.join(packageRoot, 'BOX3-IMAGE-CATALOG.json'), 'utf8'),
+  )
+  assert.equal(catalog.formatVersion, 2)
+  assert.match(catalog.platform, /^linux\/(amd64|arm64)$/)
+  assert.equal(manager.platform, catalog.platform)
+  assert.equal(manager.imageTag, catalog.imageTag)
+  assert.equal(manager.image, 'box-local-engine-server-manager')
+  assert.equal(catalog.images.length, 6)
+  const managerEntry = catalog.images.find((image) => image.image === manager.image)
+  assert.ok(managerEntry, 'server manager missing from image catalog')
+  assert.equal(managerEntry.archive, manager.archive)
+  assert.equal(managerEntry.sha256, manager.sha256)
+  assert.equal(managerEntry.size, manager.size)
+  assert.match(manager.sha256, /^[a-f0-9]{64}$/)
+  assert.ok(manager.size > 0)
+  const managerContentTag = `${manager.image}:launcher-content-${managerEntry.imageId.slice(7)}`
+  assert.equal(manager.contentTag, managerContentTag)
+  const archives = fs.readdirSync(packageRoot).filter((file) => file.endsWith('.tar.gz'))
+  assert.deepEqual(archives, [], 'server package must not bundle Docker image archives')
 
   for (const file of [
     'compose.yml',
@@ -57,6 +45,8 @@ function main() {
     'verify.sh',
     'README.md',
     'SHA256SUMS',
+    'BOX3-IMAGE-CATALOG.json',
+    'BOX3-MANAGER-IMAGE.json',
   ]) {
     assert.ok(fs.existsSync(path.join(packageRoot, file)), `package file missing: ${file}`)
   }

@@ -1,6 +1,6 @@
 //! Bounded progress records for authenticated HTTP commands. No worker or
 //! request is held while a client polls. Finished records expire after 5 min.
-use box_manager_core::services::InstallProgress;
+use box_manager_core::services::{ImageDownloadProgress, InstallProgress};
 use std::{
     collections::BTreeMap,
     sync::Mutex,
@@ -9,6 +9,7 @@ use std::{
 
 struct Record {
     progress: InstallProgress,
+    downloads: BTreeMap<String, ImageDownloadProgress>,
     updated: Instant,
     finished: bool,
 }
@@ -49,7 +50,9 @@ impl Operations {
                     stage: "queued".into(),
                     message: "正在准备操作…".into(),
                     percent: 0,
+                    downloads: None,
                 },
+                downloads: BTreeMap::new(),
                 updated: Instant::now(),
                 finished: false,
             },
@@ -68,10 +71,57 @@ impl Operations {
                     stage: stage.into(),
                     message: message.into(),
                     percent: percent.min(100),
+                    downloads: None,
                 };
+                record.downloads.clear();
                 record.updated = Instant::now();
                 record.finished = finished;
                 let _ = self.1.send((id.into(), record.progress.clone()));
+            }
+        }
+    }
+    pub fn update_download(&self, id: &str, image: &str, bytes: u64, total: u64) {
+        if let Ok(mut records) = self.0.lock() {
+            if let Some(record) = records.get_mut(id) {
+                if record.finished {
+                    return;
+                }
+                let total = total.max(1);
+                let bytes = bytes.min(total);
+                let percent = (bytes.saturating_mul(100) / total) as u8;
+                if record
+                    .downloads
+                    .get(image)
+                    .is_some_and(|previous| previous.percent == percent)
+                {
+                    return;
+                }
+                record.downloads.insert(
+                    image.to_owned(),
+                    ImageDownloadProgress {
+                        image: image.to_owned(),
+                        bytes,
+                        total,
+                        percent,
+                    },
+                );
+                let rows = record.downloads.values().cloned().collect::<Vec<_>>();
+                let (downloaded, total) = rows.iter().fold((0u64, 0u64), |sum, row| {
+                    (sum.0.saturating_add(row.bytes), sum.1.saturating_add(row.total))
+                });
+                let complete = rows.iter().filter(|row| row.percent == 100).count();
+                record.progress = InstallProgress {
+                    stage: "image-download".into(),
+                    message: format!("{} 个镜像并行下载 · 已完成 {complete}/{}", rows.len(), rows.len()),
+                    percent: if complete == rows.len() {
+                        100
+                    } else {
+                        (downloaded.saturating_mul(99) / total.max(1)).min(99) as u8
+                    },
+                    downloads: Some(rows),
+                };
+                record.updated = Instant::now();
+                let _ = self.1.send((id.to_owned(), record.progress.clone()));
             }
         }
     }

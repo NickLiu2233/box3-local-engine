@@ -124,30 +124,19 @@ jobs:
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-      - name: Download existing offline images from Aliyun OSS
+      - name: Download Server Manager image catalog from Aliyun OSS
         run: |
           mkdir -p apps/local-engine/dist/images
-          archive="box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz"
-          ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" apps/local-engine/dist/images/
+          catalog="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.json"
+          ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog"
       - name: Assemble and verify Linux server package
         env:
           BOX_BUILD_COMMIT: ${{ github.sha }}
           BOX_BUILD_SOURCE: github-actions-server-package
         run: |
           export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
-          source_archive="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz"
-          server_archive="apps/local-engine/dist/images/box3-engine-play-server-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.tar.gz"
-          test -f "$source_archive"
-          docker load -i "$source_archive"
-          docker image save \
-            "box-local-engine-player-service:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-player-auth-portal:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-server-manager:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-creator:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-play:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
-            "box-local-engine-voxa:v${{ inputs.version }}-linux-${{ matrix.architecture }}" \
-            | gzip -1 > "$server_archive"
-          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' "$server_archive"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.json"
+          node scripts/build-headless-server-package.js '${{ matrix.architecture }}' --catalog "$catalog"
           node scripts/verify-headless-server-package.js \
             "apps/local-engine/dist/server-packages/BOX3-Engine-Server-${{ inputs.version }}-linux-${{ matrix.architecture }}"
       - name: Upload versioned server package to Aliyun OSS

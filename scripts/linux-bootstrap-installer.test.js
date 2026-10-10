@@ -100,6 +100,8 @@ if printf '%s' "$arguments" | grep -q 'latest.txt'; then
 elif printf '%s' "$arguments" | grep -q 'cdn.example.test.*BOX3-Engine-Server'; then
   [ "$FAIL_CDN" != 'package' ] || exit 22
   cp "$FIXTURE_ZIP" "$output"
+elif printf '%s' "$arguments" | grep -q '/api/commands/control_service'; then
+  printf '{"result":null}'
 elif [ -z "$output" ]; then
   printf '203.0.113.10'
 else
@@ -144,7 +146,8 @@ fi
     assert.match(result.stdout, /服主管理密钥：\s+owner-test-token/)
     assert.match(result.stdout, /安装耗时：\d+ 分 \d+ 秒/)
     const dockerInvocations = fs.readFileSync(dockerCalls, 'utf8')
-    assert.match(dockerInvocations, /up .*play creator/)
+    assert.match(dockerInvocations, /up .*server-manager/)
+    assert.doesNotMatch(dockerInvocations, /up .*play creator/)
     assert.doesNotMatch(dockerInvocations, /up .*managed-postgres/)
     const curlInvocations = fs.readFileSync(curlCalls, 'utf8')
     assert.match(curlInvocations, /https:\/\/cdn\.example\.test\/box3\/latest\.txt/)
@@ -152,6 +155,7 @@ fi
       curlInvocations,
       /https:\/\/cdn\.example\.test\/box3\/BOX3-Engine-Server-9\.8\.7-linux-amd64\.zip/,
     )
+    assert.match(curlInvocations, /api\/commands\/control_service/)
     assert.doesNotMatch(curlInvocations, /github|releases\/download|releases\/latest/)
     for (const failure of ['version', 'package']) {
       fs.writeFileSync(curlCalls, '')

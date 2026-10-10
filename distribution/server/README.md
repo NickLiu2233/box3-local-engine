@@ -1,6 +1,6 @@
 # BOX3 Engine 无图形 Linux 服务器包
 
-本包用于没有桌面环境的 Linux amd64/arm64 服务器，包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Web 管理端六个离线镜像。运行时只需要 Docker Engine 与 Docker Compose v2，不需要安装 Node.js、pnpm、Rust 或源码仓库。
+本包用于没有桌面环境的 Linux amd64/arm64 服务器。ZIP 只包含安装脚本、配置模板和小型按需镜像清单，不内置 Docker 镜像。安装时才下载并校验 Server Manager 镜像；Creator、VOXA、Play、Player Service 与参考登录门户的镜像会在首次启动对应服务时按需下载并校验。运行时只需要 Docker Engine 与 Docker Compose v2，不需要安装 Node.js、pnpm、Rust 或源码仓库。
 
 包内不包含真实 `.env`、密钥、地图、模型、玩家数据、备份、日志，也不包含 PostgreSQL/Redis 镜像。选择内置 PostgreSQL 或 Redis 时需要联网拉取对应基础镜像。
 
@@ -26,7 +26,7 @@ Ubuntu 24.04 安装 Docker：
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-v2 unzip ca-certificates
+sudo apt install -y docker.io docker-compose-v2 unzip ca-certificates curl
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 ```
@@ -51,7 +51,7 @@ chmod +x *.sh
 ./install.sh
 ```
 
-`verify.sh` 校验包内文件和镜像归档 SHA-256。`install.sh` 会再次校验架构与镜像，首次运行时创建权限为 `0600` 的 `.env`，生成业务密钥、Web 管理令牌、内部运行时管理密钥，导入六个镜像，并且只启动 Web 管理端。业务服务由服主完成数据配置后启动。
+`verify.sh` 校验包内文件。`install.sh` 会按清单下载并校验 Server Manager 镜像，检查 CPU 架构；首次运行时创建权限为 `0600` 的 `.env`，生成业务密钥、Web 管理令牌和内部运行时管理密钥，然后启动 Web 管理端。业务服务镜像和 PostgreSQL、Redis、Nginx 基础镜像都在服主选择并启动相关功能时按需下载。
 
 安装脚本不会覆盖已有 `.env`；升级旧版本时会自动补齐缺失的内部管理密钥，不会替换长度合法的现有密钥。若命令提示没有 Docker 权限，请重新登录使 docker 用户组生效，不要改成长期使用宽松的 Socket 权限。
 
@@ -74,9 +74,9 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 ## 四、数据库和启动顺序
 
 1. 在“数据配置”选择 PostgreSQL：内置模式会联网拉取 PostgreSQL 16，外部模式需要填写并测试连接。
-2. Redis 可以关闭、使用内置实例或连接外部服务。
+2. Redis 可以关闭、使用内置实例或连接外部服务；启用 HTTPS 入口时才会下载托管 Nginx 镜像。
 3. 填写 Play、Creator 的地址与监听范围并保存。
-4. 在“服务总览”启动游玩端、创作端或全部服务。
+4. 在“服务总览”启动游玩端、创作端或全部服务。所选业务镜像只在首次需要时下载，之后从 Docker 本地镜像复用。
 
 `.env` 是服主维护的唯一配置来源。保存配置和启动服务时，Rust 管理端会自动生成 `.runtime.env`；不要手工修改它。
 
@@ -121,11 +121,10 @@ Rust 管理端默认限制为 128 MB、0.5 CPU，实际空闲内存仅为数 MiB
 ```
 
 - `status.sh`：查看服务状态；
-- `start.sh`：读取已有 `.env`，按 `COMPOSE_PROFILES` 启动服务；
-- 只启动 Play 相关服务：`BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh`（一次性覆盖，不修改 `.env`）；
+- `start.sh`：只启动 Linux Web 管理端；业务服务通过管理页面按需启动；
 - `logs.sh [服务名]`：查看并跟踪最近 300 行日志；
 - `stop.sh`：停止服务，不删除数据卷、工程或备份；
-- `install.sh`：重新校验镜像并恢复管理端，不覆盖已有配置。
+- `install.sh`：校验安装文件，按需下载并校验管理端镜像，不覆盖已有配置。
 
 升级前备份 `.env`、`apps/local-engine/projects/`、`apps/local-engine/play-worlds/`、`apps/voxa/data/`、`apps/local-engine/backups/`，并单独执行 PostgreSQL `pg_dump` 或数据库快照。页面文件备份不包含 PostgreSQL。
 

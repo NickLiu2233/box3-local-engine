@@ -62,6 +62,8 @@ pub(super) fn execute(
     environment: &str,
     mut input: Import,
     docker: &mut Docker<'_>,
+    pull: Option<&mut super::ImagePull<'_>>,
+    progress: Option<&mut dyn FnMut(u8, String)>,
     local_deploy: &mut dyn FnMut(&Path, &str) -> Result<Option<super::local::Transaction>, String>,
     transition: &mut dyn FnMut(bool) -> Result<(), String>,
     controlled: bool,
@@ -150,7 +152,11 @@ pub(super) fn execute(
     let mut local_transaction = None;
     let result = (|| {
         if input.settings.mode == "managed" && !input.settings.routes.is_empty() {
-            install_image(docker)?;
+            if let (Some(pull), Some(progress)) = (pull, progress) {
+                install_image_with_progress(docker, pull, progress)?;
+            } else {
+                install_image(docker)?;
+            }
         }
         let mut materials = BTreeMap::<String, Certificate>::new();
         if let Some(previous) = &old {

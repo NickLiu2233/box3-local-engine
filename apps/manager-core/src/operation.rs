@@ -23,6 +23,7 @@ pub fn mutates_runtime(command: &str) -> bool {
             | "prepare_managed_database"
             | "prepare_managed_redis"
             | "start_managed_service"
+            | "start_server_update"
             | "create_backup"
             | "restore_backup"
             | "delete_backup"

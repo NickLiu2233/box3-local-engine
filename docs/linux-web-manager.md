@@ -2,7 +2,7 @@
 
 本文是无图形 Linux 服务器的完整部署入口。服务器只需要 Linux、Docker Engine 和 Docker Compose v2；
 
-服务器包包含 Creator、VOXA、Play、Player Service、参考登录门户和 Rust Web 管理端六个镜像。内置 PostgreSQL 与 Redis 镜像不在离线包中：选择内置模式时服务器需要联网拉取，也可以填写已有的外部 PostgreSQL，并关闭 Redis 或连接外部 Redis。
+服务器安装 ZIP 不内置 Docker 镜像，只包含安装脚本、配置模板和小型镜像清单。安装时下载 Server Manager；Creator、VOXA、Play、Player Service、参考登录门户镜像会在首次启动对应服务时按需下载。PostgreSQL、Redis 与托管 Nginx 也只在选择启用时拉取。服务器需要能够访问 `https://assets.box3.fun` 和相应基础镜像源，也可以填写外部 PostgreSQL/Redis 并关闭托管 Nginx。
 
 ## 1. 准备服务器
 
@@ -48,13 +48,13 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 
 ## 3. 手动安装 Docker
 
-完全离线部署或无法使用一键安装器时，按本节开始手动安装。
+无法使用一键安装器，或希望自己准备 Docker 和安装目录时，按本节手动安装。管理器首次启动仍需访问 `https://assets.box3.fun` 下载其镜像。
 
 Ubuntu 可以直接安装发行版软件包：
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-v2 unzip ca-certificates
+sudo apt install -y docker.io docker-compose-v2 unzip ca-certificates curl
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 ```
@@ -81,7 +81,7 @@ chmod +x *.sh
 ./verify.sh
 ```
 
-`verify.sh` 必须全部通过。它会校验文件清单、镜像归档 SHA-256 和包内文件完整性。不要只复制 ZIP 内的部分文件，也不要混用不同版本的 `compose.yml`、镜像归档和清单。
+`verify.sh` 必须全部通过。它会校验发行包文件清单和 SHA-256。不要只复制 ZIP 内的部分文件，也不要混用不同版本的 `compose.yml` 和镜像清单。
 
 ## 5. 首次安装
 
@@ -91,13 +91,13 @@ chmod +x *.sh
 
 安装器会：
 
-1. 再次校验完整包与 CPU 架构；
+1. 再次校验发行包与 CPU 架构；
 2. 从 `.env.example` 创建权限为 `0600` 的 `.env`；
 3. 生成业务密钥、Web 管理令牌；
-4. 导入六个离线镜像；
+4. 按清单下载、校验并导入 Linux Web 管理端自身镜像；
 5. 只启动 Rust Web 管理端。
 
-业务服务由服主完成数据配置后启动。安装器不会覆盖已有 `.env`。
+业务服务由服主完成数据配置后启动；缺少的服务镜像会在首次启动对应服务时下载并校验。安装器不会覆盖已有 `.env`。
 
 ```bash
 ./status.sh
@@ -179,28 +179,16 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 ```
 
 - `status.sh` 查看服务状态；
-- `start.sh` 读取已有 `.env`，按 `COMPOSE_PROFILES` 启动服务；
+- `start.sh` 只启动 Linux Web 管理端；业务服务从管理页面启动；
 - `logs.sh [服务名]` 跟踪最近 300 行日志；
 - `stop.sh` 停止服务，但不删除工程、地图、备份或 Docker 数据卷；
-- `install.sh` 可重新校验镜像并恢复 Web 管理端，已有配置不会被覆盖。
+- `install.sh` 可重新校验安装文件，按清单下载并校验 Web 管理端镜像；已有配置不会被覆盖。
 
 容器使用 `restart: unless-stopped`，服务器重启后会恢复此前运行的服务。Web 页面只能管理固定白名单内的业务服务与内置数据库。
 
-纯命令行启动的等价命令为：
+`start.sh` 不会直接启动业务容器，以确保缺少的镜像先经过 Web 管理器清单校验和按需下载。需要让管理端随系统启动时，可将 systemd `ExecStart` 指向包目录中的 `start.sh`；业务服务保持 Docker `restart: unless-stopped`，仍可在主机重启后自行恢复。
 
-```bash
-docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait
-```
-
-该命令不会创建或覆盖 `.env`。如需 systemd 显式拉起，可将 `ExecStart` 指向包目录中的 `start.sh`；不建议用 cron 反复执行。
-
-只启动 Play 及其玩家依赖（不启动 Creator/VOXA）时，可使用一次性 profile 覆盖：
-
-```bash
-BOX_START_PROFILES=play,player-service,auth-portal,server-manager ./start.sh
-```
-
-其中 `auth-portal` 是参考登录门户，`server-manager` 是 Web 管理端；如果使用自建登录页或不需要 Web 管理，可分别从列表中删除。该覆盖只对本次命令生效，不会修改 `.env`。
+登录后可点击页面侧栏底部的更新图标检查版本。确认更新后，管理器会下载新版服务器包并启动独立更新任务；更新任务替换管理器文件与镜像、恢复此前运行的业务服务，并清理未被容器使用的旧版本镜像。管理器重启期间页面会暂时断开，完成后重新连接即可。
 
 ## 11. 备份和升级
 

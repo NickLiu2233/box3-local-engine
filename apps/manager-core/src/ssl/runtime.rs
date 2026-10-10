@@ -105,6 +105,17 @@ pub fn install_image(docker: &mut Docker<'_>) -> Result<(), String> {
     }
     Ok(())
 }
+
+pub fn install_image_with_progress(
+    docker: &mut Docker<'_>,
+    pull: &mut super::ImagePull<'_>,
+    progress: &mut dyn FnMut(u8, String),
+) -> Result<(), String> {
+    if call(docker, &["image", "inspect", IMAGE]).is_err() {
+        pull(IMAGE, progress)?;
+    }
+    Ok(())
+}
 /// Keep generated application links and CORS origins aligned with saved managed HTTPS listeners.
 /// Engine host ports remain HTTP upstream ports and must never be replaced by TLS ports.
 pub fn apply_runtime_urls(
@@ -363,6 +374,8 @@ pub(super) fn apply_with_local(
         environment,
         input,
         docker,
+        None,
+        None,
         local_deploy,
         &mut |_| Ok(()),
         false,
@@ -384,6 +397,33 @@ pub fn apply_with_transition(
         environment,
         input,
         docker,
+        None,
+        None,
+        &mut super::local::deploy,
+        transition,
+        true,
+    )
+}
+pub fn apply_with_transition_progress(
+    root: &Path,
+    host_root: &Path,
+    network: &str,
+    environment: &str,
+    input: Import,
+    docker: &mut Docker<'_>,
+    pull: &mut super::ImagePull<'_>,
+    progress: &mut dyn FnMut(u8, String),
+    transition: &mut dyn FnMut(bool) -> Result<(), String>,
+) -> Result<Value, String> {
+    super::apply::execute(
+        root,
+        host_root,
+        network,
+        environment,
+        input,
+        docker,
+        Some(pull),
+        Some(progress),
         &mut super::local::deploy,
         transition,
         true,

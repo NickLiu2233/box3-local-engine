@@ -1,8 +1,8 @@
 # BOX3 Engine 云服务器快速部署
 
-> 适用于 BOX3-Engine-Server 0.2.x 的 Linux amd64/arm64 发行包。
+> 适用于 BOX3-Engine-Server 0.3.x 的 Linux amd64/arm64 发行包。
 
-服务器只需要一条安装命令。安装器会自动准备 Docker、下载与 CPU 架构匹配的发行包、校验文件、导入镜像并启动管理端，不需要手改 `.env`、`.runtime.env` 或 Docker Compose。
+服务器只需要一条安装命令。安装器会自动准备 Docker、下载与 CPU 架构匹配的轻量发行包、校验文件，在需要时下载管理端镜像并启动管理端，不需要手改 `.env`、`.runtime.env` 或 Docker Compose。
 
 ## 1. 一键安装
 
@@ -84,7 +84,7 @@ Ubuntu 安装 Docker：
 
 ```bash
 sudo apt update
-sudo apt install -y docker.io docker-compose-v2 unzip ca-certificates
+sudo apt install -y docker.io docker-compose-v2 unzip ca-certificates curl
 sudo systemctl enable --now docker
 sudo usermod -aG docker "$USER"
 ```
@@ -141,10 +141,10 @@ chmod +x *.sh
 | `unzip ... -d`  | 将服务器包解压到安装目录                                |
 | `cd`            | 进入解压后的服务器包目录，后续脚本都必须在这里执行      |
 | `chmod +x *.sh` | 给安装、校验、日志等脚本增加执行权限                    |
-| `./verify.sh`   | 校验发行包清单、文件哈希、镜像归档和 CPU 架构           |
-| `./install.sh`  | 导入六个离线镜像、生成初始密钥和配置，并启动 Web 管理端 |
+| `./verify.sh`   | 校验发行包清单、文件哈希和管理端镜像归档                |
+| `./install.sh`  | 下载并校验管理端镜像、生成初始密钥和配置，并启动 Web 管理端 |
 
-`verify.sh` 必须全部通过。如果失败，不要继续安装，也不要从其他版本复制单个文件补齐。`install.sh` 不会直接启动 Play、Creator 等业务服务，也不会覆盖已经存在的 `.env`。
+`verify.sh` 必须全部通过。如果失败，不要继续安装，也不要从其他版本复制单个文件补齐。`install.sh` 不会直接启动 Play、Creator 等业务服务，也不会覆盖已经存在的 `.env`。业务镜像会在管理端启动相应服务时按需下载。
 
 ## 4. 打开 Web 管理端
 
@@ -269,7 +269,7 @@ Creator 和 VOXA 默认应只允许本机、内网或 VPN 中的可信创作者�
 - Creator 工程、Play 地图和 VOXA 模型目录；
 - PostgreSQL 的 `pg_dump` 或数据库服务商快照。
 
-升级时使用完整的新服务器包，执行新包的 `verify.sh` 和 `install.sh`。不要混用不同版本的 Compose 文件、镜像归档和校验清单。
+升级时使用完整的新服务器包，执行新包的 `verify.sh` 和 `install.sh`。不要混用不同版本的 Compose 文件和镜像清单。
 
 更多故障排查和数据迁移说明见 [Linux Web 管理端](./linux-web-manager.md) 与[配置参考](./configuration-reference.md)。
 

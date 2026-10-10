@@ -4,9 +4,9 @@ import { state } from '../core/state.js'
 let progressRenderTimer
 
 export function scheduleProgressRender() {
-  if (progressRenderTimer || !state.busy) return
+  if (progressRenderTimer || (!state.busy && !state.sslBusy)) return
   progressRenderTimer = window.setTimeout(() => {
     progressRenderTimer = undefined
-    if (state.busy) render()
+    if (state.busy || state.sslBusy) render()
   }, 50)
 }

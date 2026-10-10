@@ -13,11 +13,5 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-# COMPOSE_PROFILES is read from the existing .env. BOX_START_PROFILES is an
-# optional one-shot override and never writes back to .env.
-if [ -n "${BOX_START_PROFILES:-}" ]; then
-  COMPOSE_PROFILES="$BOX_START_PROFILES" docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait
-else
-  docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait
-fi
-echo 'BOX3 Engine services started using the existing .env.'
+docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait server-manager
+echo 'Linux Web manager started. Start application services from the management page.'

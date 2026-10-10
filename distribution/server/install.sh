@@ -76,15 +76,62 @@ fi
 ensure_secret BOX_SERVER_MANAGER_TOKEN CHANGE_ME_SERVER_MANAGER_TOKEN
 ensure_secret BOX_RUNTIME_MANAGER_TOKEN CHANGE_ME_RUNTIME_MANAGER_TOKEN
 
-archive='__IMAGE_ARCHIVE__'
-if [ ! -f "$archive" ]; then
-  echo "Missing $archive" >&2
+archive='__MANAGER_IMAGE_ARCHIVE__'
+if [ ! -f BOX3-IMAGE-CATALOG.json ]; then
+  echo 'Missing BOX3-IMAGE-CATALOG.json' >&2
   exit 1
 fi
 
 ./verify.sh
-echo 'Loading offline images…'
-docker load -i "$archive"
+mkdir -p cache/engine-images
+archive_path="cache/engine-images/$archive"
+expected_sha=$(sed -n 's/^[[:space:]]*"sha256": "\([a-fA-F0-9]*\)".*/\1/p' BOX3-MANAGER-IMAGE.json)
+[ "${#expected_sha}" -eq 64 ] || { echo 'Invalid Server Manager image checksum.' >&2; exit 1; }
+expected_size=$(sed -n 's/^[[:space:]]*"size": \([0-9][0-9]*\).*/\1/p' BOX3-MANAGER-IMAGE.json)
+[ -n "$expected_size" ] || { echo 'Invalid Server Manager image size.' >&2; exit 1; }
+actual_sha=''
+if [ -f "$archive_path" ]; then
+  if command -v sha256sum >/dev/null 2>&1; then
+    actual_sha=$(sha256sum "$archive_path" | awk '{print $1}')
+  else
+    actual_sha=$(shasum -a 256 "$archive_path" | awk '{print $1}')
+  fi
+fi
+if [ "$actual_sha" != "$expected_sha" ]; then
+  partial="$archive_path.part"
+  if [ -f "$partial" ]; then
+    if command -v sha256sum >/dev/null 2>&1; then
+      actual_sha=$(sha256sum "$partial" | awk '{print $1}')
+    else
+      actual_sha=$(shasum -a 256 "$partial" | awk '{print $1}')
+    fi
+    if [ "$actual_sha" = "$expected_sha" ]; then
+      mv "$partial" "$archive_path"
+    elif [ "$(wc -c < "$partial")" -ge "$expected_size" ]; then
+      rm -f "$partial"
+      actual_sha=''
+    else
+      actual_sha=''
+    fi
+  fi
+  if [ "$actual_sha" != "$expected_sha" ]; then
+    curl -fL --retry 2 --progress-bar -C - \
+      "https://assets.box3.fun/local-engine/$archive" -o "$partial"
+    if command -v sha256sum >/dev/null 2>&1; then
+      actual_sha=$(sha256sum "$partial" | awk '{print $1}')
+    else
+      actual_sha=$(shasum -a 256 "$partial" | awk '{print $1}')
+    fi
+    if [ "$actual_sha" != "$expected_sha" ] || [ "$(wc -c < "$partial")" -ne "$expected_size" ]; then
+      rm -f "$partial"
+      echo 'Server Manager image SHA-256 verification failed.' >&2
+      exit 1
+    fi
+    mv "$partial" "$archive_path"
+  fi
+fi
+echo 'Loading the Linux Web manager image…'
+docker load -i "$archive_path"
 image_tag=$(sed -n 's/^BOX_IMAGE_TAG=//p' .env | tail -n 1)
 case "$image_tag" in
   ''|*[!A-Za-z0-9._-]*) echo 'Invalid BOX_IMAGE_TAG in .env' >&2; exit 1 ;;
@@ -94,14 +141,15 @@ case "$(uname -m)" in
   aarch64|arm64) expected_arch=arm64 ;;
   *) echo "Unsupported CPU architecture: $(uname -m)" >&2; exit 1 ;;
 esac
-for service in player-service player-auth-portal server-manager creator play voxa; do
-  image="box-local-engine-$service:$image_tag"
-  actual_arch=$(docker image inspect "$image" --format '{{.Architecture}}')
-  if [ "$actual_arch" != "$expected_arch" ]; then
-    echo "Image architecture mismatch for $image: expected $expected_arch, got $actual_arch" >&2
-    exit 1
-  fi
-done
+manager_content_tag=$(sed -n 's/^[[:space:]]*"contentTag": "\([^"]*\)".*/\1/p' BOX3-MANAGER-IMAGE.json)
+[ -n "$manager_content_tag" ] || { echo 'Invalid Server Manager image manifest.' >&2; exit 1; }
+docker tag "$manager_content_tag" "box-local-engine-server-manager:$image_tag"
+image="box-local-engine-server-manager:$image_tag"
+actual_arch=$(docker image inspect "$image" --format '{{.Architecture}}')
+if [ "$actual_arch" != "$expected_arch" ]; then
+  echo "Image architecture mismatch for $image: expected $expected_arch, got $actual_arch" >&2
+  exit 1
+fi
 echo 'Starting the Linux Web manager…'
 docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait server-manager
 echo 'Done. Linux Web manager: http://127.0.0.1:3130'

@@ -9,6 +9,7 @@ const repoRoot = path.resolve(__dirname, '..')
 const outputRoot = path.join(repoRoot, 'apps/local-engine/dist/server-packages')
 const templateRoot = path.join(repoRoot, 'distribution/server')
 const supportedArchitectures = new Set(['amd64', 'arm64'])
+const { splitArchive, validateCatalog } = require('./build-image-downloads')
 
 function fail(message) {
   console.error(`ERROR: ${message}`)
@@ -79,14 +80,19 @@ function headlessCompose() {
 
 function main() {
   const architecture = process.argv[2]
-  const archive = process.argv[3] ? path.resolve(process.argv[3]) : ''
+  const catalogOnly = process.argv[3] === '--catalog'
+  const archive = !catalogOnly && process.argv[3] ? path.resolve(process.argv[3]) : ''
+  const suppliedCatalogPath = process.argv[4] ? path.resolve(process.argv[4]) : ''
   if (!supportedArchitectures.has(architecture)) {
-    fail('用法: node scripts/build-headless-server-package.js <amd64|arm64> <镜像归档.tar.gz>')
+    fail('用法: node scripts/build-headless-server-package.js <amd64|arm64> <完整镜像归档.tar.gz> | --catalog <catalog.json>')
   }
-  if (!archive || !fs.statSync(archive, { throwIfNoEntry: false })?.isFile()) {
-    fail('离线镜像归档不存在')
+  if (catalogOnly && !suppliedCatalogPath) {
+    fail('使用 --catalog 时必须提供 catalog.json')
   }
-  if (!path.basename(archive).includes(`linux-${architecture}`)) {
+  if (!suppliedCatalogPath && (!archive || !fs.statSync(archive, { throwIfNoEntry: false })?.isFile())) {
+    fail('镜像归档不存在')
+  }
+  if (archive && !path.basename(archive).includes(`linux-${architecture}`)) {
     fail(`镜像归档名称与目标架构 ${architecture} 不一致`)
   }
 
@@ -99,44 +105,38 @@ function main() {
 
   fs.cpSync(templateRoot, packageRoot, { recursive: true })
   fs.writeFileSync(path.join(packageRoot, 'compose.yml'), headlessCompose())
-  fs.copyFileSync(archive, path.join(packageRoot, path.basename(archive)))
+  const splitRoot = path.join(outputRoot, `.split-${architecture}`)
+  let catalog
+  let generatedCatalogPath = ''
+  if (suppliedCatalogPath) {
+    catalog = validateCatalog(JSON.parse(fs.readFileSync(suppliedCatalogPath, 'utf8')), architecture)
+  } else {
+    fs.rmSync(splitRoot, { recursive: true, force: true })
+    fs.mkdirSync(splitRoot, { recursive: true })
+    generatedCatalogPath = path.join(splitRoot, 'catalog.json')
+    catalog = splitArchive(archive, architecture, generatedCatalogPath)
+  }
+  const manager = catalog.images.find((image) => image.image === 'box-local-engine-server-manager')
+  if (!manager) fail('镜像清单中缺少 Server Manager')
+  if (catalog.imageTag !== imageTag) fail('镜像清单版本与服务器包版本不匹配')
+  fs.copyFileSync(
+    suppliedCatalogPath || generatedCatalogPath,
+    path.join(packageRoot, 'BOX3-IMAGE-CATALOG.json'),
+  )
+  fs.writeFileSync(
+    path.join(packageRoot, 'BOX3-MANAGER-IMAGE.json'),
+    `${JSON.stringify({ image: manager.image, imageTag: manager.imageTag, platform: manager.platform, archive: manager.archive, sha256: manager.sha256, size: manager.size, contentTag: `${manager.image}:launcher-content-${manager.imageId.slice(7)}` }, null, 2)}\n`,
+  )
+  if (!suppliedCatalogPath) fs.rmSync(splitRoot, { recursive: true, force: true })
 
   const envTemplate = fs
     .readFileSync(path.join(templateRoot, '.env.example'), 'utf8')
     .replaceAll('__BOX_IMAGE_TAG__', imageTag)
     .replaceAll('__BOX_PLAY_PLATFORM__', `linux/${architecture}`)
   fs.writeFileSync(path.join(packageRoot, '.env.example'), envTemplate)
-  const imageNames = [
-    'player-service',
-    'player-auth-portal',
-    'server-manager',
-    'creator',
-    'play',
-    'voxa',
-  ].map((service) => `box-local-engine-${service}:${imageTag}`)
-  fs.writeFileSync(
-    path.join(packageRoot, 'BOX3-OFFLINE-IMAGE.json'),
-    `${JSON.stringify(
-      {
-        formatVersion: 1,
-        version,
-        platform: `linux/${architecture}`,
-        imageTag,
-        archive: path.basename(archive),
-        archiveSha256: sha256(archive),
-        images: imageNames,
-        sourceRevision: process.env.BOX_BUILD_COMMIT || 'unknown',
-        buildCreatedAt: process.env.BOX_BUILD_DATE || new Date().toISOString(),
-        buildSource: process.env.BOX_BUILD_SOURCE || 'local',
-      },
-      null,
-      2,
-    )}\n`,
-  )
-
   const installer = fs
     .readFileSync(path.join(packageRoot, 'install.sh'), 'utf8')
-    .replaceAll('__IMAGE_ARCHIVE__', path.basename(archive))
+    .replaceAll('__MANAGER_IMAGE_ARCHIVE__', manager.archive)
   fs.writeFileSync(path.join(packageRoot, 'install.sh'), installer, { mode: 0o755 })
   // The template copies keep their committed mode (0644), and writeFileSync
   // only applies `mode` when it creates the file. Set the executable bit

@@ -37,7 +37,15 @@ pub(crate) async fn command(
         } else { None };
         match name.as_str() {
             "install_nginx_image" => {
-                box_manager_core::ssl::install_image(&mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()))?;
+                box_manager_core::ssl::install_image_with_progress(
+                    &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),
+                    &mut |image, progress| {
+                        pull_image_with_progress(image, "Nginx", progress)
+                    },
+                    &mut |percent, message| {
+                        app.progress("dependency-image-download", &message, percent)
+                    },
+                )?;
                 Ok(json!(true))
             }
             "set_nginx_provider" => {
@@ -55,7 +63,7 @@ pub(crate) async fn command(
                 let environment=fs::read_to_string(env_path(&app)).map_err(|error|error.to_string())?;
                 let source=fs::read_to_string(&app.compose_file).map_err(|error|error.to_string())?;
                 let mut transition=box_manager_core::ssl::UpstreamTransition::new(&app.root,"box-local-engine",&config.settings)?;
-                box_manager_core::ssl::apply_with_transition(&app.root,&host_project_root(&app)?,"box-local-engine_default",&environment,config,&mut |args|docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),&mut |rollback| {
+                box_manager_core::ssl::apply_with_transition_progress(&app.root,&host_project_root(&app)?,"box-local-engine_default",&environment,config,&mut |args|docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),&mut |image, progress| pull_image_with_progress(image, "Nginx", progress),&mut |percent, message| app.progress("dependency-image-download", &message, percent),&mut |rollback| {
                     if rollback {transition.rollback(&source,&mut |file,args|compose_file_output(&app,file,args))}
                     else {transition.apply(&mut |args|docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),&mut |args|compose(&app,&args.iter().map(String::as_str).collect::<Vec<_>>()))}
                 })
@@ -410,6 +418,11 @@ pub(crate) async fn command(
             "get_system_status" => {
                 system_status(&app)
             }
+            "start_server_update" => {
+                let version = req.body.get("version").and_then(Value::as_str).ok_or("更新版本无效")?;
+                let updater = start_server_update(&app, version)?;
+                Ok(json!({"updater": updater}))
+            }
             "control_service" => {
                 let action = req.body.get("action").and_then(Value::as_str).ok_or("操作名称无效")?;
                 let service = req.body.get("service").and_then(Value::as_str).ok_or("服务名称无效")?;
@@ -428,6 +441,24 @@ pub(crate) async fn command(
                 "license": "MIT License",
                 "serviceImages": service_images()
             })),
+            "get_latest_release" => {
+                let response = reqwest::blocking::Client::builder()
+                    .timeout(std::time::Duration::from_secs(10))
+                    .build()
+                    .map_err(|error| error.to_string())?
+                    .get("https://assets.box3.fun/local-engine/latest.json")
+                    .header(reqwest::header::CACHE_CONTROL, "no-cache")
+                    .send()
+                    .map_err(|error| format!("无法读取更新清单：{error}"))?;
+                if !response.status().is_success() {
+                    return Err(format!("更新服务返回 HTTP {}", response.status()));
+                }
+                let bytes = response.bytes().map_err(|error| error.to_string())?;
+                if bytes.len() > 128_000 {
+                    return Err("更新清单过大".into());
+                }
+                serde_json::from_slice(&bytes).map_err(|error| format!("更新清单无效：{error}"))
+            }
             _ => Err(format!("暂不支持命令 {name}")),
         }
     })

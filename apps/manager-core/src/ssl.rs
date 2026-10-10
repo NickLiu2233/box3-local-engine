@@ -5,14 +5,16 @@ mod plan;
 mod apply;
 mod certificates;
 mod proxy;
-pub use runtime::{apply, install_image, set_provider, status, stop, verify_endpoint};
-pub use runtime::{apply_runtime_urls,apply_with_transition};
+pub use runtime::{apply, install_image, install_image_with_progress, set_provider, status, stop, verify_endpoint};
+pub use runtime::{apply_runtime_urls,apply_with_transition,apply_with_transition_progress};
 pub use certificates::delete_certificate;
 pub use plan::{compose_source, routing_settings, transition_services, UpstreamTransition, validate_path_images};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const IMAGE: &str = "docker.m.daocloud.io/library/nginx:stable-bookworm";
+pub type ImagePull<'a> =
+    dyn FnMut(&str, &mut dyn FnMut(u8, String)) -> Result<(), String> + 'a;
 pub const SERVICES: [(&str, &str, u16, &str, u16); 6] = [
     ("play", "play", 3000, "BOX_PLAY_PORT", 3121),
     ("creator", "creator", 3000, "BOX_CREATOR_PORT", 3127),

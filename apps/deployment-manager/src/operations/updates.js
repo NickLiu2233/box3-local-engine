@@ -2,7 +2,7 @@ import { state } from '../core/state.js'
 import { render } from '../core/render-request.js'
 import { invoke, isWebManager, listen } from '../infrastructure/transport.js'
 import { fetchLatestRelease } from '../infrastructure/releases.js'
-import { installerTarget, isNewerVersion } from '../utils/releases.js'
+import { installerTarget, isNewerVersion, validateRelease } from '../utils/releases.js'
 import { captureSetupForm } from '../configuration/form.js'
 import { updateDownloadProgress } from '../ui/update-dialog.js'
 
@@ -14,14 +14,17 @@ function renderUpdateState() {
 }
 
 export async function checkForUpdates(manual = false) {
-  if (isWebManager() || state.updateDownloading || state.updateReady) return
+  if (state.updateDownloading || state.updateReady || state.updateRestarting) return
   if (manual) {
     state.error = ''
     state.notice = ''
   }
   if (!pending) {
     state.updateChecking = true
-    pending = Promise.all([invoke('get_about_info'), fetchLatestRelease()])
+    const releaseRequest = isWebManager()
+      ? invoke('get_latest_release').then(validateRelease)
+      : fetchLatestRelease()
+    pending = Promise.all([invoke('get_about_info'), releaseRequest])
       .then(([info, release]) => ({
         release,
         info,
@@ -64,6 +67,40 @@ export async function downloadUpdate() {
     state.updateReady
   )
     return
+  if (isWebManager()) {
+    state.updateRestarting = true
+    state.updateError = ''
+    renderUpdateState()
+    try {
+      const version = state.updateRelease.version.replace(/^v/, '')
+      const updater = await invoke('start_server_update', { version })
+      const deadline = Date.now() + 10 * 60 * 1000
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => window.setTimeout(resolve, 2000))
+        try {
+          const info = await invoke('get_about_info')
+          if (info.applicationVersion.replace(/^v/, '') === version) {
+            state.about = info
+            state.updateDialogOpen = false
+            state.updateRelease = null
+            state.notice = `Web 管理器已更新到 v${version}。`
+            return
+          }
+        } catch {
+          // The old manager is expected to be unavailable during replacement.
+        }
+      }
+      throw new Error(
+        `更新任务 ${updater} 已启动，但 Web 管理器未在 10 分钟内恢复。可在服务器运行 docker logs ${updater} 排查。`,
+      )
+    } catch (error) {
+      state.updateError = String(error)
+    } finally {
+      state.updateRestarting = false
+      renderUpdateState()
+    }
+    return
+  }
   state.updateDownloading = true
   state.updateError = ''
   state.updateProgress = { bytes: 0, total: 0 }
@@ -102,6 +139,7 @@ export async function restartAndUpdate() {
 }
 
 export function closeUpdateDialog() {
+  if (state.updateRestarting) return
   state.updateDialogOpen = false
   renderUpdateState()
   document.querySelector('#check-version-updates')?.focus()

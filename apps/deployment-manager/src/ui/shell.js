@@ -23,7 +23,8 @@ export function shell(content) {
     : state.updateRelease
       ? '发现新版本，下载更新'
       : '检测版本更新'
-  const updateControl = !isWebManager()
+  const canCheckUpdates = !isWebManager() || hasWebManagerToken()
+  const updateControl = canCheckUpdates
     ? `<button class="icon-button update-check${state.updateRelease ? ' update-available' : ''}" id="check-version-updates" title="${updateLabel}" aria-label="${updateLabel}" ${state.updateChecking ? 'disabled' : ''}>${icon('download')}</button>`
     : ''
   const primaryNavigation = webLoginRequired
@@ -79,6 +80,9 @@ function feedbackToast() {
 }
 
 function progressPanelMarkup() {
+  if (state.progress?.stage === 'dependency-image-download') {
+    return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载依赖镜像</strong><p>${escapeHtml(state.progress.message || '正在下载，可能需要几分钟，请耐心等待…')}</p></section></div>`
+  }
   if (state.progress?.stage === 'image-download') {
     const downloads = state.progress.downloads
     if (Array.isArray(downloads) && downloads.length) {
@@ -94,7 +98,7 @@ function progressPanelMarkup() {
       return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message)}</p><ul class="image-download-list">${rows}</ul></section></div>`
     }
     const percent = Math.max(0, Math.min(100, Number(state.progress.percent) || 0))
-    return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message || '正在准备下载…')}</p><div class="image-download-progress" role="progressbar" aria-label="服务镜像下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-percent">${percent}%</small></section></div>`
+      return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message || '正在准备下载…')}</p><div class="image-download-progress" role="progressbar" aria-label="服务镜像下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-percent">${percent}%</small></section></div>`
   }
   if (state.progress?.stage === 'image-import') {
     return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在导入服务镜像</strong><p>${escapeHtml(state.progress.message || '镜像下载完成，正在导入 Docker…')}</p></section></div>`

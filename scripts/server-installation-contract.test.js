@@ -1,6 +1,7 @@
 'use strict'
 
 const assert = require('node:assert/strict')
+const crypto = require('node:crypto')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
@@ -33,11 +34,30 @@ function runInstaller(existingEnvironment) {
       path.join(temporaryRoot, 'install.sh'),
       installer
         .replace('if [ ! -s /etc/machine-id ]; then', 'if false; then')
-        .replaceAll('__IMAGE_ARCHIVE__', 'images.tar.gz'),
+        .replaceAll('__MANAGER_IMAGE_ARCHIVE__', 'manager-image.tar.gz'),
       { mode: 0o755 },
     )
     executable(path.join(temporaryRoot, 'verify.sh'), '#!/bin/sh\nexit 0\n')
-    fs.writeFileSync(path.join(temporaryRoot, 'images.tar.gz'), 'fixture')
+    const managerArchive = 'manager-image.tar.gz'
+    const managerArchiveBytes = 'fixture'
+    const managerArchiveSha = crypto
+      .createHash('sha256')
+      .update(managerArchiveBytes)
+      .digest('hex')
+    fs.mkdirSync(path.join(temporaryRoot, 'cache/engine-images'), { recursive: true })
+    fs.writeFileSync(
+      path.join(temporaryRoot, 'cache/engine-images', managerArchive),
+      managerArchiveBytes,
+    )
+    fs.writeFileSync(path.join(temporaryRoot, 'BOX3-IMAGE-CATALOG.json'), '{}')
+    fs.writeFileSync(
+      path.join(temporaryRoot, 'BOX3-MANAGER-IMAGE.json'),
+      `{
+  "sha256": "${managerArchiveSha}",
+  "size": 7,
+  "contentTag": "box-local-engine-server-manager:launcher-content-fixture"
+}\n`,
+    )
     if (existingEnvironment) fs.writeFileSync(path.join(temporaryRoot, '.env'), existingEnvironment)
     executable(
       path.join(bin, 'docker'),

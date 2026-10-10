@@ -84,17 +84,13 @@ assert.match(serverPackageBuilder, /player-auth-portal:/)
 assert.match(serverPackageBuilder, /server-manager:/)
 assert.match(serverPackageBuilder, /play-storage-init:/)
 assert.match(serverPackageBuilder, /templateRoot, '\.env\.example'/)
-assert.match(serverPackageBuilder, /BOX3-OFFLINE-IMAGE\.json/)
-assert.match(headlessVerifier, /archiveSha256/)
-assert.match(headlessVerifier, /Docker archive missing/)
+assert.match(serverPackageBuilder, /BOX3-IMAGE-CATALOG\.json/)
+assert.match(serverPackageBuilder, /BOX3-MANAGER-IMAGE\.json/)
+assert.match(headlessVerifier, /BOX3-IMAGE-CATALOG\.json/)
+assert.match(headlessVerifier, /server package must not bundle Docker image archives/)
 assert.match(workflow, /verify-headless-server-package\.js/)
-assert.match(workflow, /box3-engine-play-server-images-/)
-assert.match(workflow, /box-local-engine-player-service:/)
-assert.match(workflow, /box-local-engine-player-auth-portal:/)
-assert.match(workflow, /box-local-engine-play:/)
-assert.match(workflow, /box-local-engine-server-manager:/)
-assert.match(workflow, /box-local-engine-creator:/)
-assert.match(workflow, /box-local-engine-voxa:/)
+assert.match(workflow, /Download Server Manager image catalog from Aliyun OSS/)
+assert.match(workflow, /--catalog/)
 
 const headlessComposeSource = headlessCompose()
 for (const requiredService of [
@@ -128,7 +124,7 @@ assert.doesNotMatch(headlessComposeSource, /box-play-storage/)
 for (const step of [
   'Upload images to Aliyun OSS',
   'Download desktop image catalog from Aliyun OSS',
-  'Download server image archive from Aliyun OSS',
+  'Download Server Manager image catalog from Aliyun OSS',
   'Upload desktop installer to Aliyun OSS',
   'Upload server package to Aliyun OSS',
   'Download release packages from Aliyun OSS',
@@ -142,6 +138,12 @@ const desktopJob = workflow.slice(
 assert.match(desktopJob, /box-local-engine-images-[^\n]*\.json/)
 assert.doesNotMatch(desktopJob, /\.tar(?:\.gz)?(?:["'\s]|$)/)
 assert.match(desktopJob, /name: Build lightweight desktop launcher/)
+const headlessJob = workflow.slice(
+  workflow.indexOf('  headless-server:'),
+  workflow.indexOf('  publish:'),
+)
+assert.match(headlessJob, /box-local-engine-images-[^\n]*\.json/)
+assert.doesNotMatch(headlessJob, /\.tar\.gz/)
 assert.match(workflow, /ossutil\s+config/)
 assert.match(workflow, /OSS_BUCKET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_BUCKET\s*\}\}/)
 assert.match(workflow, /OSS_ENDPOINT:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ENDPOINT\s*\}\}/)
