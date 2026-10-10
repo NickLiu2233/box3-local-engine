@@ -2,13 +2,41 @@
 
 const assert = require('node:assert/strict')
 const fs = require('node:fs')
+const os = require('node:os')
 const path = require('node:path')
+const { execFileSync, spawnSync } = require('node:child_process')
 
 const root = path.resolve(__dirname, '..')
 const workflowPath = path.join(root, '.github/workflows/package-server.yml')
 assert.ok(fs.existsSync(workflowPath), 'manual server package workflow is missing')
 
 const workflow = fs.readFileSync(workflowPath, 'utf8')
+// Replay environment preparation with only templates available in a fresh checkout.
+const environmentRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'box-server-workflow-'))
+try {
+  const templates = execFileSync('git', ['ls-files', '-z'], { cwd: root, encoding: 'utf8' })
+    .split('\0')
+    .filter((file) => /^\.env[^/]*example$/.test(file))
+  for (const file of templates) {
+    fs.copyFileSync(path.join(root, file), path.join(environmentRoot, file))
+  }
+  const copies = workflow
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => /^cp \.env/.test(line))
+  assert.equal(copies.length, 2, 'prepare both build environment files')
+  const result = spawnSync('sh', ['-ec', copies.join('\n')], {
+    cwd: environmentRoot,
+    encoding: 'utf8',
+  })
+  assert.equal(result.status, 0, result.stderr || 'environment preparation failed')
+  const template = fs.readFileSync(path.join(root, '.env.docker.example'), 'utf8')
+  for (const file of ['.env', '.runtime.env']) {
+    assert.equal(fs.readFileSync(path.join(environmentRoot, file), 'utf8'), template)
+  }
+} finally {
+  fs.rmSync(environmentRoot, { recursive: true, force: true })
+}
 assert.match(workflow, /workflow_dispatch:/)
 assert.match(workflow, /architecture:/)
 assert.match(workflow, /publish_stable:/)

@@ -156,8 +156,8 @@ jobs:
           catalog="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.json"
           mkdir -p server-image-updates
           node scripts/server-image-plan.js plan '${{ matrix.architecture }}' "$catalog" server-image-plan.json
-          cp .env.example .env
-          cp .env.example .runtime.env
+          cp .env.docker.example .env
+          cp .env.docker.example .runtime.env
           for service in player-service player-auth-portal server-manager creator play voxa; do
             build="$(node -e "const p=require('./server-image-plan.json').find(i=>i.service===process.argv[1]); console.log(p.build)" "$service")"
             if [ "$build" = 'false' ]; then

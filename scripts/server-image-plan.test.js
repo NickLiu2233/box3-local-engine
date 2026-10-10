@@ -9,7 +9,12 @@ const { planImages, mergeImages, services } = require('./server-image-plan')
 test('same version/source skips images; a Web manager change rebuilds only that image', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-server-plan-'))
   try {
-    const files = ['package.json', 'apps/server-manager-rust/src/main.rs', 'apps/game/src/main.ts']
+    const files = [
+      'package.json',
+      'apps/server-manager-rust/src/main.rs',
+      'apps/game/src/main.ts',
+      '.env.docker.example',
+    ]
     for (const file of files) {
       fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true })
       fs.writeFileSync(
@@ -38,7 +43,10 @@ test('same version/source skips images; a Web manager change rebuilds only that 
       })),
     }
     assert.ok(planImages(root, 'arm64', catalog, files).every((item) => !item.build))
-    fs.writeFileSync(path.join(root, files[1]), 'Web download and update fixes')
+    fs.writeFileSync(
+      path.join(root, 'apps/server-manager-rust/src/main.rs'),
+      'Web download and update fixes',
+    )
     const changed = planImages(root, 'arm64', catalog, files)
     assert.deepEqual(
       changed.filter((item) => item.build).map((item) => item.service),
@@ -58,6 +66,11 @@ test('same version/source skips images; a Web manager change rebuilds only that 
       )
     }
     assert.ok(planImages(root, 'arm64', merged, files).every((item) => !item.build))
+    fs.writeFileSync(path.join(root, '.env.docker.example'), 'BOX_BUILD_VERSION=updated')
+    assert.ok(
+      planImages(root, 'arm64', merged, files).every((item) => item.build),
+      'Docker environment template changes invalidate every image',
+    )
     assert.throws(() => planImages(root, 'amd64', catalog, files), /Invalid per-service/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })

@@ -20,7 +20,7 @@ const common = [
   '.node-version',
   '.dockerignore',
   'docker-compose.yml',
-  '.env.example',
+  '.env.docker.example',
   'common/config/rush/',
   'common/scripts/',
   '.github/workflows/package-server.yml',
