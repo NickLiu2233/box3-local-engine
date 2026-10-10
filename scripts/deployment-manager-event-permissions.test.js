@@ -7,7 +7,9 @@ const { test } = require('node:test')
 test('native launcher can subscribe to and release progress events', () => {
   const root = path.join(__dirname, '../apps/deployment-manager/src-tauri/capabilities')
   const capabilities = fs.existsSync(root)
-    ? fs.readdirSync(root).filter((name) => name.endsWith('.json'))
+    ? fs
+        .readdirSync(root)
+        .filter((name) => name.endsWith('.json'))
         .map((name) => JSON.parse(fs.readFileSync(path.join(root, name), 'utf8')))
     : []
   const permissions = capabilities

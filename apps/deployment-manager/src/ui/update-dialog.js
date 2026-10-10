@@ -4,7 +4,9 @@ import { icon } from './icons.js'
 
 function downloadProgress() {
   const progress = state.updateProgress || { bytes: 0, total: 0 }
-  const percent = progress.total ? Math.min(100, Math.floor(progress.bytes / progress.total * 100)) : null
+  const percent = progress.total
+    ? Math.min(100, Math.floor((progress.bytes / progress.total) * 100))
+    : null
   return { percent, label: `正在下载更新…${percent === null ? '' : ` ${percent}%`}` }
 }
 
@@ -22,11 +24,15 @@ export function updateDownloadProgress() {
 export function updateDialog() {
   const release = state.updateRelease
   const { percent, label } = downloadProgress()
-  const download = state.updateDownloading ? `<div class="update-download-status" role="status" aria-live="polite"><span id="launcher-update-progress-label">${label}</span><progress id="launcher-update-progress" aria-label="启动器更新下载进度" max="100" ${percent === null ? '' : `value="${percent}"`}></progress></div>` : ''
+  const download = state.updateDownloading
+    ? `<div class="update-download-status" role="status" aria-live="polite"><span id="launcher-update-progress-label">${label}</span><progress id="launcher-update-progress" aria-label="启动器更新下载进度" max="100" ${percent === null ? '' : `value="${percent}"`}></progress></div>`
+    : ''
   const action = state.updateReady
     ? `<button class="button primary" id="restart-update" ${state.updateRestarting ? 'disabled' : ''}>${state.updateRestarting ? (state.updateCleanupOldImages ? '正在清理并更新…' : '正在重启…') : '重启并更新'}</button>`
     : `<button class="button primary" id="open-update-download" ${state.updateDownloading ? 'disabled' : ''}>${state.updateDownloading ? '下载中…' : '下载新版'}</button>`
-  const cleanupChoice = state.updateReady ? `<label class="update-cleanup-choice"><input type="checkbox" id="update-cleanup-old-images" ${state.updateCleanupOldImages ? 'checked' : ''} ${state.updateRestarting ? 'disabled' : ''}><span>同时清理旧镜像</span></label>` : ''
+  const cleanupChoice = state.updateReady
+    ? `<label class="update-cleanup-choice"><input type="checkbox" id="update-cleanup-old-images" ${state.updateCleanupOldImages ? 'checked' : ''} ${state.updateRestarting ? 'disabled' : ''}><span>同时清理旧镜像</span></label>`
+    : ''
   return `<div class="dialog-backdrop update-backdrop" data-update-dismiss>
     <section class="start-dialog update-dialog" role="dialog" aria-modal="true" aria-labelledby="update-title" tabindex="-1">
       <header class="update-header"><div><h2 id="update-title">发现新版本 ${escapeHtml(release.version)}</h2><p>BOX3 Engine Launcher <span aria-hidden="true">·</span> ${escapeHtml(release.date)}</p></div><button class="dialog-close" id="close-update-dialog" aria-label="关闭">×</button></header>

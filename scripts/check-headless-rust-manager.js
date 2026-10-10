@@ -95,7 +95,18 @@ const browserHandledCommands = new Set([
   'export_ssl_configuration',
 ])
 const invokedCommands = [...consoleSource.matchAll(/invoke\('([a-z_]+)'/g)].map((match) => match[1])
+// These operations replace the native launcher itself; the Web manager has
+// no local launcher binary and must not expose them as server commands.
+const desktopOnlyCommands = new Set(['download_launcher_update', 'apply_launcher_update'])
+const desktopHandlers = fs.readFileSync(
+  path.join(root, 'apps/deployment-manager/src-tauri/src/commands.rs'),
+  'utf8',
+)
 for (const command of invokedCommands) {
+  if (desktopOnlyCommands.has(command)) {
+    assert.match(desktopHandlers, new RegExp(`crate::launcher_update::${command}\\b`))
+    continue
+  }
   if (!browserHandledCommands.has(command)) {
     assert.match(
       serverManager,

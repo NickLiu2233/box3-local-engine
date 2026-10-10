@@ -57,7 +57,13 @@ export function openUpdateDialog() {
 }
 
 export async function downloadUpdate() {
-  if (!state.updateRelease || !state.updateDownloadTarget || state.updateDownloading || state.updateReady) return
+  if (
+    !state.updateRelease ||
+    !state.updateDownloadTarget ||
+    state.updateDownloading ||
+    state.updateReady
+  )
+    return
   state.updateDownloading = true
   state.updateError = ''
   state.updateProgress = { bytes: 0, total: 0 }
@@ -68,7 +74,9 @@ export async function downloadUpdate() {
       state.updateProgress = payload
       updateDownloadProgress()
     })
-    await invoke('download_launcher_update', { url: `https://assets.box3.fun/local-engine/BOX-Local-Engine-${state.updateRelease.version.replace(/^v/, '')}-${state.updateDownloadTarget}.zip` })
+    await invoke('download_launcher_update', {
+      url: `https://assets.box3.fun/local-engine/BOX-Local-Engine-${state.updateRelease.version.replace(/^v/, '')}-${state.updateDownloadTarget}.zip`,
+    })
     state.updateReady = true
   } catch (error) {
     state.updateError = String(error)

@@ -90,7 +90,10 @@ test('about page lists the latest engine release first without player launcher n
     assert.ok(notes.includes(feature), `missing release note: ${feature}`)
   }
   assert.ok(!notes.includes('玩家启动器'))
-  assert.equal(require('../apps/deployment-manager/package.json').version, require('../package.json').version)
+  assert.equal(
+    require('../apps/deployment-manager/package.json').version,
+    require('../package.json').version,
+  )
 })
 
 test('native bootstrap loads the console; unauthenticated Web bootstrap shows the login gate', async () => {
@@ -702,8 +705,18 @@ test('parallel image downloads retain completed rows and independent byte progre
     stage: 'image-download',
     message: '2 个镜像并行下载 · 已完成 1/2（模拟）',
     downloads: [
-      { image: 'box-local-engine-creator', bytes: 256 * 1_048_576, total: 256 * 1_048_576, percent: 100 },
-      { image: 'box-local-engine-voxa', bytes: 64 * 1_048_576, total: 128 * 1_048_576, percent: 50 },
+      {
+        image: 'box-local-engine-creator',
+        bytes: 256 * 1_048_576,
+        total: 256 * 1_048_576,
+        percent: 100,
+      },
+      {
+        image: 'box-local-engine-voxa',
+        bytes: 64 * 1_048_576,
+        total: 128 * 1_048_576,
+        percent: 50,
+      },
     ],
   }
   app.api.render()
@@ -721,9 +734,13 @@ test('service download ticks keep the spinner and page mounted', async () => {
   app.api.render()
   const renders = app.renderCount
   for (let percent = 1; percent <= 100; percent++) {
-    app.context.progressListeners.get('install-progress')({ payload: {
-      stage: 'image-download', message: `镜像下载 ${percent}%`, percent,
-    } })
+    app.context.progressListeners.get('install-progress')({
+      payload: {
+        stage: 'image-download',
+        message: `镜像下载 ${percent}%`,
+        percent,
+      },
+    })
     for (const [id, timer] of app.timeouts) {
       if (timer.delay === 50) {
         app.timeouts.delete(id)

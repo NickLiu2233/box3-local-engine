@@ -224,14 +224,23 @@ async function createFixture({
       html = value
       updateProgressLabel = html.includes('id="launcher-update-progress-label"')
         ? {
-            get textContent() { return html.match(/id="launcher-update-progress-label">([^<]*)/)?.[1] },
-            set textContent(text) { html = html.replace(/(id="launcher-update-progress-label">)[^<]*/, (_, prefix) => prefix + text) },
+            get textContent() {
+              return html.match(/id="launcher-update-progress-label">([^<]*)/)?.[1]
+            },
+            set textContent(text) {
+              html = html.replace(
+                /(id="launcher-update-progress-label">)[^<]*/,
+                (_, prefix) => prefix + text,
+              )
+            },
           }
         : null
       updateProgressBar = html.includes('id="launcher-update-progress"')
         ? {
             value: 0,
-            removeAttribute(name) { if (name === 'value') this.value = null },
+            removeAttribute(name) {
+              if (name === 'value') this.value = null
+            },
           }
         : null
       form = html.includes('id="setup-form"') ? new FixtureForm(html) : null
@@ -263,14 +272,23 @@ async function createFixture({
       events.get(name)?.delete(handler)
     },
     querySelector(selector) {
-      if (selector === '.progress-dialog-content' && html.includes('class="progress-dialog-content"')) {
+      if (
+        selector === '.progress-dialog-content' &&
+        html.includes('class="progress-dialog-content"')
+      ) {
         return {
           set innerHTML(value) {
-            html = html.replace(/(<div class="progress-dialog-content">)[\s\S]*?(<\/div><\/section><\/div>)/, (_, start, end) => start + value + end)
+            html = html.replace(
+              /(<div class="progress-dialog-content">)[\s\S]*?(<\/div><\/section><\/div>)/,
+              (_, start, end) => start + value + end,
+            )
           },
           parentElement: {
             set className(value) {
-              html = html.replace(/<section class="progress-dialog[^"]*"/, `<section class="${value}"`)
+              html = html.replace(
+                /<section class="progress-dialog[^"]*"/,
+                `<section class="${value}"`,
+              )
             },
           },
         }

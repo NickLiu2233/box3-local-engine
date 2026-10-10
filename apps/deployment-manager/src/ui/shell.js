@@ -82,13 +82,15 @@ function progressPanelMarkup() {
   if (state.progress?.stage === 'image-download') {
     const downloads = state.progress.downloads
     if (Array.isArray(downloads) && downloads.length) {
-      const rows = downloads.map((download) => {
-        const percent = Math.max(0, Math.min(100, Number(download.percent) || 0))
-        const image = escapeHtml(download.image)
-        const bytes = Math.floor((Number(download.bytes) || 0) / 1_048_576)
-        const total = Math.floor((Number(download.total) || 0) / 1_048_576)
-        return `<li class="image-download-row${percent === 100 ? ' complete' : ''}"><div class="image-download-row-label"><span>${image}</span><small>${percent === 100 ? '已完成' : `${percent}%`}</small></div><div class="image-download-progress" role="progressbar" aria-label="${image} 下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-bytes">${bytes} / ${total} MB</small></li>`
-      }).join('')
+      const rows = downloads
+        .map((download) => {
+          const percent = Math.max(0, Math.min(100, Number(download.percent) || 0))
+          const image = escapeHtml(download.image)
+          const bytes = Math.floor((Number(download.bytes) || 0) / 1_048_576)
+          const total = Math.floor((Number(download.total) || 0) / 1_048_576)
+          return `<li class="image-download-row${percent === 100 ? ' complete' : ''}"><div class="image-download-row-label"><span>${image}</span><small>${percent === 100 ? '已完成' : `${percent}%`}</small></div><div class="image-download-progress" role="progressbar" aria-label="${image} 下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-bytes">${bytes} / ${total} MB</small></li>`
+        })
+        .join('')
       return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message)}</p><ul class="image-download-list">${rows}</ul></section></div>`
     }
     const percent = Math.max(0, Math.min(100, Number(state.progress.percent) || 0))
@@ -106,7 +108,10 @@ function progressContent(markup) {
 
 export function progressPanel() {
   const markup = progressPanelMarkup()
-  return markup.replace(progressContent(markup), `<div class="progress-dialog-content">${progressContent(markup)}</div>`)
+  return markup.replace(
+    progressContent(markup),
+    `<div class="progress-dialog-content">${progressContent(markup)}</div>`,
+  )
 }
 
 export function refreshProgressPanel() {
@@ -114,8 +119,9 @@ export function refreshProgressPanel() {
   if (!content) return false
   const markup = progressPanelMarkup()
   content.innerHTML = progressContent(markup)
-  content.parentElement.className = state.progress?.stage === 'image-download'
-    ? 'progress-dialog image-download-dialog'
-    : 'progress-dialog'
+  content.parentElement.className =
+    state.progress?.stage === 'image-download'
+      ? 'progress-dialog image-download-dialog'
+      : 'progress-dialog'
   return true
 }

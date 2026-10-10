@@ -4,7 +4,13 @@ import { exportDiagnostics } from '../../operations/backups.js'
 import { openExternal } from '../../infrastructure/transport.js'
 import { render } from '../../core/render-request.js'
 import { state } from '../../core/state.js'
-import { checkForUpdates, closeUpdateDialog, downloadUpdate, openUpdateDialog, restartAndUpdate } from '../../operations/updates.js'
+import {
+  checkForUpdates,
+  closeUpdateDialog,
+  downloadUpdate,
+  openUpdateDialog,
+  restartAndUpdate,
+} from '../../operations/updates.js'
 
 export function bindAboutEvents() {
   document.querySelector('#check-version-updates')?.addEventListener('click', () => {
@@ -25,7 +31,11 @@ export function bindAboutEvents() {
   updatePanel?.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') closeUpdateDialog()
     if (event.key === 'Tab') {
-      const controls = [...updatePanel.querySelectorAll('button:not(:disabled), select:not(:disabled), input:not(:disabled)')]
+      const controls = [
+        ...updatePanel.querySelectorAll(
+          'button:not(:disabled), select:not(:disabled), input:not(:disabled)',
+        ),
+      ]
       const first = controls[0],
         last = controls.at(-1)
       if (
