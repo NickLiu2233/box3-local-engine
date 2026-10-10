@@ -108,6 +108,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
+      - uses: docker/setup-buildx-action@v3
       - name: Confirm selected version matches this revision
         run: |
           package_version="$(node -p "require('./package.json').version")"
@@ -115,6 +116,9 @@ jobs:
             echo "Selected version ${{ inputs.version }} does not match package.json version $package_version." >&2
             echo 'Run this workflow from the matching release tag or release branch.' >&2
             exit 1
+          fi
+          if [ '${{ inputs.publish_stable }}' = 'true' ]; then
+            node -e "require('./scripts/build-release-manifest').buildReleaseManifest('${{ inputs.version }}', new Date().toISOString().slice(0,10))"
           fi
       - name: Install server package tools
         run: sudo apt-get update && sudo apt-get install -y zip
@@ -124,11 +128,66 @@ jobs:
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-      - name: Download Server Manager image catalog from Aliyun OSS
+      - name: Download cached image catalog from Aliyun OSS
         run: |
           mkdir -p apps/local-engine/dist/images
           catalog="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.json"
-          ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog"
+          if ! ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog" > /tmp/catalog-download.log 2>&1; then
+            if grep -Ei 'NoSuchKey|404|does not exist' /tmp/catalog-download.log; then
+              rm -f "$catalog"
+              echo 'No previous image catalog; build all images.'
+            else
+              cat /tmp/catalog-download.log >&2
+              exit 1
+            fi
+          fi
+      - name: Build changed Web manager and application images
+        env:
+          BOX_IMAGE_TAG: v${{ inputs.version }}-linux-${{ matrix.architecture }}
+          BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
+          BOX_BUILD_VERSION: ${{ inputs.version }}
+          BOX_BUILD_COMMIT: ${{ github.sha }}
+          BOX_BUILD_SOURCE: github-actions-server-package
+          BOX_DOCKER_NODE_IMAGE: node:22.17.0-bookworm-slim
+          BOX_DOCKER_CLI_IMAGE: docker:27.5.1-cli
+          BOX_DOCKER_RUST_IMAGE: rust:1.93-bookworm
+        run: |
+          export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.json"
+          mkdir -p server-image-updates
+          node scripts/server-image-plan.js plan '${{ matrix.architecture }}' "$catalog" server-image-plan.json
+          cp .env.example .env
+          cp .env.example .runtime.env
+          for service in player-service player-auth-portal server-manager creator play voxa; do
+            build="$(node -e "const p=require('./server-image-plan.json').find(i=>i.service===process.argv[1]); console.log(p.build)" "$service")"
+            if [ "$build" = 'false' ]; then
+              archive="$(node -e "const c=require('./$catalog'); console.log(c.images.find(i=>i.image==='box-local-engine-'+process.argv[1]).archive)" "$service")"
+              # A matching catalog is reusable only if its archive still exists.
+              if ossutil stat "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" > /tmp/image-cache-stat.log 2>&1; then
+                echo "Reuse $service: version and source match."
+                continue
+              elif grep -Ei 'NoSuchKey|404|does not exist' /tmp/image-cache-stat.log; then
+                node -e "const fs=require('fs'); const p=require('./server-image-plan.json'); p.find(i=>i.service===process.argv[1]).build=true; fs.writeFileSync('server-image-plan.json',JSON.stringify(p));" "$service"
+                echo "Missing cached archive; rebuild $service."
+              else
+                cat /tmp/image-cache-stat.log >&2
+                exit 1
+              fi
+            fi
+            docker compose build "$service"
+            docker image save "box-local-engine-$service:$BOX_IMAGE_TAG" | gzip -1 > server-image-updates/source.tar.gz
+            python3 scripts/split-image-archive.py server-image-updates/source.tar.gz \
+              '${{ matrix.architecture }}' "server-image-updates/$service.json" '${{ inputs.version }}' "$service"
+            archive="$(node -e "console.log(require('./server-image-updates/'+process.argv[1]+'.json').images[0].archive)" "$service")"
+            # Publish immutable archives before any package/catalog references them.
+            ossutil cp "server-image-updates/$archive" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" --update
+            ossutil cp "server-image-updates/$archive" "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/$archive" --update
+            rm -f "server-image-updates/$archive" server-image-updates/source.tar.gz
+            docker image rm "box-local-engine-$service:$BOX_IMAGE_TAG"
+            docker builder prune --all --force
+          done
+          node scripts/server-image-plan.js merge '${{ matrix.architecture }}' "$catalog" server-image-plan.json server-image-updates "$catalog"
+          ossutil cp "$catalog" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" --update
       - name: Assemble and verify Linux server package
         env:
           BOX_BUILD_COMMIT: ${{ github.sha }}
@@ -156,6 +215,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - name: Configure Aliyun OSS client
         run: |
           if ! command -v ossutil >/dev/null 2>&1; then
@@ -167,7 +229,15 @@ jobs:
           cp distribution/server/bootstrap.sh install.sh
           chmod +x install.sh
           printf '%s\n' '${{ inputs.version }}' > latest.txt
+          export RELEASE_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%d')"
+          node - <<'JS'
+          const fs = require('node:fs');
+          const { buildReleaseManifest } = require('./scripts/build-release-manifest');
+          const manifest = buildReleaseManifest('${{ inputs.version }}', process.env.RELEASE_DATE);
+          fs.writeFileSync('latest-server.json', JSON.stringify(manifest, null, 2) + '\n');
+          JS
           ossutil cp install.sh "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/install.sh" --update
+          ossutil cp latest-server.json "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/latest-server.json" --meta Cache-Control:no-cache --update
           # Upload the pointer last: install clients then only see a version
           # after both native-architecture server packages are available.
           ossutil cp latest.txt "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/latest.txt" --update

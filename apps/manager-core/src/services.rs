@@ -30,6 +30,22 @@ pub struct ImageDownloadProgress {
     pub percent: u8,
 }
 
+impl InstallProgress {
+    /// One presentation contract for both native events and WebSocket events.
+    pub fn for_downloads(mut downloads: Vec<ImageDownloadProgress>) -> Self {
+        for row in &mut downloads {
+            if APPLICATION_SERVICES.contains(&row.image.as_str()) {
+                row.image = format!("box-local-engine-{}", row.image);
+            }
+        }
+        downloads.sort_by_key(|row| APPLICATION_SERVICES.iter().position(|service| row.image == format!("box-local-engine-{service}")).unwrap_or(usize::MAX));
+        let count = downloads.len();
+        let complete = downloads.iter().filter(|row| row.percent == 100).count();
+        let (bytes, total) = downloads.iter().fold((0u64, 0u64), |sum, row| (sum.0.saturating_add(row.bytes), sum.1.saturating_add(row.total)));
+        Self { stage: "image-download".into(), message: format!("{count} 个镜像 · 已完成 {complete}/{count}"), percent: if complete == count { 100 } else { (bytes.saturating_mul(100) / total.max(1)).min(99) as u8 }, downloads: Some(downloads) }
+    }
+}
+
 pub trait Runtime {
     fn prepare_images(&self, services: &[&str]) -> Result<(), String>;
     fn managed_enabled(&self, service: &str) -> bool;

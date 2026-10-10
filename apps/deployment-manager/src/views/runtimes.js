@@ -17,7 +17,7 @@ function runtimeCell(status, projectId, mode) {
   const detail =
     status?.message && !['运行时未启动', '等待启动'].includes(status.message) ? status.message : ''
   const progress = ['starting', 'loading'].includes(status?.phase)
-    ? `<span class="runtime-progress"><i style="width:${Math.max(3, Math.min(100, Number(status?.percent) || 0))}%"></i></span>`
+    ? `<progress class="runtime-progress" aria-label="地图运行时准备进度" max="100" value="${Math.max(0, Math.min(100, Number(status?.percent) || 0))}"></progress>`
     : ''
   const metrics =
     status?.phase === 'ready'

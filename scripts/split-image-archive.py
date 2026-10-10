@@ -11,14 +11,17 @@ import tempfile
 SERVICES = ['creator', 'voxa', 'play', 'player-service', 'player-auth-portal', 'server-manager']
 
 
-def split_archive(source, architecture, destination, version):
+def split_archive(source, architecture, destination, version, selected_services=None):
+    services = selected_services.split(',') if selected_services else SERVICES
+    if not services or len(set(services)) != len(services) or any(service not in SERVICES for service in services):
+        raise ValueError('Invalid service selection')
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
     entries = []
     with tarfile.open(source, 'r:gz') as archive:
         manifests = json.load(archive.extractfile('manifest.json'))
         index = json.load(archive.extractfile('index.json')) if 'index.json' in archive.getnames() else None
-        for service in SERVICES:
+        for service in services:
             image = 'box-local-engine-' + service
             matches = [entry for entry in manifests if any(tag.startswith(image + ':') for tag in entry.get('RepoTags', []))]
             if len(matches) != 1:

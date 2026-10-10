@@ -101,11 +101,23 @@ fn download_image_archive(
     service: &str,
     progress: &mut dyn FnMut(u64, u64),
 ) -> Result<PathBuf, String> {
+    let url = format!("https://assets.box3.fun/local-engine/{}", image.archive);
+    download_image_archive_from(app, image, service, progress, &url)
+}
+
+fn download_image_archive_from(
+    app: &App,
+    image: &RemoteImage,
+    service: &str,
+    progress: &mut dyn FnMut(u64, u64),
+    url: &str,
+) -> Result<PathBuf, String> {
     let cache = app.root.join("cache/engine-images");
     fs::create_dir_all(&cache).map_err(|error| format!("无法创建镜像缓存目录：{error}"))?;
     let destination = cache.join(&image.archive);
     if verified_archive(&destination, image) {
         progress(image.size, image.size);
+        app.image_download_complete(&image.image);
         return Ok(destination);
     }
     let partial = destination.with_extension("part");
@@ -120,9 +132,8 @@ fn download_image_archive(
         .timeout(Duration::from_secs(3600))
         .build()
         .map_err(|error| error.to_string())?;
-    let url = format!("https://assets.box3.fun/local-engine/{}", image.archive);
     let request = |offset: u64| {
-        let mut request = client.get(&url).header(reqwest::header::ACCEPT_ENCODING, "identity");
+        let mut request = client.get(url).header(reqwest::header::ACCEPT_ENCODING, "identity");
         if offset > 0 {
             request = request.header(reqwest::header::RANGE, format!("bytes={offset}-"));
         }
@@ -165,42 +176,77 @@ fn download_image_archive(
     }
     fs::rename(&partial, &destination).map_err(|error| error.to_string())?;
     progress(image.size, image.size);
+    app.image_download_complete(&image.image);
     Ok(destination)
 }
 
-pub(crate) fn ensure_application_image(
+#[cfg(test)]
+#[path = "image_download_tests.rs"]
+mod image_download_tests;
+
+pub(crate) struct PreparedApplicationImage {
+    image: RemoteImage,
+    local_id: Option<String>,
+    archive: Option<PathBuf>,
+}
+
+impl PreparedApplicationImage {
+    pub(crate) fn download_row(&self) -> Option<box_manager_core::services::ImageDownloadProgress> {
+        self.local_id.is_none().then(|| box_manager_core::services::ImageDownloadProgress { image: self.image.image.clone(), bytes: 0, total: self.image.size, percent: 0 })
+    }
+}
+
+pub(crate) fn plan_application_image(
     app: &App,
     service: &str,
     image_tag: &str,
-    mut progress: impl FnMut(u64, u64),
-) -> Result<(), String> {
+) -> Result<PreparedApplicationImage, String> {
     let image = image_catalog(app, service, image_tag)?;
     let target = format!("{}:{}", image.image, image.image_tag);
     let content_tag = image.image_id.strip_prefix("sha256:").ok_or("镜像摘要无效")?;
     let content = format!("{}:launcher-content-{content_tag}", image.image);
-    let current_id = docker(&["image", "inspect", "--format", "{{.Id}}", &content])
-        .ok()
-        .map(|value| value.trim().to_owned());
-    if !current_id
-        .as_ref()
-        .is_some_and(|id| image.image_ids.iter().any(|expected| expected == id))
-    {
-        let archive = download_image_archive(app, &image, service, &mut progress)?;
-        docker(&["load", "-i", archive.to_str().ok_or("镜像缓存路径无效")?])?;
+    let accepts = |id: &str| image.image_ids.iter().any(|expected| expected == id.trim());
+    let mut loaded_id = docker(&["image", "inspect", "--format", "{{.Id}}", &target]).ok().filter(|id| accepts(id));
+    if loaded_id.is_none() {
+        loaded_id = docker(&["image", "inspect", "--format", "{{.Id}}", &content]).ok().filter(|id| accepts(id));
     }
-    let loaded_id = docker(&["image", "inspect", "--format", "{{.Id}}", &content])?;
-    if !image
-        .image_ids
-        .iter()
-        .any(|expected| expected == loaded_id.trim())
-    {
+    if loaded_id.is_none() {
+        loaded_id = image.image_ids.iter().find_map(|id| {
+            docker(&["image", "inspect", "--format", "{{.Id}}", id]).ok().filter(|actual| accepts(actual))
+        });
+    }
+    Ok(PreparedApplicationImage { image, local_id: loaded_id, archive: None })
+}
+
+pub(crate) fn acquire_application_image(app: &App, mut prepared: PreparedApplicationImage) -> Result<PreparedApplicationImage, String> {
+    if prepared.local_id.is_none() {
+        let service = prepared.image.image.strip_prefix("box-local-engine-").ok_or("镜像名称无效")?;
+        prepared.archive = Some(download_image_archive(app, &prepared.image, service, &mut |bytes, total| app.image_progress(&prepared.image.image, bytes, total))?);
+    }
+    Ok(prepared)
+}
+
+pub(crate) fn import_application_image(app: &App, prepared: PreparedApplicationImage) -> Result<(), String> {
+    let image = prepared.image;
+    let service = image.image.strip_prefix("box-local-engine-").ok_or("镜像名称无效")?;
+    let target = format!("{}:{}", image.image, image.image_tag);
+    let content = format!("{}:launcher-content-{}", image.image, image.image_id.strip_prefix("sha256:").ok_or("镜像摘要无效")?);
+    let mut loaded_id = prepared.local_id;
+    if let Some(archive) = prepared.archive {
+        app.progress("image-import", &format!("{} 下载完成，正在导入 Docker…", image.image), 100);
+        docker(&["load", "-i", archive.to_str().ok_or("镜像缓存路径无效")?])?;
+        loaded_id = Some(docker(&["image", "inspect", "--format", "{{.Id}}", &content])?);
+    }
+    let loaded_id = loaded_id.ok_or("导入镜像未找到")?;
+    if !image.image_ids.iter().any(|expected| expected == loaded_id.trim()) {
         return Err(format!("{service} 镜像摘要与发行清单不匹配"));
     }
-    docker(&["tag", &content, &target])?;
+    docker(&["tag", loaded_id.trim(), &target])?;
     let target_id = docker(&["image", "inspect", "--format", "{{.Id}}", &target])?;
     if target_id.trim() != loaded_id.trim() {
         return Err(format!("{service} 目标镜像标签指向错误的摘要"));
     }
+    let _ = docker(&["image", "rm", &content]);
     Ok(())
 }
 
@@ -356,8 +402,14 @@ pub(crate) fn compose(app: &App, args: &[&str]) -> Result<String, String> {
         .arg(&environment)
         .arg("-f")
         .arg(&compose_file)
-        .args(args)
         .current_dir(&app.root);
+    if args.first() == Some(&"up") {
+        // Images are acquired and verified by the manager before Compose runs.
+        // Never fall back to an unrelated Docker Hub repository on a missing tag.
+        command.arg("up").args(["--pull", "never"]).args(&args[1..]);
+    } else {
+        command.args(args);
+    }
     for key in
         parse_env(&fs::read_to_string(&environment).map_err(|error| error.to_string())?).keys()
     {

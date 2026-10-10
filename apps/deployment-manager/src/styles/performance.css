@@ -124,18 +124,15 @@
   gap: 8px;
 }
 
-.memory-meter > span {
+.memory-meter-bar {
+  display: block;
+  appearance: none;
+  width: 100%;
+  border: 0;
   height: 5px;
   overflow: hidden;
   border-radius: 99px;
   background: var(--border);
-}
-
-.memory-meter i {
-  display: block;
-  height: 100%;
-  border-radius: inherit;
-  background: var(--accent);
 }
 
 .performance-note {

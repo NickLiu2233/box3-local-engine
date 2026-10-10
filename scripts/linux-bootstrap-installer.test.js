@@ -52,8 +52,13 @@ test('Linux bootstrap selects the matching release and preserves existing state'
     )
     executable(
       path.join(packageRoot, 'install.sh'),
-      '#!/bin/sh\nset -eu\ntouch "$(dirname "$0")/.installed"\n',
+      '#!/bin/sh\nset -eu\ntouch "$(dirname "$0")/.installed"\nprintf "installed\\n" >> "$(dirname "$0")/.install-count"\n',
     )
+    executable(
+      path.join(packageRoot, 'start.sh'),
+      '#!/bin/sh\nset -eu\ntouch "$(dirname "$0")/.started"\n',
+    )
+    fs.writeFileSync(path.join(packageRoot, 'SHA256SUMS'), 'fixture-package-revision-1\n')
 
     const fixtureZip = path.join(temporaryRoot, 'package.zip')
     const zipped = spawnSync('zip', ['-rq', fixtureZip, path.basename(packageRoot)], {
@@ -128,6 +133,7 @@ fi
       })
     const result = runInstaller()
     assert.equal(result.status, 0, result.stderr || result.stdout)
+    assert.doesNotMatch(result.stderr, /sed:.*\.env/)
     const environment = fs.readFileSync(path.join(installRoot, '.env'), 'utf8')
     assert.match(environment, /^PRESERVED=yes$/m)
     assert.match(environment, /^BOX_IMAGE_TAG=v9\.8\.7-linux-amd64$/m)
@@ -149,6 +155,12 @@ fi
     assert.match(dockerInvocations, /up .*server-manager/)
     assert.doesNotMatch(dockerInvocations, /up .*play creator/)
     assert.doesNotMatch(dockerInvocations, /up .*managed-postgres/)
+    assert.match(dockerInvocations, /image rm box-local-engine-play:v1\.0\.0-linux-amd64/)
+    assert.match(
+      dockerInvocations,
+      /image rm --force box-local-engine-server-manager:v1\.0\.0-linux-amd64/,
+    )
+    assert.doesNotMatch(dockerInvocations, /volume rm/)
     const curlInvocations = fs.readFileSync(curlCalls, 'utf8')
     assert.match(curlInvocations, /https:\/\/cdn\.example\.test\/box3\/latest\.txt/)
     assert.match(
@@ -159,6 +171,24 @@ fi
       fs.readFileSync(installer, 'utf8'),
       /\/api\/commands\/control_service/,
       'upgrades must restore previously running app services through the Web manager',
+    )
+    assert.match(curlInvocations, /api\/commands\/control_service/)
+    const repeated = runInstaller()
+    assert.equal(repeated.status, 0, repeated.stderr || repeated.stdout)
+    assert.match(repeated.stdout, /相同版本与内容/)
+    assert.equal(fs.readFileSync(path.join(installRoot, '.install-count'), 'utf8'), 'installed\n')
+    assert.ok(fs.existsSync(path.join(installRoot, '.started')))
+    fs.writeFileSync(path.join(packageRoot, 'SHA256SUMS'), 'fixture-package-revision-2\n')
+    const rezipped = spawnSync('zip', ['-rq', fixtureZip, path.basename(packageRoot)], {
+      cwd: path.dirname(packageRoot),
+      encoding: 'utf8',
+    })
+    assert.equal(rezipped.status, 0, rezipped.stderr)
+    const changed = runInstaller()
+    assert.equal(changed.status, 0, changed.stderr || changed.stdout)
+    assert.equal(
+      fs.readFileSync(path.join(installRoot, '.install-count'), 'utf8'),
+      'installed\ninstalled\n',
     )
     assert.doesNotMatch(curlInvocations, /github|releases\/download|releases\/latest/)
     for (const failure of ['version', 'package']) {

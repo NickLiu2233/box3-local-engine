@@ -92,13 +92,13 @@ function progressPanelMarkup() {
           const image = escapeHtml(download.image)
           const bytes = Math.floor((Number(download.bytes) || 0) / 1_048_576)
           const total = Math.floor((Number(download.total) || 0) / 1_048_576)
-          return `<li class="image-download-row${percent === 100 ? ' complete' : ''}"><div class="image-download-row-label"><span>${image}</span><small>${percent === 100 ? '已完成' : `${percent}%`}</small></div><div class="image-download-progress" role="progressbar" aria-label="${image} 下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-bytes">${bytes} / ${total} MB</small></li>`
+          return `<li class="image-download-row${percent === 100 ? ' complete' : ''}"><div class="image-download-row-label"><span>${image}</span><small>${percent === 100 ? '已完成' : `${percent}%`}</small></div><progress class="image-download-progress" role="progressbar" aria-label="${image} 下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" max="100" value="${percent}"></progress><small class="image-download-bytes">${bytes} / ${total} MB</small></li>`
         })
         .join('')
       return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message)}</p><ul class="image-download-list">${rows}</ul></section></div>`
     }
     const percent = Math.max(0, Math.min(100, Number(state.progress.percent) || 0))
-    return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message || '正在准备下载…')}</p><div class="image-download-progress" role="progressbar" aria-label="服务镜像下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-percent">${percent}%</small></section></div>`
+    return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message || '正在准备下载…')}</p><progress class="image-download-progress" role="progressbar" aria-label="服务镜像下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}" max="100" value="${percent}"></progress><small class="image-download-percent">${percent}%</small></section></div>`
   }
   if (state.progress?.stage === 'image-import') {
     return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在导入服务镜像</strong><p>${escapeHtml(state.progress.message || '镜像下载完成，正在导入 Docker…')}</p></section></div>`

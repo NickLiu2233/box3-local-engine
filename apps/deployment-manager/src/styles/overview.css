@@ -70,6 +70,9 @@
 }
 
 .image-download-progress {
+  display: block;
+  appearance: none;
+  border: 0;
   width: 100%;
   height: 8px;
   overflow: hidden;
@@ -77,12 +80,26 @@
   background: color-mix(in srgb, var(--muted) 20%, transparent);
 }
 
-.image-download-progress span {
-  display: block;
-  height: 100%;
+.image-download-progress::-webkit-progress-bar,
+.memory-meter-bar::-webkit-progress-bar,
+.runtime-progress::-webkit-progress-bar {
+  background: color-mix(in srgb, var(--muted) 20%, transparent);
+  border-radius: inherit;
+}
+
+.image-download-progress::-webkit-progress-value,
+.memory-meter-bar::-webkit-progress-value,
+.runtime-progress::-webkit-progress-value {
   border-radius: inherit;
   background: var(--accent);
   transition: width 180ms ease-out;
+}
+
+.image-download-progress::-moz-progress-bar,
+.memory-meter-bar::-moz-progress-bar,
+.runtime-progress::-moz-progress-bar {
+  border-radius: inherit;
+  background: var(--accent);
 }
 
 .image-download-percent {
@@ -127,7 +144,11 @@
   white-space: nowrap;
 }
 
-.image-download-row.complete .image-download-progress span {
+.image-download-row.complete .image-download-progress::-webkit-progress-value {
+  background: var(--success, #4caf72);
+}
+
+.image-download-row.complete .image-download-progress::-moz-progress-bar {
   background: var(--success, #4caf72);
 }
 

@@ -150,6 +150,10 @@ if [ "$actual_arch" != "$expected_arch" ]; then
   echo "Image architecture mismatch for $image: expected $expected_arch, got $actual_arch" >&2
   exit 1
 fi
+content_id=$(docker image inspect "$manager_content_tag" --format '{{.Id}}')
+release_id=$(docker image inspect "$image" --format '{{.Id}}')
+[ "$content_id" = "$release_id" ] || { echo 'Server Manager release tag verification failed.' >&2; exit 1; }
+docker image rm "$manager_content_tag" >/dev/null 2>&1 || true
 echo 'Starting the Linux Web manager…'
 docker compose --env-file .env -f compose.yml up -d --no-build --remove-orphans --wait server-manager
 echo 'Done. Linux Web manager: http://127.0.0.1:3130'

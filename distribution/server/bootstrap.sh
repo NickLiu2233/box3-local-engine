@@ -289,7 +289,8 @@ set_env_value() {
 
 read_env_value() {
   key=$1
-  sed -n "s/^${key}=//p" .env | tail -n 1
+  [ -f "$INSTALL_DIRECTORY/.env" ] || return 0
+  sed -n "s/^${key}=//p" "$INSTALL_DIRECTORY/.env" | tail -n 1
 }
 
 release_env_value() {
@@ -342,11 +343,6 @@ install_download_tools
 install_docker
 
 resolve_version
-if existing_installation_matches_target; then
-  info "检测到已安装的 BOX3 Engine ${version}（linux/${architecture}），跳过下载和更新，直接启动服务"
-  "$INSTALL_DIRECTORY/start.sh"
-  exit 0
-fi
 
 package_name="BOX3-Engine-Server-$version-linux-$architecture"
 package_url="${RELEASE_CDN_URL%/}/$package_name.zip"
@@ -371,10 +367,19 @@ package_directory="$temporary_directory/unpacked/$package_name"
 chmod +x "$package_directory"/*.sh
 "$package_directory/verify.sh"
 
+# A version can be repackaged with a newer manager. Compare the small package
+# manifest before reusing local images, rather than trusting the version alone.
+if existing_installation_matches_target && \
+  cmp -s "$INSTALL_DIRECTORY/SHA256SUMS" "$package_directory/SHA256SUMS"; then
+  info "检测到相同版本与内容，跳过镜像下载和更新，直接启动管理器"
+  "$INSTALL_DIRECTORY/start.sh"
+  exit 0
+fi
+
 # Remember only the packaged application services that are currently running.
 # Databases, Redis and map runtime containers keep their own lifecycle and are
 # never removed by the updater.
-previously_running_services=$(running_application_services || true)
+previously_running_services=$(running_application_services | tr '\n' ' ' || true)
 previous_image_tag=$(read_env_value BOX_IMAGE_TAG)
 previous_manager_image_id=''
 if [ -n "$previous_image_tag" ]; then
@@ -426,7 +431,7 @@ if [ -n "$previously_running_services" ]; then
   for service in player-service player-auth-portal creator voxa play; do
     case " $previously_running_services " in
       *" $service "*)
-        info "通过 Web 管理器恢复 $service（缺少的镜像会按需下载）"
+        info "通过 Web 管理器恢复 ${service}（缺少的镜像会按需下载）"
         if ! curl --silent --show-error --fail --retry 20 --retry-delay 2 --retry-connrefused \
           -H "Authorization: Bearer $manager_token" \
           -H 'Content-Type: application/json' \

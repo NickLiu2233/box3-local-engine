@@ -2992,16 +2992,7 @@ impl crate::image_updates::Runtime for DesktopImageRuntime<'_> {
             .map_err(|e| e.to_string())?
             .join("engine-images");
         crate::image_download_batch::download(images, &cache, |downloads| {
-            let count = downloads.len();
-            let complete = downloads.iter().filter(|row| row.percent == 100).count();
-            let bytes: u64 = downloads.iter().map(|row| row.bytes).sum();
-            let total: u64 = downloads.iter().map(|row| row.total).sum();
-            let _ = self.0.emit("install-progress", serde_json::json!({
-                "stage": "image-download",
-                "message": format!("{count} 个镜像 · 已完成 {complete}/{count}"),
-                "percent": if complete == count { 100 } else { (bytes.saturating_mul(100) / total.max(1)).min(99) },
-                "downloads": downloads,
-            }));
+            let _ = self.0.emit("install-progress", box_manager_core::services::InstallProgress::for_downloads(downloads.to_vec()));
         })
     }
     fn importing(&self, image: &crate::image_download::ImageRelease) {

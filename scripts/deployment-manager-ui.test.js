@@ -696,6 +696,8 @@ test('image downloads show the service, byte progress and accessible progress ba
   assert.match(app.html, /class="image-download-progress" role="progressbar"/)
   assert.match(app.html, /aria-valuenow="50"/)
   assert.match(app.html, /class="image-download-percent">50%/)
+  assert.match(app.html, /<progress[^>]*value="50"/)
+  assert.doesNotMatch(app.html, /style="width:/)
 })
 
 test('parallel image downloads retain completed rows and independent byte progress', async () => {
@@ -761,6 +763,32 @@ test('service download ticks keep the spinner and page mounted', async () => {
   app.api.state.busy = false
   app.api.render()
   assert.doesNotMatch(app.html, /class="progress-backdrop"/)
+})
+
+test('authenticated Web console renders streamed service downloads and keeps dependency downloads indeterminate', async () => {
+  const app = await createFixture({ webManager: true, token: 'local-web-test-token' })
+  app.api.state.busy = true
+  app.context.progressListeners.get('install-progress')({
+    payload: {
+      stage: 'image-download',
+      message: '正在下载 Play',
+      percent: 25,
+      downloads: [{ image: 'play', bytes: 25 * 1_048_576, total: 100 * 1_048_576, percent: 25 }],
+    },
+  })
+  app.api.render()
+  assert.match(app.html, /play 下载进度"[^>]*aria-valuenow="25"/)
+  assert.match(app.html, /25 \/ 100 MB/)
+  app.context.progressListeners.get('install-progress')({
+    payload: {
+      stage: 'dependency-image-download',
+      message: '正在下载 PostgreSQL 镜像，可能需要几分钟，请耐心等待…',
+      percent: 1,
+    },
+  })
+  app.api.render()
+  assert.match(app.html, /可能需要几分钟/)
+  assert.doesNotMatch(app.html, /role="progressbar"/)
 })
 
 test('missing local Nginx saves certificates and shows an installation reminder instead of a save error', async () => {

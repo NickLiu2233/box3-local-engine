@@ -94,8 +94,12 @@ impl App {
 
     fn image_progress(&self, image: &str, bytes: u64, total: u64) {
         if let Some(id) = &self.operation_id {
-            self.operations.update_download(id, image, bytes, total);
+            let image = if image.starts_with("box-local-engine-") { image.to_owned() } else { format!("box-local-engine-{image}") };
+            self.operations.update_download(id, &image, bytes, total);
         }
+    }
+    fn image_download_complete(&self, image: &str) {
+        if let Some(id) = &self.operation_id { self.operations.complete_download(id, image); }
     }
 }
 struct WebRuntime<'a>(&'a App);
@@ -123,36 +127,29 @@ impl ServiceRuntime for WebRuntime<'_> {
         )?;
         let values = parse_env(&fs::read_to_string(env_path(self.0)).map_err(|error| error.to_string())?);
         let image_tag = values.get("BOX_IMAGE_TAG").map(String::as_str).ok_or("镜像版本未配置")?;
-        let mut missing = Vec::new();
+        let mut prepared = Vec::new();
         for service in _services {
             if *service == "player-auth-portal"
                 && values.get("BOX_AUTH_PORTAL_IMAGE").is_some_and(|image| !image.trim().is_empty())
             {
                 continue;
             }
-            let image = format!("box-local-engine-{service}:{image_tag}");
-            if docker(&["image", "inspect", &image]).is_err() {
-                missing.push(((*service).to_owned(), image_tag.to_owned()));
-            }
+            // A local version tag can still point at an older build of the
+            // same version. Always validate its content against the catalog.
+            prepared.push(plan_application_image(self.0, service, image_tag)?);
         }
-        std::thread::scope(|scope| {
-            let workers = missing
-                .iter()
-                .map(|(service, tag)| {
-                    scope.spawn(move || {
-                        platform::configuration::ensure_application_image(
-                            self.0,
-                            service,
-                            tag,
-                            |bytes, total| self.0.image_progress(service, bytes, total),
-                        )
-                    })
-                })
+        if let Some(id) = &self.0.operation_id {
+            self.0.operations.begin_downloads(id, prepared.iter().filter_map(|image| image.download_row()).collect());
+        }
+        let acquired = std::thread::scope(|scope| {
+            let workers = prepared.into_iter()
+                .map(|image| scope.spawn(move || acquire_application_image(self.0, image)))
                 .collect::<Vec<_>>();
             let mut first_error = None;
+            let mut acquired = Vec::new();
             for worker in workers {
                 match worker.join() {
-                    Ok(Ok(())) => {}
+                    Ok(Ok(image)) => acquired.push(image),
                     Ok(Err(error)) if first_error.is_none() => first_error = Some(error),
                     Err(_) if first_error.is_none() => {
                         first_error = Some("镜像下载任务异常结束".to_string())
@@ -160,8 +157,10 @@ impl ServiceRuntime for WebRuntime<'_> {
                     _ => {}
                 }
             }
-            first_error.map_or(Ok(()), Err)
-        })
+            first_error.map_or(Ok(acquired), Err)
+        })?;
+        for image in acquired { import_application_image(self.0, image)?; }
+        Ok(())
     }
     fn managed_enabled(&self, service: &str) -> bool {
         let key = match service {

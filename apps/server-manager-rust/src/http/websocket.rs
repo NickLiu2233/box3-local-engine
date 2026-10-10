@@ -172,6 +172,11 @@ mod tests {
         }
         let replay = progress(&mut ws).await;
         assert_eq!(replay["id"], id); assert_eq!(replay["payload"]["percent"], 42);
+        app.operations.update_download(id, "play", 25, 100);
+        let download = progress(&mut ws).await;
+        assert_eq!(download["payload"]["stage"], "image-download");
+        assert_eq!(download["payload"]["downloads"][0]["percent"], 25);
+        assert_eq!(download["payload"]["downloads"][0]["image"], "box-local-engine-play");
         app.operations.update(id, "done", "fixture", 100, true);
         assert_eq!(progress(&mut ws).await["payload"]["percent"], 100);
         ws.close(None).await.unwrap(); server.abort();

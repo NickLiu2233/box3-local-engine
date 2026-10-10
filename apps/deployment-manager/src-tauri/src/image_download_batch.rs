@@ -1,19 +1,11 @@
 //! Concurrent real downloads with serialized per-image progress snapshots.
 use crate::image_download::{self, ImageRelease};
-use serde::Serialize;
 use std::{
     path::{Path, PathBuf},
     sync::Mutex,
 };
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct Progress {
-    pub image: String,
-    pub bytes: u64,
-    pub total: u64,
-    pub percent: u8,
-}
+pub(crate) type Progress = box_manager_core::services::ImageDownloadProgress;
 
 pub(crate) fn download(
     images: &[&ImageRelease],

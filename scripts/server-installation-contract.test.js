@@ -59,6 +59,7 @@ function runInstaller(existingEnvironment) {
     executable(
       path.join(bin, 'docker'),
       `#!/bin/sh
+printf '%s\\n' "$*" >> "$DOCKER_CALL_LOG"
 case "$*" in
   *'image inspect'*) printf 'amd64\\n' ;;
 esac
@@ -68,10 +69,20 @@ exit 0
     executable(path.join(bin, 'uname'), '#!/bin/sh\nprintf "x86_64\\n"\n')
     const result = spawnSync('sh', ['./install.sh'], {
       cwd: temporaryRoot,
-      env: { ...process.env, PATH: `${bin}:/usr/bin:/bin` },
+      env: {
+        ...process.env,
+        PATH: `${bin}:/usr/bin:/bin`,
+        DOCKER_CALL_LOG: path.join(temporaryRoot, 'docker-calls.log'),
+      },
       encoding: 'utf8',
     })
     assert.equal(result.status, 0, result.stderr || result.stdout)
+    const calls = fs.readFileSync(path.join(temporaryRoot, 'docker-calls.log'), 'utf8')
+    assert.match(calls, /image rm box-local-engine-server-manager:launcher-content-fixture/)
+    assert.ok(
+      calls.indexOf('tag box-local-engine-server-manager:launcher-content-fixture') <
+        calls.indexOf('image rm box-local-engine-server-manager:launcher-content-fixture'),
+    )
     return fs.readFileSync(path.join(temporaryRoot, '.env'), 'utf8')
   } finally {
     fs.rmSync(temporaryRoot, { recursive: true, force: true })
@@ -161,8 +172,9 @@ test('bootstrap installer starts an already-installed matching version without d
   )
   assert.match(bootstrapInstaller, /"\$INSTALL_DIRECTORY\/start\.sh"/)
   assert.ok(
-    bootstrapInstaller.indexOf('existing_installation_matches_target') <
-      bootstrapInstaller.indexOf('temporary_directory=$(mktemp -d)'),
-    'matching installations must be detected before any release download',
+    bootstrapInstaller.indexOf('if existing_installation_matches_target') <
+      bootstrapInstaller.indexOf('cp -a "$package_directory"'),
+    'matching installations must be detected before replacing installed files',
   )
+  assert.match(bootstrapInstaller, /cmp -s .*SHA256SUMS/)
 })

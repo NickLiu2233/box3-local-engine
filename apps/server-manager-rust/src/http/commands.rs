@@ -442,14 +442,20 @@ pub(crate) async fn command(
                 "serviceImages": service_images()
             })),
             "get_latest_release" => {
-                let response = reqwest::blocking::Client::builder()
+                let client = reqwest::blocking::Client::builder()
                     .timeout(std::time::Duration::from_secs(10))
                     .build()
-                    .map_err(|error| error.to_string())?
-                    .get("https://assets.box3.fun/local-engine/latest.json")
+                    .map_err(|error| error.to_string())?;
+                let mut response = client
+                    .get("https://assets.box3.fun/local-engine/latest-server.json")
                     .header(reqwest::header::CACHE_CONTROL, "no-cache")
                     .send()
                     .map_err(|error| format!("无法读取更新清单：{error}"))?;
+                if response.status() == reqwest::StatusCode::NOT_FOUND {
+                    response = client.get("https://assets.box3.fun/local-engine/latest.json")
+                        .header(reqwest::header::CACHE_CONTROL, "no-cache").send()
+                        .map_err(|error| format!("无法读取更新清单：{error}"))?;
+                }
                 if !response.status().is_success() {
                     return Err(format!("更新服务返回 HTTP {}", response.status()));
                 }

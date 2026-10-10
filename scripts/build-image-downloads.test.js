@@ -50,6 +50,26 @@ with tarfile.open(sys.argv[1],'w:gz') as archive:
       const catalog = splitArchive(source, 'arm64', path.join(root, 'first/catalog.json'))
       const repeated = splitArchive(source, 'arm64', path.join(root, 'second/catalog.json'))
       assert.equal(catalog.images.length, 6)
+      const partialPath = path.join(root, 'manager-only/catalog.json')
+      const partial = spawnSync(
+        process.platform === 'win32' ? 'python' : 'python3',
+        [
+          path.join(__dirname, 'split-image-archive.py'),
+          source,
+          'arm64',
+          partialPath,
+          require('../package.json').version,
+          'server-manager',
+        ],
+        { encoding: 'utf8' },
+      )
+      assert.equal(partial.status, 0, partial.stderr)
+      const managerOnly = JSON.parse(fs.readFileSync(partialPath, 'utf8'))
+      assert.equal(managerOnly.images.length, 1)
+      assert.deepEqual(
+        managerOnly.images[0],
+        catalog.images.find((image) => image.image === 'box-local-engine-server-manager'),
+      )
       for (const image of catalog.images) {
         const archive = path.join(root, 'first', image.archive)
         assert.equal(

@@ -189,7 +189,7 @@ test('manual checks report latest and semantic comparison rejects nonstable vers
   )
 })
 
-test('offline startup is silent, manual failure is actionable, and web does not check', async () => {
+test('offline startup is silent, manual failure is actionable, and Web checks through its backend', async () => {
   const app = await createFixture({
     releaseResponse: () => {
       throw new Error('offline')
@@ -199,9 +199,53 @@ test('offline startup is silent, manual failure is actionable, and web does not 
   assert.equal(app.api.state.updateChecking, false)
   await app.api.checkForUpdates(true)
   assert.match(app.api.state.error, /无法检测更新/)
-  const web = await createFixture({ webManager: true })
+  const web = await createFixture({
+    webManager: true,
+    token: 'fixture-manager-token',
+    responses: {
+      get_latest_release: release,
+      get_about_info: { applicationVersion: '0.3.0', platform: 'linux', architecture: 'aarch64' },
+    },
+  })
   await web.api.checkForUpdates(true)
   assert.equal(web.calls.filter((call) => call.command === 'fetch_release').length, 0)
+  assert.ok(web.calls.some((call) => call.command === 'get_latest_release'))
+  assert.equal(web.api.state.updateDialogOpen, true)
+  assert.match(web.html, /id="check-version-updates"/)
+})
+
+test('Web update uses the helper identifier and reloads after the new manager returns', async () => {
+  let started = false
+  const app = await createFixture({
+    webManager: true,
+    token: 'local-web-manager-token',
+    responses: {
+      get_latest_release: release,
+      get_about_info: () => ({
+        applicationVersion: started ? '0.4.0' : '0.3.0',
+        platform: 'linux',
+        architecture: 'aarch64',
+      }),
+      start_server_update: () => {
+        started = true
+        return { updater: 'box3-fixture-updater' }
+      },
+    },
+  })
+  await app.api.checkForUpdates(true)
+  const update = app.api.downloadUpdate()
+  await new Promise((resolve) => setImmediate(resolve))
+  const delay = [...app.timeouts.values()].find((timer) => timer.delay === 2000)
+  assert.ok(delay, 'Web update waits for the replacement manager')
+  delay.handler()
+  await update
+  assert.equal(app.api.state.updateError, '')
+  assert.ok(
+    app.calls.some(
+      (call) => call.command === 'start_server_update' && call.payload.version === '0.4.0',
+    ),
+  )
+  assert.ok(app.calls.some((call) => call.command === 'reload_web_manager'))
 })
 
 test('overlapping startup and manual checks share one request', async () => {

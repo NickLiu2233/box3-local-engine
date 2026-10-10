@@ -374,6 +374,7 @@ async function createFixture({
     clearInterval: (id) => intervals.delete(id),
     clearTimeout: (id) => timeouts.delete(id),
     window: {
+      location: { reload: () => calls.push({ command: 'reload_web_manager' }) },
       setTimeout: (handler, delay) => {
         timeouts.set(++timerId, { handler, delay })
         return timerId

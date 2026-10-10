@@ -73,7 +73,9 @@ export async function downloadUpdate() {
     renderUpdateState()
     try {
       const version = state.updateRelease.version.replace(/^v/, '')
-      const updater = await invoke('start_server_update', { version })
+      const result = await invoke('start_server_update', { version })
+      const updater = result?.updater
+      if (typeof updater !== 'string' || !updater) throw new Error('更新任务未返回有效标识。')
       const deadline = Date.now() + 10 * 60 * 1000
       while (Date.now() < deadline) {
         await new Promise((resolve) => window.setTimeout(resolve, 2000))
@@ -84,6 +86,7 @@ export async function downloadUpdate() {
             state.updateDialogOpen = false
             state.updateRelease = null
             state.notice = `Web 管理器已更新到 v${version}。`
+            window.location.reload()
             return
           }
         } catch {

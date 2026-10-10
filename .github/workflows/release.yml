@@ -420,6 +420,8 @@ jobs:
             "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/install.sh" --update
           ossutil cp release-files/latest.json \
             "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/latest.json" --meta Cache-Control:no-cache --update
+          ossutil cp release-files/latest.json \
+            "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/latest-server.json" --meta Cache-Control:no-cache --update
           # Publish latest.txt last so clients never observe a version before
           # both architecture packages and the matching installer are ready.
           ossutil cp release-files/latest.txt \

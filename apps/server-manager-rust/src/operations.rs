@@ -88,7 +88,7 @@ impl Operations {
                 }
                 let total = total.max(1);
                 let bytes = bytes.min(total);
-                let percent = (bytes.saturating_mul(100) / total) as u8;
+                let percent = (bytes.saturating_mul(100) / total).min(99) as u8;
                 if record
                     .downloads
                     .get(image)
@@ -106,22 +106,33 @@ impl Operations {
                     },
                 );
                 let rows = record.downloads.values().cloned().collect::<Vec<_>>();
-                let (downloaded, total) = rows.iter().fold((0u64, 0u64), |sum, row| {
-                    (sum.0.saturating_add(row.bytes), sum.1.saturating_add(row.total))
-                });
-                let complete = rows.iter().filter(|row| row.percent == 100).count();
-                record.progress = InstallProgress {
-                    stage: "image-download".into(),
-                    message: format!("{} 个镜像并行下载 · 已完成 {complete}/{}", rows.len(), rows.len()),
-                    percent: if complete == rows.len() {
-                        100
-                    } else {
-                        (downloaded.saturating_mul(99) / total.max(1)).min(99) as u8
-                    },
-                    downloads: Some(rows),
-                };
+                record.progress = InstallProgress::for_downloads(rows);
                 record.updated = Instant::now();
                 let _ = self.1.send((id.to_owned(), record.progress.clone()));
+            }
+        }
+    }
+    pub fn begin_downloads(&self, id: &str, rows: Vec<ImageDownloadProgress>) {
+        if rows.is_empty() { return; }
+        if let Ok(mut records) = self.0.lock() {
+            if let Some(record) = records.get_mut(id).filter(|record| !record.finished) {
+                record.downloads = rows.iter().map(|row| (row.image.clone(), row.clone())).collect();
+                record.progress = InstallProgress::for_downloads(rows);
+                record.updated = Instant::now();
+                let _ = self.1.send((id.to_owned(), record.progress.clone()));
+            }
+        }
+    }
+    pub fn complete_download(&self, id: &str, image: &str) {
+        if let Ok(mut records) = self.0.lock() {
+            if let Some(record) = records.get_mut(id).filter(|record| !record.finished) {
+                if let Some(row) = record.downloads.get_mut(image) {
+                    row.bytes = row.total;
+                    row.percent = 100;
+                    record.progress = InstallProgress::for_downloads(record.downloads.values().cloned().collect());
+                    record.updated = Instant::now();
+                    let _ = self.1.send((id.to_owned(), record.progress.clone()));
+                }
             }
         }
     }
@@ -164,5 +175,26 @@ mod tests {
         records.0.lock().unwrap().get_mut(id).unwrap().updated =
             Instant::now() - Duration::from_secs(301);
         assert!(records.get(id).is_none());
+    }
+    #[test]
+    fn download_counts_stay_fixed_and_complete_only_after_verification() {
+        let records = Operations::default();
+        let id = "operation-download-shared";
+        records.begin(id).unwrap();
+        records.begin_downloads(id, ["box-local-engine-voxa", "box-local-engine-creator"].iter().map(|image| ImageDownloadProgress { image: (*image).into(), bytes: 0, total: 100, percent: 0 }).collect());
+        assert_eq!(records.get(id).unwrap().message, "2 个镜像 · 已完成 0/2");
+        records.update_download(id, "box-local-engine-creator", 100, 100);
+        let pending = records.get(id).unwrap();
+        assert_eq!(pending.downloads.unwrap()[0].percent, 99);
+        assert_eq!(pending.message, "2 个镜像 · 已完成 0/2");
+        records.complete_download(id, "box-local-engine-creator");
+        assert_eq!(records.get(id).unwrap().message, "2 个镜像 · 已完成 1/2");
+        records.update_download(id, "box-local-engine-voxa", 100, 100);
+        assert_eq!(records.get(id).unwrap().percent, 99);
+        records.complete_download(id, "box-local-engine-voxa");
+        let complete = records.get(id).unwrap();
+        assert_eq!(complete.percent, 100);
+        assert_eq!(complete.message, "2 个镜像 · 已完成 2/2");
+        assert_eq!(complete.downloads.unwrap()[0].image, "box-local-engine-creator");
     }
 }

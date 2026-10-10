@@ -84,6 +84,8 @@ Verify 工作流在 Pull Request 和 `main` 推送时执行：
 
 Release 工作流只在 `v*` Tag 推送时执行。它先确认发行应用与 Rust 管理器等受版本同步管理的项目与根 `package.json` 一致、Tag 严格等于 `v<version>`，并检查 OSS Secret，然后构建发行物。Release 工作流不会重复运行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 
+手动运行 `Package BOX3 Engine Server` 时，输入与当前源码一致的版本，选择 `all` 可构建两个服务器架构。流程检查 Web 管理端及五个业务镜像：版本、源码指纹和 OSS 归档均匹配时复用缓存，否则只重建发生变化的镜像。旧清单没有源码指纹时会先重建一次。镜像归档先上传，再生成新清单与精简服务器 ZIP；开启 `publish_stable` 后发布到稳定 CDN，最后更新安装版本指针。安装器会比较包内校验清单，同版本内容有变化时也会覆盖启动器，保留原配置和数据。
+
 当前 Release 矩阵：
 
 - Windows x64：`windows-amd64`；
@@ -138,7 +140,7 @@ BOX3-Engine-Server-<version>-linux-arm64.zip
 
 ### 启动器版本检测
 
-桌面启动器每次启动自动请求 `https://assets.box3.fun/local-engine/latest.json`；侧栏更新图标可手动重试。仅当稳定版本号高于当前启动器版本时弹出更新日志，显示版本、发布日期与变更内容，并提供 CDN 安装包下载。检测超时为 10 秒，并发检测共用请求；启动检测失败静默，手动检测失败显示提示。离线启动不受影响。Linux Web 管理页不触发桌面启动器更新检测。
+桌面启动器每次启动自动请求 `https://assets.box3.fun/local-engine/latest.json`；侧栏更新图标可手动重试。仅当稳定版本号高于当前启动器版本时弹出更新日志，显示版本、发布日期与变更内容，并提供 CDN 安装包下载。检测超时为 10 秒，并发检测共用请求；启动检测失败静默，手动检测失败显示提示。离线启动不受影响。Linux Web 管理页登录后读取独立的 `latest-server.json`，缺少该清单时兼容读取 `latest.json`；确认更新后替换管理器，保留配置与数据，恢复原来运行的服务并清理旧镜像。更新完成后页面自动重新加载新界面。
 
 `latest.json` 使用 `schemaVersion: 1`，包含 `version`（三段稳定版本号）、`date`（`YYYY-MM-DD` 发布日期）、`summary` 和 `sections`（每项含 `title`、字符串数组 `items`）。日志来自 `distribution/release-notes.json`，与关于页共用，新增版本时应追加到数组顶部并保留历史版本。发布流程用 `scripts/build-release-manifest.js` 按 Tag 选取日志、检查五个安装包齐全后生成清单，在全部安装包上传后发布，并设置 `Cache-Control: no-cache`。CDN 须允许跨域 GET（`Access-Control-Allow-Origin: *`）；启动器 CSP 仅放行该资源域名。
 
