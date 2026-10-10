@@ -94,6 +94,7 @@ function check() {
     'scripts/linux-bootstrap-installer.test.js',
     'scripts/server-installation-contract.test.js',
     'scripts/server-image-plan.test.js',
+    'scripts/server-package-workflow.test.js',
     'scripts/build-image-downloads.test.js',
   ])
   node('scripts/check-desktop-deployment-manager.js')

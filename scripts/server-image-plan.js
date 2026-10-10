@@ -93,12 +93,33 @@ function mergeImages(architecture, catalog, plan, directory) {
       : catalog.images.find((image) => image.image === `box-local-engine-${item.service}`)
     if (image.image !== `box-local-engine-${item.service}` || image.imageTag !== item.imageTag)
       throw new Error('Built image does not match the requested service and version')
-    return { ...image, sourceFingerprint: item.sourceFingerprint }
+    // Reused application images retain release metadata; only freshly built
+    // images can claim the current checkout's source fingerprint.
+    return item.build ? { ...image, sourceFingerprint: item.sourceFingerprint } : image
   })
   return validateCatalog(
     { formatVersion: 2, platform: `linux/${architecture}`, imageTag: plan[0].imageTag, images },
     architecture,
   )
+}
+
+function planManagerImage(root, architecture, catalog, files) {
+  if (!catalog) {
+    throw new Error(
+      'Published application image catalog is missing. Run the release workflow first.',
+    )
+  }
+  const plan = planImages(root, architecture, catalog, files)
+  return plan.map((item) => {
+    if (item.service === 'server-manager') return item
+    const previous = catalog.images.find(
+      (image) => image.image === `box-local-engine-${item.service}`,
+    )
+    if (previous.imageTag !== item.imageTag) {
+      throw new Error(`Published application image version mismatch: ${item.service}`)
+    }
+    return { ...item, build: false, sourceFingerprint: previous.sourceFingerprint }
+  })
 }
 
 if (require.main === module) {
@@ -109,12 +130,13 @@ if (require.main === module) {
     const catalog = fs.existsSync(catalogPath)
       ? JSON.parse(fs.readFileSync(catalogPath, 'utf8'))
       : null
-    if (command === 'plan') {
-      const plan = planImages(path.resolve(__dirname, '..'), architecture, catalog)
+    if (command === 'plan' || command === 'plan-manager') {
+      const planner = command === 'plan-manager' ? planManagerImage : planImages
+      const plan = planner(path.resolve(__dirname, '..'), architecture, catalog)
       fs.writeFileSync(planPath, `${JSON.stringify(plan, null, 2)}\n`)
       for (const item of plan)
         console.log(
-          `${item.service}: ${item.build ? 'build' : 'reuse verified version/source cache'}`,
+          `${item.service}: ${item.build ? 'build' : item.service === 'server-manager' ? 'reuse verified version/source cache' : 'reuse published application image'}`,
         )
     } else if (command === 'merge') {
       const result = mergeImages(
@@ -124,11 +146,11 @@ if (require.main === module) {
         directory,
       )
       fs.writeFileSync(destination, `${JSON.stringify(result, null, 2)}\n`)
-    } else throw new Error('Expected plan or merge')
+    } else throw new Error('Expected plan, plan-manager or merge')
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1
   }
 }
 
-module.exports = { sourceFingerprint, planImages, mergeImages, services }
+module.exports = { sourceFingerprint, planImages, planManagerImage, mergeImages, services }

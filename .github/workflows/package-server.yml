@@ -128,20 +128,19 @@ jobs:
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-      - name: Download cached image catalog from Aliyun OSS
+      - name: Download published application image catalog from Aliyun OSS
         run: |
           mkdir -p apps/local-engine/dist/images
           catalog="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.json"
           if ! ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog" > /tmp/catalog-download.log 2>&1; then
             if grep -Ei 'NoSuchKey|404|does not exist' /tmp/catalog-download.log; then
-              rm -f "$catalog"
-              echo 'No previous image catalog; build all images.'
+              echo 'Published application image catalog is missing. Run the release workflow for this version and architecture first.' >&2
             else
               cat /tmp/catalog-download.log >&2
-              exit 1
             fi
+            exit 1
           fi
-      - name: Build changed Web manager and application images
+      - name: Build Web manager image and reuse published application images
         env:
           BOX_IMAGE_TAG: v${{ inputs.version }}-linux-${{ matrix.architecture }}
           BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
@@ -155,16 +154,27 @@ jobs:
           export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
           catalog="apps/local-engine/dist/images/box-local-engine-images-v${{ inputs.version }}-linux-${{ matrix.architecture }}.json"
           mkdir -p server-image-updates
-          node scripts/server-image-plan.js plan '${{ matrix.architecture }}' "$catalog" server-image-plan.json
+          node scripts/server-image-plan.js plan-manager '${{ matrix.architecture }}' "$catalog" server-image-plan.json
+          # Applications are owned by release.yml. Verify and publish their
+          # immutable archives without building or loading them on this runner.
+          node -e "for (const i of require('./$catalog').images) if (i.image !== 'box-local-engine-server-manager') console.log(i.archive)" > server-image-updates/application-archives.txt
+          while IFS= read -r archive; do
+            if ! ossutil stat "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive"; then
+              echo "Published application archive unavailable: $archive. Run the release workflow first." >&2
+              exit 1
+            fi
+            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/$archive" --update
+          done < server-image-updates/application-archives.txt
           cp .env.docker.example .env
           cp .env.docker.example .runtime.env
-          for service in player-service player-auth-portal server-manager creator play voxa; do
+          for service in server-manager; do
             build="$(node -e "const p=require('./server-image-plan.json').find(i=>i.service===process.argv[1]); console.log(p.build)" "$service")"
             if [ "$build" = 'false' ]; then
               archive="$(node -e "const c=require('./$catalog'); console.log(c.images.find(i=>i.image==='box-local-engine-'+process.argv[1]).archive)" "$service")"
               # A matching catalog is reusable only if its archive still exists.
               if ossutil stat "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" > /tmp/image-cache-stat.log 2>&1; then
                 echo "Reuse $service: version and source match."
+                ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" "oss://$OSS_BUCKET/$OSS_SERVER_RELEASE_PREFIX/$archive" --update
                 continue
               elif grep -Ei 'NoSuchKey|404|does not exist' /tmp/image-cache-stat.log; then
                 node -e "const fs=require('fs'); const p=require('./server-image-plan.json'); p.find(i=>i.service===process.argv[1]).build=true; fs.writeFileSync('server-image-plan.json',JSON.stringify(p));" "$service"
