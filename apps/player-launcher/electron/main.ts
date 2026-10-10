@@ -2,6 +2,7 @@ import { createPlayerSessionStore } from './storage/player-session-store'
 import {
   app,
   BrowserWindow,
+  Menu,
   ipcMain,
   nativeImage,
   nativeTheme,
@@ -17,6 +18,7 @@ import { createPublicImageTransport } from './network/public-image-transport'
 import { createWindowStateStore } from './storage/window-state'
 import { createMapLabels } from './storage/map-labels'
 import { createGameWindowManager } from './runtime/game-window-manager'
+import { hideApplicationMenu } from './runtime/application-menu'
 import { validateDescriptor } from './security/package-descriptor'
 import { createServerStore } from './storage/server-store'
 import type { ElectronCommandPayload } from './types'
@@ -86,7 +88,16 @@ function createRememberedWindow(
     width: options.width || 1180,
     height: options.height || 760,
   })
-  const created = new BrowserWindow({ ...options, width: size.width, height: size.height })
+  const created = new BrowserWindow({
+    ...options,
+    autoHideMenuBar: true,
+    width: size.width,
+    height: size.height,
+  })
+  if (process.platform !== 'darwin') {
+    created.setMenu(null)
+    created.setMenuBarVisibility(false)
+  }
   if (size.maximized) created.maximize()
   created.on('close', () => {
     const bounds = created.getNormalBounds()
@@ -351,6 +362,7 @@ app
       app.quit()
       return
     }
+    hideApplicationMenu(Menu)
     if (process.platform === 'darwin' && app.dock) {
       const iconPath = path.join(app.getAppPath(), 'resources/icons/icon.png')
       app.dock.setIcon(nativeImage.createFromBuffer(fs.readFileSync(iconPath)))

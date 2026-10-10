@@ -99,12 +99,14 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true' && runner.os != 'Linux'
         run: |
           npm --prefix apps/player-launcher run test:desktop
+          npm --prefix apps/player-launcher run test:menu
           npm --prefix apps/player-launcher run test:cache
       - name: Test Linux desktop and real resource cache
         timeout-minutes: 6
         if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Linux'
         run: |
           xvfb-run -a npm --prefix apps/player-launcher run test:desktop
+          xvfb-run -a npm --prefix apps/player-launcher run test:menu
           xvfb-run -a npm --prefix apps/player-launcher run test:cache
       - name: Build and verify Windows player installer
         if: steps.cache.outputs.cache-hit != 'true' && runner.os == 'Windows'

@@ -14,6 +14,7 @@ if (root.endsWith('.asar')) {
     'tests',
     'dist-electron/launcher-smoke.cjs',
     'dist-electron/cache-smoke.cjs',
+    'dist-electron/menu-smoke.cjs',
     'dist-electron/build',
   ]) {
     if (fs.existsSync(path.join(root, excluded)))
