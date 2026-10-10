@@ -40,10 +40,7 @@ function runInstaller(existingEnvironment) {
     executable(path.join(temporaryRoot, 'verify.sh'), '#!/bin/sh\nexit 0\n')
     const managerArchive = 'manager-image.tar.gz'
     const managerArchiveBytes = 'fixture'
-    const managerArchiveSha = crypto
-      .createHash('sha256')
-      .update(managerArchiveBytes)
-      .digest('hex')
+    const managerArchiveSha = crypto.createHash('sha256').update(managerArchiveBytes).digest('hex')
     fs.mkdirSync(path.join(temporaryRoot, 'cache/engine-images'), { recursive: true })
     fs.writeFileSync(
       path.join(temporaryRoot, 'cache/engine-images', managerArchive),
@@ -160,7 +157,7 @@ test('bootstrap installer starts an already-installed matching version without d
   assert.match(bootstrapInstaller, /BOX_PLAY_PLATFORM/)
   assert.match(
     bootstrapInstaller,
-    /docker image inspect "box-local-engine-\$\{service\}:\$\{expected_image_tag\}"/,
+    /docker image inspect "box-local-engine-server-manager:\$\{expected_image_tag\}"/,
   )
   assert.match(bootstrapInstaller, /"\$INSTALL_DIRECTORY\/start\.sh"/)
   assert.ok(

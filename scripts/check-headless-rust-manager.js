@@ -38,7 +38,8 @@ assert.match(dockerfile, /COPY --from=rust-build \/server-manager \/app\/server-
 assert.match(dockerfile, /CMD \["\/app\/server-manager"\]/)
 assert.doesNotMatch(dockerfile, /CMD \["node", "server\.js"\]/)
 assert.match(dockerfile, /CMD \["\/app\/server-manager", "--healthcheck"\]/)
-assert.doesNotMatch(dockerfile, /apt-get|\bcurl\b/)
+assert.match(dockerfile, /apt-get install .*ca-certificates curl unzip/)
+assert.match(dockerfile, /COPY distribution\/server\/bootstrap\.sh \/app\/bootstrap\.sh/)
 assert.equal(
   (dockerfile.match(/COPY --from=docker-cli .*docker-compose/g) || []).length,
   1,

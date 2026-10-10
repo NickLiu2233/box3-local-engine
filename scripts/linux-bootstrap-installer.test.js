@@ -155,7 +155,11 @@ fi
       curlInvocations,
       /https:\/\/cdn\.example\.test\/box3\/BOX3-Engine-Server-9\.8\.7-linux-amd64\.zip/,
     )
-    assert.match(curlInvocations, /api\/commands\/control_service/)
+    assert.match(
+      fs.readFileSync(installer, 'utf8'),
+      /\/api\/commands\/control_service/,
+      'upgrades must restore previously running app services through the Web manager',
+    )
     assert.doesNotMatch(curlInvocations, /github|releases\/download|releases\/latest/)
     for (const failure of ['version', 'package']) {
       fs.writeFileSync(curlCalls, '')

@@ -42,20 +42,20 @@ fn draft_routing_uses_the_same_provider_default_as_status() {
 
 #[test]
 fn missing_nginx_image_downloads_the_same_registry_mirror_as_redis() {
-    let mut calls = Vec::new();
+    let calls = std::cell::RefCell::new(Vec::new());
     install_image_with_progress(
         &mut |args: &[String]| {
-            calls.push(args.to_vec());
+            calls.borrow_mut().push(args.to_vec());
             if args[0] == "image" { Err("not found".into()) } else { Ok(String::new()) }
         },
         &mut |image, _progress| {
-            calls.push(vec!["pull".into(), image.into()]);
+            calls.borrow_mut().push(vec!["pull".into(), image.into()]);
             Ok(())
         },
         &mut |_, _| {},
     )
     .unwrap();
-    assert_eq!(calls[1], vec!["pull", IMAGE]);
+    assert_eq!(calls.into_inner()[1], vec!["pull", IMAGE]);
 }
 fn input() -> Import {
     Import {

@@ -84,12 +84,17 @@ function main() {
   const archive = !catalogOnly && process.argv[3] ? path.resolve(process.argv[3]) : ''
   const suppliedCatalogPath = process.argv[4] ? path.resolve(process.argv[4]) : ''
   if (!supportedArchitectures.has(architecture)) {
-    fail('用法: node scripts/build-headless-server-package.js <amd64|arm64> <完整镜像归档.tar.gz> | --catalog <catalog.json>')
+    fail(
+      '用法: node scripts/build-headless-server-package.js <amd64|arm64> <完整镜像归档.tar.gz> | --catalog <catalog.json>',
+    )
   }
   if (catalogOnly && !suppliedCatalogPath) {
     fail('使用 --catalog 时必须提供 catalog.json')
   }
-  if (!suppliedCatalogPath && (!archive || !fs.statSync(archive, { throwIfNoEntry: false })?.isFile())) {
+  if (
+    !suppliedCatalogPath &&
+    (!archive || !fs.statSync(archive, { throwIfNoEntry: false })?.isFile())
+  ) {
     fail('镜像归档不存在')
   }
   if (archive && !path.basename(archive).includes(`linux-${architecture}`)) {
@@ -109,7 +114,10 @@ function main() {
   let catalog
   let generatedCatalogPath = ''
   if (suppliedCatalogPath) {
-    catalog = validateCatalog(JSON.parse(fs.readFileSync(suppliedCatalogPath, 'utf8')), architecture)
+    catalog = validateCatalog(
+      JSON.parse(fs.readFileSync(suppliedCatalogPath, 'utf8')),
+      architecture,
+    )
   } else {
     fs.rmSync(splitRoot, { recursive: true, force: true })
     fs.mkdirSync(splitRoot, { recursive: true })
