@@ -96,7 +96,7 @@ struct WebRuntime<'a>(&'a App);
 /// Adapter from the shared service-control module to this manager's local
 /// configuration, Compose runner and progress store.
 impl ServiceRuntime for WebRuntime<'_> {
-    fn prepare_images(&self) -> Result<(), String> {
+    fn prepare_images(&self, _services: &[&str]) -> Result<(), String> {
         let runtime_path = generate_runtime_environment(self.0)?;
         database_url(&parse_env(
             &fs::read_to_string(env_path(self.0)).map_err(|e| e.to_string())?,

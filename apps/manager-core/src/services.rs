@@ -20,7 +20,7 @@ pub struct InstallProgress {
 }
 
 pub trait Runtime {
-    fn prepare_images(&self) -> Result<(), String>;
+    fn prepare_images(&self, services: &[&str]) -> Result<(), String>;
     fn managed_enabled(&self, service: &str) -> bool;
     fn check_managed(&self, service: &str) -> Result<(), String>;
     fn compose(&self, args: &[&str]) -> Result<(), String>;
@@ -76,7 +76,7 @@ pub fn start(runtime: &impl Runtime, scope: &str) -> Result<(), String> {
     // Validate before touching images or containers.
     let targets = scope_services(scope)?;
     runtime.progress("images", "正在检查运行镜像…", 20);
-    runtime.prepare_images()?;
+    runtime.prepare_images(targets)?;
     for (service, stage, label, percent) in [
         (
             "managed-postgres",
@@ -112,7 +112,7 @@ pub fn control(runtime: &impl Runtime, service: &str, action: &str) -> Result<()
         if managed {
             runtime.compose(&["up", "-d", "--no-build", "--wait", service])?;
         } else {
-            runtime.prepare_images()?;
+            runtime.prepare_images(&[service])?;
             start_applications(runtime, &[service])?;
         }
     } else {
@@ -138,11 +138,15 @@ mod tests {
     #[derive(Default)]
     struct Fake {
         calls: RefCell<Vec<Vec<String>>>,
+        prepared_images: RefCell<Vec<Vec<String>>>,
         dependency_fails: bool,
     }
     impl Runtime for Fake {
-        fn prepare_images(&self) -> Result<(), String> {
+        fn prepare_images(&self, services: &[&str]) -> Result<(), String> {
             self.calls.borrow_mut().push(vec!["images".into()]);
+            self.prepared_images
+                .borrow_mut()
+                .push(services.iter().map(|service| (*service).into()).collect());
             Ok(())
         }
         fn managed_enabled(&self, _: &str) -> bool {
@@ -200,6 +204,10 @@ mod tests {
             ..Fake::default()
         };
         start(&host, "play").unwrap();
+        assert_eq!(
+            host.prepared_images.borrow()[0],
+            ["play", "player-service", "player-auth-portal"]
+        );
         let calls = host.calls.borrow();
         assert_eq!(
             calls[1],
@@ -237,6 +245,7 @@ mod tests {
             ..Fake::default()
         };
         control(&host, "creator", "start").unwrap();
+        assert_eq!(host.prepared_images.borrow()[0], ["creator"]);
         let calls = host.calls.borrow();
         assert_eq!(calls[2], ["up", "-d", "--no-build", "--no-deps", "creator"]);
     }

@@ -1466,7 +1466,7 @@ fn offline_image_digest_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join(format!(".offline-image-{IMAGE_TAG}.sha256")))
 }
 
-fn ensure_images(app: &AppHandle) -> Result<(), String> {
+fn ensure_images(app: &AppHandle, services: &[&str]) -> Result<(), String> {
     synchronize_runtime_image_tag(app)?;
     let tag = IMAGE_TAG;
     let missing = SERVICE_NAMES.iter().any(|name| {
@@ -1490,7 +1490,7 @@ fn ensure_images(app: &AppHandle) -> Result<(), String> {
     };
     if let Some(release) = crate::image_download::embedded_release()? {
         release.validate(expected)?;
-        return crate::image_updates::prepare(&release, tag, &DesktopImageRuntime(app));
+        return crate::image_updates::prepare(&release, tag, services, &DesktopImageRuntime(app));
     }
 
     let archive = archive_candidates(Some(app))
@@ -2982,17 +2982,17 @@ impl crate::image_updates::Runtime for DesktopImageRuntime<'_> {
             self.0,
             "image-download",
             &format!("正在下载 {}…", image.image),
-            20,
+            0,
         );
-        crate::image_download::download(image, &cache, |bytes| {
-            let percent = 20 + ((bytes as f64 / image.size as f64) * 20.0) as u8;
+        let archive = crate::image_download::download(image, &cache, |bytes| {
+            let percent = ((bytes as f64 / image.size as f64) * 100.0).floor() as u8;
             if percent != last_percent {
                 last_percent = percent;
                 emit_progress(
                     self.0,
                     "image-download",
                     &format!(
-                        "正在下载 {}：{} / {} MB",
+                        "{} · {} / {} MB",
                         image.image,
                         bytes / 1_048_576,
                         image.size / 1_048_576
@@ -3000,7 +3000,14 @@ impl crate::image_updates::Runtime for DesktopImageRuntime<'_> {
                     percent,
                 );
             }
-        })
+        })?;
+        emit_progress(
+            self.0,
+            "image-import",
+            &format!("{} 下载完成，正在导入 Docker…", image.image),
+            100,
+        );
+        Ok(archive)
     }
     fn discard(&self, archive: PathBuf) {
         let _ = fs::remove_file(archive);
@@ -3075,10 +3082,10 @@ fn finalize_image_updates(app: &AppHandle) {
 
 struct DesktopRuntime<'a>(&'a AppHandle);
 impl ServiceRuntime for DesktopRuntime<'_> {
-    fn prepare_images(&self) -> Result<(), String> {
+    fn prepare_images(&self, services: &[&str]) -> Result<(), String> {
         database_url(&generate_runtime_environment(self.0)?)?;
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
-        ensure_images(self.0)?;
+        ensure_images(self.0, services)?;
         box_manager_core::auth_portal::prepare_custom_image(
             &load_existing_env(self.0),
             if cfg!(target_arch = "aarch64") {

@@ -45,9 +45,18 @@ fn installed(runtime: &impl Runtime, image: &ImageRelease) -> Option<String> {
         })
 }
 
+fn remove_content_tag(runtime: &impl Runtime, image: &ImageRelease) {
+    // The per-service archive uses this deterministic tag so an imported image
+    // can be found by digest. Once the release tag is assigned, keeping both
+    // tags makes Docker list the same image twice without adding any bytes.
+    let content = image.content_reference();
+    let _ = runtime.docker(&["image", "rm", &content]);
+}
+
 pub(crate) fn prepare(
     catalog: &ImageCatalog,
     tag: &str,
+    services: &[&str],
     runtime: &impl Runtime,
 ) -> Result<(), String> {
     let mut pending = runtime.pending()?;
@@ -56,7 +65,7 @@ pub(crate) fn prepare(
             .image
             .strip_prefix("box-local-engine-")
             .ok_or("镜像名称无效")?;
-        if service == "server-manager" {
+        if service == "server-manager" || !services.contains(&service) {
             continue;
         }
         let reference = format!("{}:{tag}", image.image);
@@ -89,6 +98,7 @@ pub(crate) fn prepare(
             runtime.save(&pending)?;
         }
         if previous.as_deref().is_some_and(|id| image.accepts(id)) {
+            remove_content_tag(runtime, image);
             continue;
         }
         let mut actual = installed(runtime, image);
@@ -112,6 +122,7 @@ pub(crate) fn prepare(
         }
         runtime.save(&pending)?;
         runtime.docker(&["image", "tag", &actual, &reference])?;
+        remove_content_tag(runtime, image);
         if let Some(archive) = archive {
             runtime.discard(archive);
         }
@@ -333,10 +344,30 @@ mod tests {
         fake.tags
             .borrow_mut()
             .insert("box-local-engine-play:same-version".into(), id('b'));
-        prepare(&catalog(), "next-launcher", &fake).unwrap();
+        prepare(&catalog(), "next-launcher", &["play"], &fake).unwrap();
         assert_eq!(*fake.downloads.borrow(), 0);
         assert_eq!(
             fake.tags.borrow()["box-local-engine-play:next-launcher"],
+            id('b')
+        );
+    }
+
+    #[test]
+    fn removes_the_content_tag_after_assigning_the_release_tag() {
+        let mut fake = Fake::new();
+        fake.previous.clear();
+        fake.ids.borrow_mut().insert(id('b'));
+        let content = catalog().images[0].content_reference();
+        fake.tags.borrow_mut().insert(content.clone(), id('b'));
+        fake.tags
+            .borrow_mut()
+            .insert("box-local-engine-play:same-version".into(), id('b'));
+
+        prepare(&catalog(), "same-version", &["play"], &fake).unwrap();
+
+        assert!(!fake.tags.borrow().contains_key(&content));
+        assert_eq!(
+            fake.tags.borrow()["box-local-engine-play:same-version"],
             id('b')
         );
     }
@@ -346,7 +377,7 @@ mod tests {
         fake.ids.borrow_mut().insert(id('c'));
         let mut catalog = catalog();
         catalog.images[0].image_ids.push(id('c'));
-        prepare(&catalog, "next-launcher", &fake).unwrap();
+        prepare(&catalog, "next-launcher", &["play"], &fake).unwrap();
         assert_eq!(*fake.downloads.borrow(), 0);
         assert_eq!(
             fake.tags.borrow()["box-local-engine-play:next-launcher"],
@@ -359,7 +390,7 @@ mod tests {
     #[test]
     fn changed_content_with_unchanged_version_downloads_once_then_cleans_old_image() {
         let fake = Fake::new();
-        prepare(&catalog(), "same-version", &fake).unwrap();
+        prepare(&catalog(), "same-version", &["play"], &fake).unwrap();
         assert_eq!(*fake.downloads.borrow(), 1);
         assert!(fake.ids.borrow().contains(&id('a')));
         assert_eq!(fake.records.borrow().len(), 1);
@@ -377,7 +408,7 @@ mod tests {
     fn failed_import_preserves_old_tag_and_rollback_record() {
         let mut fake = Fake::new();
         fake.load_fails = true;
-        assert!(prepare(&catalog(), "same-version", &fake).is_err());
+        assert!(prepare(&catalog(), "same-version", &["play"], &fake).is_err());
         assert_eq!(
             fake.tags.borrow()["box-local-engine-play:same-version"],
             id('a')
@@ -390,7 +421,7 @@ mod tests {
             let mut fake = Fake::new();
             fake.ready = ready;
             fake.used = used;
-            prepare(&catalog(), "same-version", &fake).unwrap();
+            prepare(&catalog(), "same-version", &["play"], &fake).unwrap();
             finalize(&catalog(), &fake).unwrap();
             assert!(fake.ids.borrow().contains(&id('a')));
             assert_eq!(fake.records.borrow().len(), 1);
@@ -402,7 +433,7 @@ mod tests {
         fake.tags
             .borrow_mut()
             .insert("another-project:stable".into(), id('a'));
-        prepare(&catalog(), "new-launcher", &fake).unwrap();
+        prepare(&catalog(), "new-launcher", &["play"], &fake).unwrap();
         finalize(&catalog(), &fake).unwrap();
         assert!(fake.ids.borrow().contains(&id('a')));
         assert_eq!(fake.records.borrow().len(), 1);

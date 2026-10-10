@@ -79,5 +79,12 @@ function feedbackToast() {
 }
 
 export function progressPanel() {
+  if (state.progress?.stage === 'image-download') {
+    const percent = Math.max(0, Math.min(100, Number(state.progress.percent) || 0))
+    return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog image-download-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在下载服务镜像</strong><p>${escapeHtml(state.progress.message || '正在准备下载…')}</p><div class="image-download-progress" role="progressbar" aria-label="服务镜像下载进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${percent}"><span style="width:${percent}%"></span></div><small class="image-download-percent">${percent}%</small></section></div>`
+  }
+  if (state.progress?.stage === 'image-import') {
+    return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在导入服务镜像</strong><p>${escapeHtml(state.progress.message || '镜像下载完成，正在导入 Docker…')}</p></section></div>`
+  }
   return `<div class="progress-backdrop" role="alertdialog" aria-modal="true" aria-live="polite"><section class="progress-dialog"><span class="progress-spinner" aria-hidden="true"></span><strong>正在处理</strong><p>这可能需要几分钟，请耐心等待…</p></section></div>`
 }

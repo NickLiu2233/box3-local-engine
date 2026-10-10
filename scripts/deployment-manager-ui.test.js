@@ -678,6 +678,23 @@ test('Nginx download uses the shared processing dialog and reports a reusable im
   assert.match(app.html, /id="nginx-enable"/)
 })
 
+test('image downloads show the service, byte progress and accessible progress bar', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'overview'
+  app.api.state.busy = true
+  app.api.state.progress = {
+    stage: 'image-download',
+    message: 'box-local-engine-creator · 128 / 256 MB',
+    percent: 50,
+  }
+  app.api.render()
+  assert.match(app.html, /正在下载服务镜像/)
+  assert.match(app.html, /box-local-engine-creator · 128 \/ 256 MB/)
+  assert.match(app.html, /class="image-download-progress" role="progressbar"/)
+  assert.match(app.html, /aria-valuenow="50"/)
+  assert.match(app.html, /class="image-download-percent">50%/)
+})
+
 test('missing local Nginx saves certificates and shows an installation reminder instead of a save error', async () => {
   const app = await createFixture()
   app.api.state.page = 'setup'
