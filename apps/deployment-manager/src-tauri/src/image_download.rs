@@ -135,16 +135,38 @@ fn verified(path: &Path, release: &ImageRelease) -> bool {
     format!("{:x}", digest.finalize()).eq_ignore_ascii_case(&release.sha256)
 }
 
+#[cfg(test)]
 fn write_download(
+    source: impl Read,
+    path: &Path,
+    release: &ImageRelease,
+    progress: impl FnMut(u64),
+) -> Result<(), String> {
+    write_download_at(source, path, release, 0, progress)
+}
+
+fn write_download_at(
     mut source: impl Read,
     path: &Path,
     release: &ImageRelease,
+    offset: u64,
     mut progress: impl FnMut(u64),
 ) -> Result<(), String> {
-    let mut file = fs::File::create(path).map_err(|e| e.to_string())?;
     let mut digest = Sha256::new();
-    let mut total = 0u64;
     let mut buffer = [0; 128 * 1024];
+    if offset > 0 {
+        let mut prefix = fs::File::open(path).map_err(|e| e.to_string())?;
+        std::io::copy(&mut prefix, &mut HashWriter(&mut digest))
+            .map_err(|e| format!("无法校验下载断点：{e}"))?;
+    }
+    let mut file = if offset == 0 {
+        fs::File::create(path)
+    } else {
+        fs::OpenOptions::new().append(true).open(path)
+    }
+    .map_err(|e| e.to_string())?;
+    let mut total = offset;
+    progress(total);
     loop {
         let length = source
             .read(&mut buffer)
@@ -154,6 +176,8 @@ fn write_download(
         }
         total = total.checked_add(length as u64).ok_or("镜像大小无效")?;
         if total > release.size {
+            drop(file);
+            let _ = fs::remove_file(path);
             return Err("镜像下载大小超过发行清单，请重试".into());
         }
         file.write_all(&buffer[..length])
@@ -161,12 +185,34 @@ fn write_download(
         digest.update(&buffer[..length]);
         progress(total);
     }
-    if total != release.size
-        || !format!("{:x}", digest.finalize()).eq_ignore_ascii_case(&release.sha256)
-    {
+    if total != release.size {
+        return Err("镜像下载中断，已保留下载进度，请重试".into());
+    }
+    if !format!("{:x}", digest.finalize()).eq_ignore_ascii_case(&release.sha256) {
+        drop(file);
+        let _ = fs::remove_file(path);
         return Err("镜像完整性校验失败，请重试下载".into());
     }
     file.sync_all().map_err(|e| e.to_string())
+}
+
+struct HashWriter<'a>(&'a mut Sha256);
+impl Write for HashWriter<'_> {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0.update(bytes);
+        Ok(bytes.len())
+    }
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn valid_content_range(response: &reqwest::blocking::Response, offset: u64, size: u64) -> bool {
+    response
+        .headers()
+        .get(reqwest::header::CONTENT_RANGE)
+        .and_then(|value| value.to_str().ok())
+        .is_some_and(|value| value == format!("bytes {offset}-{}/{size}", size.saturating_sub(1)))
 }
 
 pub(crate) fn download(
@@ -194,33 +240,73 @@ pub(super) fn download_from_url(
         return Ok(destination);
     }
     let partial = destination.with_extension("part");
-    let result = (|| {
+    let mut offset = fs::metadata(&partial).map(|meta| meta.len()).unwrap_or(0);
+    if offset >= release.size {
+        if verified(&partial, release) {
+            if destination.exists() {
+                fs::remove_file(&destination).map_err(|e| e.to_string())?;
+            }
+            fs::rename(&partial, &destination).map_err(|e| e.to_string())?;
+            progress(release.size);
+            return Ok(destination);
+        }
+        fs::remove_file(&partial).map_err(|e| e.to_string())?;
+        offset = 0;
+    }
+    progress(offset);
+    (|| {
         let client = reqwest::blocking::Client::builder()
             .redirect(reqwest::redirect::Policy::none())
             .connect_timeout(Duration::from_secs(30))
             .timeout(Duration::from_secs(3600))
             .build()
             .map_err(|e| e.to_string())?;
-        let response = client
-            .get(url)
-            .send()
-            .map_err(|e| format!("无法下载镜像：{e}"))?;
-        if !response.status().is_success() {
+        let request = |offset: u64| {
+            let mut request = client
+                .get(url)
+                .header(reqwest::header::ACCEPT_ENCODING, "identity");
+            if offset > 0 {
+                request = request.header(reqwest::header::RANGE, format!("bytes={offset}-"));
+            }
+            request
+                .send()
+                .map_err(|e| format!("无法下载镜像，已保留下载进度：{e}"))
+        };
+        let mut response = request(offset)?;
+        if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE && offset > 0 {
+            // An origin that cannot serve this range must be retried as a full
+            // download. Never append an HTTP error body to the partial file.
+            offset = 0;
+            response = request(0)?;
+        }
+        if !matches!(
+            response.status(),
+            reqwest::StatusCode::OK | reqwest::StatusCode::PARTIAL_CONTENT
+        ) {
             let status = response.status();
             let body = response.text().unwrap_or_default();
             return Err(format!("镜像下载失败（HTTP {status}）：{}", body.trim()));
         }
-        write_download(response, &partial, release, &mut progress)?;
+        if response.status() == reqwest::StatusCode::OK {
+            // Servers may ignore Range. Replace the prefix rather than append.
+            offset = 0;
+        } else if !valid_content_range(&response, offset, release.size) {
+            return Err("镜像续传响应范围无效，已保留下载进度，请重试".into());
+        }
+        if response
+            .headers()
+            .get(reqwest::header::CONTENT_ENCODING)
+            .is_some_and(|value| value != "identity")
+        {
+            return Err("镜像下载响应编码无效，请重试".into());
+        }
+        write_download_at(response, &partial, release, offset, &mut progress)?;
         if destination.exists() {
             fs::remove_file(&destination).map_err(|e| e.to_string())?;
         }
         fs::rename(&partial, &destination).map_err(|e| e.to_string())?;
         Ok(destination)
-    })();
-    if result.is_err() {
-        let _ = fs::remove_file(partial);
-    }
-    result
+    })()
 }
 
 #[cfg(test)]
@@ -292,7 +378,7 @@ mod tests {
         fs::remove_dir_all(dir).unwrap();
     }
     #[test]
-    fn http_download_cleans_failures_retries_and_reuses_verified_cache() {
+    fn http_download_preserves_interrupted_progress_and_reuses_verified_cache() {
         use std::net::TcpListener;
         let dir = std::env::temp_dir().join(format!("box-image-http-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
@@ -325,13 +411,164 @@ mod tests {
             let result = download_from_url(&r, &dir, &url, |_| {});
             server.join().unwrap();
             assert_eq!(result.is_ok(), expected_ok);
-            assert!(!partial.exists());
+            if body == "imag" || status.starts_with("503") || status.starts_with("302") {
+                assert_eq!(fs::read(&partial).unwrap(), b"imag");
+            } else {
+                assert!(!partial.exists());
+            }
             if !expected_ok {
                 assert_eq!(fs::read(&destination).unwrap(), b"old");
             }
         }
         // A dead endpoint proves that retrying Docker import reuses verified bytes.
         assert!(download_from_url(&r, &dir, "http://127.0.0.1:1", |_| {}).is_ok());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    fn response_once(
+        status: &'static str,
+        headers: &'static str,
+        body: &'static str,
+    ) -> (String, std::thread::JoinHandle<String>) {
+        use std::net::TcpListener;
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let (mut socket, _) = listener.accept().unwrap();
+            socket
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+            let mut request = Vec::new();
+            let mut byte = [0];
+            while !request.ends_with(b"\r\n\r\n") {
+                socket.read_exact(&mut byte).unwrap();
+                request.push(byte[0]);
+            }
+            write!(
+                socket,
+                "HTTP/1.1 {status}\r\n{headers}\r\nConnection: close\r\n\r\n{body}"
+            )
+            .unwrap();
+            String::from_utf8(request).unwrap().to_lowercase()
+        });
+        (url, server)
+    }
+
+    #[test]
+    fn interrupted_http_download_resumes_with_range_and_hashes_the_whole_file() {
+        let dir = std::env::temp_dir().join(format!("box-image-resume-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let r = release();
+        let destination = dir.join(&r.archive);
+        let partial = destination.with_extension("part");
+        let (url, server) = response_once("200 OK", "Content-Length: 5", "im");
+        assert!(download_from_url(&r, &dir, &url, |_| {}).is_err());
+        assert!(!server.join().unwrap().contains("range:"));
+        assert_eq!(fs::read(&partial).unwrap(), b"im");
+        let (url, server) = response_once(
+            "206 Partial Content",
+            "Content-Length: 3\r\nContent-Range: bytes 2-4/5",
+            "age",
+        );
+        let mut ticks = Vec::new();
+        download_from_url(&r, &dir, &url, |bytes| ticks.push(bytes)).unwrap();
+        assert!(server.join().unwrap().contains("range: bytes=2-\r\n"));
+        assert_eq!(ticks.first(), Some(&2));
+        assert_eq!(ticks.last(), Some(&5));
+        assert_eq!(fs::read(&destination).unwrap(), b"image");
+        assert!(!partial.exists());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn range_ignored_restarts_while_invalid_range_keeps_the_prefix_and_corruption_discards_it() {
+        let dir =
+            std::env::temp_dir().join(format!("box-image-range-fallback-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let r = release();
+        let destination = dir.join(&r.archive);
+        let partial = destination.with_extension("part");
+        for (status, headers, body, ok, preserved) in [
+            (
+                "206 Partial Content",
+                "Content-Length: 3\r\nContent-Range: bytes 1-3/5",
+                "age",
+                false,
+                true,
+            ),
+            (
+                "206 Partial Content",
+                "Content-Length: 3\r\nContent-Range: bytes 2-4/5",
+                "bad",
+                false,
+                false,
+            ),
+            ("200 OK", "Content-Length: 5", "image", true, false),
+        ] {
+            fs::write(&partial, b"im").unwrap();
+            let (url, server) = response_once(status, headers, body);
+            assert_eq!(download_from_url(&r, &dir, &url, |_| {}).is_ok(), ok);
+            assert!(server.join().unwrap().contains("range: bytes=2-\r\n"));
+            assert_eq!(partial.exists(), preserved);
+            if preserved {
+                assert_eq!(fs::read(&partial).unwrap(), b"im");
+            }
+        }
+        assert_eq!(fs::read(&destination).unwrap(), b"image");
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn complete_partial_is_verified_and_promoted_without_a_network_request() {
+        let dir =
+            std::env::temp_dir().join(format!("box-image-complete-partial-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let r = release();
+        let destination = dir.join(&r.archive);
+        let partial = destination.with_extension("part");
+        fs::write(&partial, b"image").unwrap();
+        download_from_url(&r, &dir, "http://127.0.0.1:1", |_| {}).unwrap();
+        assert_eq!(fs::read(&destination).unwrap(), b"image");
+        assert!(!partial.exists());
+        fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[test]
+    fn rejected_range_falls_back_to_a_fresh_request_without_appending_error_bytes() {
+        use std::net::TcpListener;
+        let dir =
+            std::env::temp_dir().join(format!("box-image-range-rejected-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        let r = release();
+        let destination = dir.join(&r.archive);
+        fs::write(destination.with_extension("part"), b"im").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}", listener.local_addr().unwrap());
+        let server = std::thread::spawn(move || {
+            let mut requests = Vec::new();
+            for response in [
+                "HTTP/1.1 416 Range Not Satisfiable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                "HTTP/1.1 200 OK\r\nContent-Length: 5\r\nConnection: close\r\n\r\nimage",
+            ] {
+                let (mut socket, _) = listener.accept().unwrap();
+                socket.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+                let mut request = Vec::new();
+                let mut byte = [0];
+                while !request.ends_with(b"\r\n\r\n") {
+                    socket.read_exact(&mut byte).unwrap();
+                    request.push(byte[0]);
+                }
+                requests.push(String::from_utf8(request).unwrap().to_lowercase());
+                socket.write_all(response.as_bytes()).unwrap();
+            }
+            requests
+        });
+        download_from_url(&r, &dir, &url, |_| {}).unwrap();
+        let requests = server.join().unwrap();
+        assert!(requests[0].contains("range: bytes=2-\r\n"));
+        assert!(!requests[1].contains("range:"));
+        assert_eq!(fs::read(&destination).unwrap(), b"image");
+        assert!(!destination.with_extension("part").exists());
         fs::remove_dir_all(dir).unwrap();
     }
 }
