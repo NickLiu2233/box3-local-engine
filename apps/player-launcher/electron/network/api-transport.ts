@@ -9,18 +9,6 @@ const PLAYER_COOKIE_NAMES = new Set(['box_local_player_session', 'box_local_play
 const ALLOWED_METHODS = new Set(['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE'])
 const BLOCKED_REQUEST_HEADERS = new Set(['host', 'origin', 'referer', 'content-length', 'cookie'])
 
-function isLoopback(host: string): boolean {
-  const normalized = String(host || '')
-    .toLowerCase()
-    .replace(/^\[|\]$/g, '')
-  return (
-    normalized === 'localhost' ||
-    normalized.endsWith('.localhost') ||
-    normalized === '::1' ||
-    /^127(?:\.\d{1,3}){3}$/.test(normalized)
-  )
-}
-
 function normalizeEndpoint(value: string): URL {
   return new URL(normalizeServerAddress(value))
 }
@@ -82,12 +70,7 @@ function rememberAuthPortal(endpoint: string, body: string, origins: Map<string,
   try {
     const bootstrap = JSON.parse(body)
     const loginUrl = new URL(bootstrap.loginApiUrl)
-    const server = new URL(endpoint)
-    const allowedScheme =
-      loginUrl.protocol === 'https:' ||
-      (loginUrl.protocol === 'http:' &&
-        (isLoopback(loginUrl.hostname) ||
-          (server.protocol === 'http:' && server.hostname === loginUrl.hostname)))
+    const allowedScheme = ['http:', 'https:'].includes(loginUrl.protocol)
     if (
       allowedScheme &&
       loginUrl.pathname === playerLoginPath &&

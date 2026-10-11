@@ -55,6 +55,42 @@ test('HTTP player servers can use an advertised login portal on the same hostnam
   assert.equal(requests.length, 2)
 })
 
+test('advertised HTTP and HTTPS login portals do not require matching domains', async () => {
+  for (const [endpoint, loginUrl, allowed] of [
+    ['http://box-play.boxcef.top', 'http://box-login.boxcef.top/api/auth/login', true],
+    ['http://play.example.co.uk', 'http://login.example.co.uk/api/auth/login', true],
+    ['http://play.example.co.uk', 'http://login.other.co.uk/api/auth/login', true],
+    ['http://box-play.boxcef.top', 'http://login.boxcef.top.evil.com/api/auth/login', true],
+    ['http://box-play.boxcef.top', 'http://login.other.top/api/auth/login', true],
+    ['http://play.github.io', 'http://login.github.io/api/auth/login', true],
+    ['http://203.0.113.9:3121', 'http://203.0.113.10:3125/api/auth/login', true],
+    ['https://box-play.boxcef.top', 'http://box-login.boxcef.top/api/auth/login', true],
+    ['http://play.example.com', 'https://login.other.com/api/auth/login', true],
+    ['http://play.example.com', 'ftp://login.other.com/api/auth/login', false],
+    ['http://play.example.com', 'http://login.other.com/api/private', false],
+    ['http://play.example.com', 'http://user:pass@login.other.com/api/auth/login', false],
+    ['http://play.example.com', 'http://login.other.com/api/auth/login?extra=1', false],
+    ['http://play.example.com', 'http://login.other.com/api/auth/login#extra', false],
+  ] as const) {
+    const requests: string[] = []
+    const transport = createApiTransport({
+      fetchImpl: async (url) => {
+        requests.push(String(url))
+        return Response.json({ loginApiUrl: loginUrl })
+      },
+    })
+    await transport.request({
+      endpoint,
+      url: `${endpoint}/api/player-launcher/bootstrap`,
+      method: 'GET',
+    })
+    const login = transport.request({ endpoint, url: loginUrl, method: 'POST', body: '{}' })
+    if (allowed) await login
+    else await assert.rejects(login, /API 请求必须指向/)
+    assert.equal(requests.length, allowed ? 2 : 1, `${endpoint} -> ${loginUrl}`)
+  }
+})
+
 test('transport rejects non-address server identifiers before making network requests', async () => {
   let fetchCalls = 0
   const transport = createApiTransport({
