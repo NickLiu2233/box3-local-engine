@@ -186,3 +186,36 @@ mod independent_owner_tests {
         assert_eq!(network.play_bind_ip, "0.0.0.0");
     }
 }
+
+/// Other settings pages must not rewrite network fields owned by external Nginx.
+pub fn preserve_network(previous: &str, next: &str) -> Result<String, String> {
+    let before = crate::environment::parse_env(previous);
+    let after = crate::environment::parse_env(next);
+    let network_key = |key: &str| {
+        key.contains("_PUBLIC_") || key.ends_with("_NETWORK_MODE") || key.ends_with("_BASE_PATH") ||
+        ["BOX_PUBLIC_ADDRESS", "BOX_PUBLIC_SCHEME", "BOX_CREATOR_HOST", "BOX_BIND_IP", "BOX_CREATOR_BIND_IP", "BOX_VOXA_BIND_IP", "BOX_PLAYER_LOGIN_URL", "BOX_PLAYER_LOGIN_URL_OVERRIDE", "BOX_PLAY_PORT", "BOX_CREATOR_PORT", "BOX_VOXA_PORT", "BOX_AUTH_PORTAL_PORT", "BOX_PLAYER_SERVICE_PORT"].contains(&key)
+    };
+    let mut output = next.to_string();
+    for key in before.keys().chain(after.keys()).filter(|key| network_key(key)) {
+        crate::environment::remove_env(&mut output,key);
+        if let Some(value) = before.get(key) { set_env(&mut output,key,value)?; }
+    }
+    Ok(output)
+}
+
+#[cfg(test)]
+mod external_network_tests {
+    #[test]
+    fn unrelated_save_preserves_operator_network_and_changes_database() {
+        let before = "BOX_PLAY_NETWORK_MODE=public\nBOX_PLAY_PUBLIC_ADDRESS_OVERRIDE=https://example.test/play\nBOX_BIND_IP=127.0.0.1\nBOX_PLAY_PORT=4121\nBOX_DATABASE_NAME=old\n";
+        let after = "BOX_PLAY_NETWORK_MODE=local\nBOX_PLAY_PUBLIC_ADDRESS_OVERRIDE=http://127.0.0.1\nBOX_PLAY_PORT=3121\nBOX_PUBLIC_ADDRESS=stale.test\nBOX_DATABASE_NAME=new\n";
+        let result=super::preserve_network(before,after).unwrap();
+        let values=crate::environment::parse_env(&result);
+        assert_eq!(values["BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE"],"https://example.test/play");
+        assert_eq!(values["BOX_PLAY_NETWORK_MODE"],"public");
+        assert_eq!(values["BOX_BIND_IP"],"127.0.0.1");
+        assert_eq!(values["BOX_PLAY_PORT"],"4121");
+        assert_eq!(values["BOX_DATABASE_NAME"],"new");
+        assert!(!values.contains_key("BOX_PUBLIC_ADDRESS"));
+    }
+}

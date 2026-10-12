@@ -38,14 +38,14 @@ export function publicCertificateFlags(config = state.config || {}) {
   for (const [service] of publicServices) {
     const files = state.sslFiles?.[service]
     flags[service] = Boolean(
-      (files?.certificate && files?.privateKey) ||
+      (files?.certificate && files?.privateKey) || (files?.inputMode === 'path' && files?.certificatePath && files?.privateKeyPath) ||
         saved?.certificateExpiries?.[service] ||
         (legacyShared && saved?.settings?.routes?.some((route) => route.service === service)) ||
         flags[service],
     )
   }
   flags.shared = Boolean(
-    (state.sslFiles?.shared?.certificate && state.sslFiles?.shared?.privateKey) ||
+    (state.sslFiles?.shared?.certificate && state.sslFiles?.shared?.privateKey) || (state.sslFiles?.shared?.inputMode === 'path' && state.sslFiles.shared.certificatePath && state.sslFiles.shared.privateKeyPath) ||
       legacyShared ||
       Object.entries(saved?.certificateSources || {}).some(
         ([service, source]) => source === 'shared' && saved.certificateExpiries?.[service],

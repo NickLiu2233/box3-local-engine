@@ -232,6 +232,8 @@ impl Default for InstallConfigView {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct InstallConfigInput {
+    #[serde(default)]
+    external_nginx_manual: bool,
     #[serde(default = "default_database_mode")]
     database_mode: String,
     #[serde(default)]
@@ -1371,6 +1373,7 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
         &config.creator_network_mode,
         detect_lan_ip().as_deref(),
     )?;
+    if config.external_nginx_manual {content = box_manager_core::access_settings::preserve_network(&source,&content)?;}
     write_private_file(&existing_file, content, "部署配置")?;
     generate_runtime_environment(app)?;
     Ok(())
@@ -3888,6 +3891,7 @@ mod tests {
 
     fn test_install_config() -> InstallConfigInput {
         InstallConfigInput {
+            external_nginx_manual: false,
             database_mode: default_database_mode(),
             database_host: String::new(),
             database_port: default_database_port(),
@@ -4332,6 +4336,14 @@ pub fn run() {
             if let Some(window) = app.get_webview_window("main") {
                 window.set_title(&format!("BOX3 Engine Launcher v{ROOT_VERSION}"))?;
             }
+            let handle=app.handle().clone();
+            std::thread::spawn(move || loop {
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                let Ok(root)=runtime_root(&handle) else {continue};
+                if !root.join("https/certificate-paths.json").exists() {continue;}
+                let environment=fs::read_to_string(root.join(".env")).unwrap_or_default();
+                let _=box_manager_core::ssl::refresh_certificate_paths(&root,&root,"box-local-engine-desktop_default",&environment,&mut |args| docker_output(&args.iter().map(String::as_str).collect::<Vec<_>>()));
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -4341,6 +4353,7 @@ pub fn run() {
             ssl_commands::apply_ssl_config,
             ssl_commands::delete_ssl_certificate,
             ssl_commands::stop_ssl_proxy,
+            ssl_commands::reload_ssl_proxy,
             ssl_commands::verify_ssl_endpoint,
             ssl_commands::export_ssl_configuration,
             get_install_config,

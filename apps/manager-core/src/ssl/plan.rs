@@ -23,6 +23,7 @@ fn controller_owned(root: &Path, settings: &Settings) -> bool {
 }
 /// Keep host HTTP bindings out of the ports owned by Nginx. No application is started here.
 pub fn compose_source(root: &Path, source: &str) -> Result<String, String> {
+    if fs::read_to_string(root.join("https/provider")).is_ok_and(|value|value.trim()=="external-manual") {return Ok(source.into());}
     let Some(settings) = routing_settings(root)?.or(draft_settings(root)?) else {
         return Ok(source.into());
     };

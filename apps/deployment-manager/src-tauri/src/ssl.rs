@@ -129,3 +129,13 @@ pub async fn set_nginx_provider(app: AppHandle, mode: String) -> Result<(), Stri
     .await
     .map_err(|e| e.to_string())?
 }
+
+#[tauri::command]
+pub async fn reload_ssl_proxy(app: AppHandle) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let _lock = box_manager_core::operation::mutation_guard()?;
+        let root = runtime_root(&app)?;
+        let environment = std::fs::read_to_string(env_path(&app)?).map_err(|error| error.to_string())?;
+        ssl::reload(&root, &root, "box-local-engine-desktop_default", &environment, &mut docker)
+    }).await.map_err(|error| error.to_string())?
+}

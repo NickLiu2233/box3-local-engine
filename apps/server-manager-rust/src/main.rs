@@ -271,6 +271,15 @@ async fn main() {
             .map(PathBuf::from)
             .unwrap_or_else(|_| root_path.join(".env")),
     });
+    let certificate_app=app.clone();
+    std::thread::spawn(move || loop {
+        std::thread::sleep(std::time::Duration::from_secs(5));
+        let root=&certificate_app.root;
+        if !root.join("https/certificate-paths.json").exists() {continue;}
+        let Ok(host_root)=host_project_root(&certificate_app) else {continue};
+        let environment=fs::read_to_string(&certificate_app.environment_file).unwrap_or_default();
+        let _=box_manager_core::ssl::refresh_certificate_paths(root,&host_root,"box-local-engine_default",&environment,&mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()));
+    });
     let router = Router::new()
         .route("/", get(index))
         .route("/api/health", get(health))

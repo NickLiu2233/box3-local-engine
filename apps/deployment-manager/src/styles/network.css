@@ -260,3 +260,11 @@
 .network-access-card .access-choice {
   flex-wrap: wrap;
 }
+
+.config-group pre {
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 16px;
+  border-radius: 8px;
+  background: var(--surface-raised, #222);
+}

@@ -68,6 +68,7 @@ pub(crate) async fn command(
                     else {transition.apply(&mut |args|docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),&mut |args|compose(&app,&args.iter().map(String::as_str).collect::<Vec<_>>()))}
                 })
             }
+            "reload_ssl_proxy" => box_manager_core::ssl::reload(&app.root, &host_project_root(&app)?, "box-local-engine_default", &fs::read_to_string(env_path(&app)).map_err(|error|error.to_string())?, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
             "stop_ssl_proxy" => box_manager_core::ssl::stop(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
             "delete_ssl_certificate" => box_manager_core::ssl::delete_certificate(&app.root, &host_project_root(&app)?, "box-local-engine_default", &fs::read_to_string(env_path(&app)).map_err(|error|error.to_string())?, req.body.get("service").and_then(Value::as_str).ok_or("证书服务缺失")?, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),
             "verify_ssl_endpoint" => box_manager_core::ssl::verify_endpoint(&app.root, &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>())),

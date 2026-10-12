@@ -1188,6 +1188,9 @@ pub(crate) fn configuration_document_for_save(
         }
     }
     source = box_manager_core::public_access::save_document(&source, config)?;
+    if config.get("externalNginxManual").and_then(Value::as_bool)==Some(true) {
+        return box_manager_core::access_settings::preserve_network(content,&source);
+    }
     Ok(box_manager_core::access_settings::independent_owner(&source))
 }
 

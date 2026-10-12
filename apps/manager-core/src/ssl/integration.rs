@@ -23,7 +23,8 @@ fn run(program: &str, args: &[&str]) -> String {
 }
 fn play_response(args: &[&str]) -> serde_json::Value {
     let mut last = String::new();
-    for _ in 0..30 {
+    // Docker port publication and graceful reload can complete after command exit.
+    for _ in 0..100 {
         let output = Command::new("curl").args(args).output().unwrap();
         if output.status.success() {
             if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
@@ -56,6 +57,16 @@ fn run_cleanup(args: &[&str]) -> Result<String, String> {
 #[test]
 #[ignore = "requires Docker, OpenSSL, curl and a locally built Creator image"]
 fn real_nginx_https_wss_import_and_rollback() {
+    nginx_acceptance(true);
+}
+
+#[test]
+#[ignore = "requires Docker, OpenSSL, curl and a locally built Creator image"]
+fn real_nginx_certificate_path_renewal() {
+    nginx_acceptance(false);
+}
+
+fn nginx_acceptance(switch_protocols: bool) {
     let root = std::env::temp_dir().join(format!("box-ssl-live-{}", std::process::id()));
     fs::create_dir(&root).unwrap();
     let network = format!("box-ssl-live-{}", std::process::id());
@@ -130,7 +141,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "",
         Import {
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
         external_local: false,
             settings: settings.clone(),
             certificate: certificate.clone(),
@@ -185,6 +196,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &["exec", &cleanup.upstream, "node", "-e", &client]
     )
     .contains("WSS echo verified"));
+    if switch_protocols {
     // Reconfigure the real listener repeatedly between a domain and an IP SAN.
     for host in ["203.0.113.10", "play.example.com", "203.0.113.10", "play.example.com"] {
         let mut switched = settings.clone();
@@ -195,7 +207,7 @@ fn real_nginx_https_wss_import_and_rollback() {
             certificate: certificate.clone(),
             private_key: key.clone(),
             certificates: Default::default(),
-            delete_services: Vec::new(),
+            certificate_paths: Default::default(), delete_services: Vec::new(),
         }, &mut docker).unwrap();
         if host == "203.0.113.10" {
             let data = play_response(&[
@@ -225,7 +237,7 @@ fn real_nginx_https_wss_import_and_rollback() {
             certificate: String::new(),
             private_key: String::new(),
             certificates: Default::default(),
-            delete_services: Vec::new(),
+            certificate_paths: Default::default(), delete_services: Vec::new(),
         }, &mut docker).unwrap();
         let data = play_response(&["--noproxy", "*", "--max-time", "1", "-fsS", "--connect-to", &format!("{host}:{port}:127.0.0.1:{port}"), &format!("http://{host}:{port}/")]);
         assert_eq!(data["proto"], "http");
@@ -238,9 +250,10 @@ fn real_nginx_https_wss_import_and_rollback() {
         certificate: certificate.clone(),
         private_key: key.clone(),
         certificates: Default::default(),
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
     }, &mut docker).unwrap();
     check_http();
+    }
     // Nginx must reject a private key mismatch before touching the active config.
     let old = fs::read_to_string(root.join("https/nginx.conf")).unwrap();
     assert!(apply(
@@ -249,7 +262,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "",
         Import {
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
         external_local: false,
             settings: settings.clone(),
             certificate: certificate.clone(),
@@ -271,7 +284,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "",
         Import {
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
         external_local: false,
             settings: settings.clone(),
             certificate: String::new(),
@@ -291,6 +304,36 @@ fn real_nginx_https_wss_import_and_rollback() {
     )
     .unwrap();
     check_http();
+    // Operator renews path files; periodic content checking adopts valid pairs.
+    let path_settings = settings.clone();
+    fs::write(root.join("renew.pem"), &certificate).unwrap();
+    fs::write(root.join("renew.key"), &key).unwrap();
+    #[cfg(unix)] std::os::unix::fs::symlink(root.join("renew.pem"),root.join("live.pem")).unwrap();
+    #[cfg(not(unix))] fs::copy(root.join("renew.pem"),root.join("live.pem")).unwrap();
+    let pairs = ["play", "creator"].into_iter().map(|service| (service.into(), CertificatePath {
+        certificate_path: root.join("live.pem").to_string_lossy().into(),
+        private_key_path: root.join("renew.key").to_string_lossy().into(),
+        source: "shared".into(),
+    })).collect();
+    apply(&root, &root, &network, "", Import { settings: path_settings, external_local:false, certificate:String::new(),private_key:String::new(),certificates:Default::default(),certificate_paths:pairs,delete_services:Vec::new() }, &mut docker).unwrap();
+    check_http();
+    let before = fs::read_to_string(root.join("https/settings.json")).unwrap();
+    run("openssl", &["req", "-x509", "-newkey", "rsa:2048", "-nodes", "-days", "2", "-config", root.join("openssl.cnf").to_str().unwrap(), "-keyout", root.join("next.key").to_str().unwrap(), "-out", root.join("renew.pem").to_str().unwrap()]);
+    // Certificate and key may be replaced separately by a renewal tool.
+    assert!(refresh_certificate_paths(&root,&root,&network,"",&mut docker).is_err());
+    assert_eq!(fs::read_to_string(root.join("https/settings.json")).unwrap(),before);
+    check_http();
+    fs::copy(root.join("next.key"),root.join("renew.key")).unwrap();
+    assert!(refresh_certificate_paths(&root,&root,&network,"",&mut docker).unwrap());
+    assert!(!refresh_certificate_paths(&root,&root,&network,"",&mut docker).unwrap());
+    reload(&root,&root,&network,"",&mut docker).unwrap();
+    assert_ne!(fs::read_to_string(root.join("https/settings.json")).unwrap(),before);
+    let data = play_response(&["--noproxy", "*", "-fsS", "--cacert",root.join("renew.pem").to_str().unwrap(),"--resolve",&format!("play.example.com:{port}:127.0.0.1"),&format!("https://play.example.com:{port}/")]);
+    assert_eq!(data["proto"],"https");
+    // Return to uploaded material; path references must be removed.
+    apply(&root,&root,&network,"",Import {settings:settings.clone(),external_local:false,certificate:certificate.clone(),private_key:key.clone(),certificates:Default::default(),certificate_paths:Default::default(),delete_services:Vec::new()},&mut docker).unwrap();
+    assert_eq!(status(&root,&mut docker).unwrap()["certificatePaths"],serde_json::json!({}));
+    check_http();
     let deleted = delete_certificate(&root, &root, &network, "", "creator", &mut docker).unwrap();
     assert_eq!(deleted["config"]["settings"]["routes"].as_array().unwrap().len(), 1);
     check_http();
@@ -306,7 +349,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         &network,
         "BOX_PLAY_PORT=4121",
         Import {
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
         external_local: false,
             settings,
             certificate,

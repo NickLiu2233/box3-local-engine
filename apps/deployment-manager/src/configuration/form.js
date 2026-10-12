@@ -56,7 +56,7 @@ export function captureSetupForm() {
       next[key] = state.config[key]
     }
   }
-  for (const key of Object.keys(next)) if (key.startsWith('publicPath-')) delete next[key]
+  for (const key of Object.keys(next)) if (key.startsWith('publicPath-') || key.startsWith('ssl-cert-path-') || key.startsWith('ssl-key-path-')) delete next[key]
   state.config = normalizeInactiveServicePorts(next)
   state.config.authPortalImage = normalizeAuthPortalImage(state.config.authPortalImage)
 }

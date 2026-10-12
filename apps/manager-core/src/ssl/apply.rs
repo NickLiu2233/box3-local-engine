@@ -72,6 +72,7 @@ pub(super) fn execute(
     if input.settings.mode == "external" && root != host_root {
         input.external_local = false;
     }
+    let path_records = super::path_certificates::prepare(root,host_root,&mut input)?;
     validate(&mut input)?;
     let directory = root.join("https");
     fs::create_dir_all(directory.join("revisions")).map_err(|error| error.to_string())?;
@@ -394,6 +395,7 @@ pub(super) fn execute(
         if pending.exists() {
             fs::remove_file(&pending).map_err(|error| error.to_string())?;
         }
+        super::path_certificates::commit(root,&path_records)?;
         Ok(
             json!({"config":saved,"running":input.settings.mode=="managed" && !input.settings.routes.is_empty(),"externalLocalApplied":local_transaction.is_some(),"sslWarning":if pending_local {"公网配置和证书已保存；需要安装并启动本机 Nginx 后再次保存，入口尚未生效。"}else if input.settings.mode == "external" && !input.external_local && !input.settings.routes.is_empty() {"公网配置已生成，请在宿主机 Nginx 中导入配置、检查并重载后验证访问。"} else{""},"daysRemaining":null}),
         )

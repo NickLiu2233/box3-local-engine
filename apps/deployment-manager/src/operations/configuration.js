@@ -16,7 +16,7 @@ import {
   persistNginxSelection,
   validateSslRoutes,
 } from './ssl.js'
-import { sslRoutes } from '../configuration/ssl.js'
+import { nginxMode, sslRoutes } from '../configuration/ssl.js'
 import {
   publicEndpoints,
   publicServices,
@@ -125,10 +125,10 @@ export async function saveConfiguration(event) {
     ]),
   )
   config.publicSslConfigured = publicCertificateFlags(config)
-  for (const key of Object.keys(config)) if (key.startsWith('publicPath-')) delete config[key]
+  for (const key of Object.keys(config)) if (key.startsWith('publicPath-') || key.startsWith('ssl-cert-path-') || key.startsWith('ssl-key-path-')) delete config[key]
   let primaryAddress = '127.0.0.1'
   try {
-    primaryAddress = publicEndpoints(config)[0]?.url || primaryAddress
+    if (nginxMode() !== 'external') primaryAddress = publicEndpoints(config)[0]?.url || primaryAddress
   } catch (error) {
     state.error = String(error)
     render()
@@ -151,6 +151,10 @@ export async function saveConfiguration(event) {
       Boolean(config.permissionTokenSecret) || state.config?.hasPermissionTokenSecret,
     hasPlayerAuthApiKey: Boolean(config.playerAuthApiKey) || state.config?.hasPlayerAuthApiKey,
     hasPlayAdminToken: Boolean(config.playAdminToken) || state.config?.hasPlayAdminToken,
+  }
+  config.externalNginxManual = nginxMode() === 'external'
+  if (config.externalNginxManual) {
+    for (const key of ['publicAddress','publicHost','creatorHost','playNetworkMode','creatorNetworkMode','publicAddressMode','sharedPublicAddress','publicServicePaths','independentPublicAddresses','publicSslConfigured','playPort','creatorPort','voxaPort','playerServicePort','authPortalPort',...publicServices.map(([, , field])=>field)]) delete config[key]
   }
   await persistConfiguration(config)
 }

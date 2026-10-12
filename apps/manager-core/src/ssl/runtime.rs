@@ -130,6 +130,25 @@ pub fn apply_runtime_urls(
         );
     }
     derived.insert("BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(), "{}".into());
+    if fs::read_to_string(root.join("https/provider")).is_ok_and(|value|value.trim()=="external-manual") {
+        let mut peers: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for (service, _, _, _, _) in SERVICES {
+            let prefix = SERVICES.iter().find(|entry|entry.0==service).unwrap().3.trim_end_matches("_PORT");
+            let Some(url) = derived.get(&format!("{prefix}_PUBLIC_URL")) else {continue};
+            let (host,port,secure,path) = crate::configuration_migration::public_url_parts(url,"公开地址")?;
+            let path = crate::public_access::prefix(&path)?;
+            let origin = format!("{}://{}{}",if secure {"https"} else {"http"},crate::configuration::origin_host(&host)?,if port == if secure {443} else {80} {String::new()} else {format!(":{port}")});
+            derived.insert(format!("{prefix}_BASE_PATH"),path.clone());
+            if !path.is_empty() {peers.entry(origin).or_default().push(path);}
+        }
+        for key in ["BOX_BIND_IP","BOX_CREATOR_BIND_IP","BOX_VOXA_BIND_IP"] {
+            let address = values.get(key).map(String::as_str).unwrap_or("127.0.0.1");
+            address.parse::<std::net::IpAddr>().map_err(|_|format!("{key} 必须是监听 IP"))?;
+            derived.insert(key.into(),address.into());
+        }
+        derived.insert("BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(),serde_json::to_string(&peers).map_err(|error|error.to_string())?);
+        return Ok(());
+    }
     let Some(settings) = super::plan::routing_settings(root)? else {
         return Ok(());
     };
@@ -188,7 +207,7 @@ pub fn apply_runtime_urls(
     Ok(())
 }
 pub fn set_provider(root: &Path, mode: &str) -> Result<(), String> {
-    if !matches!(mode, "managed" | "external" | "disabled") {
+    if !matches!(mode, "managed" | "external" | "external-manual" | "disabled") {
         return Err("Nginx 来源无效".into());
     }
     fs::create_dir_all(root.join("https")).map_err(|e| e.to_string())?;
@@ -198,7 +217,7 @@ pub fn set_provider(root: &Path, mode: &str) -> Result<(), String> {
 pub(super) fn provider(root: &Path, saved_mode: Option<&str>) -> &'static str {
     let selected = fs::read_to_string(root.join("https/provider")).ok();
     match selected.as_deref().map(str::trim).or(saved_mode) {
-        Some("external") => "external",
+        Some("external" | "external-manual") => "external",
         _ => "managed",
     }
 }
@@ -227,7 +246,7 @@ pub fn status(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
                 .find_map(|entry| entry.strip_prefix("NGINX_VERSION=").map(str::to_owned))
         });
     Ok(
-        json!({"config":config,"running":running,"daysRemaining":days,"provider":provider,"imageAvailable":image_available,"imageVersion":image_version,"externalNginx":super::local::status()}),
+        json!({"config":config,"running":running,"daysRemaining":days,"provider":provider,"imageAvailable":image_available,"imageVersion":image_version,"certificatePaths":super::path_certificates::status(root)["paths"],"certificatePathError":super::path_certificates::status(root)["error"],"externalNginx":super::local::status(),"externalManual":fs::read_to_string(root.join("https/provider")).is_ok_and(|value|value.trim()=="external-manual")}),
     )
 }
 pub(super) fn openssl_command() -> std::process::Command {

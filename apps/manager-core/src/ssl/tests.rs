@@ -59,7 +59,7 @@ fn missing_nginx_image_downloads_the_same_registry_mirror_as_redis() {
 }
 fn input() -> Import {
     Import {
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
         external_local: false,
         settings: Settings {upstream_ports:Default::default(),
             mode: "managed".into(),
@@ -293,7 +293,7 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
         .contains("PRIVATE KEY"));
     let deferred = runtime::apply_with_local(
         &root, &root, "unused", "",
-        Import {delete_services:Vec::new(), settings: settings.clone(), external_local: true, certificate: String::new(), private_key: String::new(), certificates: Default::default() },
+        Import {certificate_paths: Default::default(), delete_services:Vec::new(), settings: settings.clone(), external_local: true, certificate: String::new(), private_key: String::new(), certificates: Default::default() },
         &mut unavailable, &mut |_, _| Ok(None),
     ).unwrap();
     assert_eq!(deferred["config"]["pendingLocal"], true);
@@ -309,7 +309,7 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
         "unused",
         "",
         Import {
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
         external_local: false,
             settings,
             certificate: String::new(),
@@ -321,7 +321,7 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
     .unwrap();
     let metadata = fs::read_to_string(root.join("https/settings.json")).unwrap();
     let mut bad = Import {
-        delete_services: Vec::new(),
+        certificate_paths: Default::default(), delete_services: Vec::new(),
         external_local: false,
         settings: Settings {upstream_ports:Default::default(),
             mode: "external".into(),
@@ -509,7 +509,7 @@ fn same_public_port_with_a_changed_internal_listener_recreates_the_proxy() {
     }).unwrap();
     assert!(calls.iter().any(|args| args.starts_with(&["rm".into(),"-f".into()])));
     assert!(calls.iter().any(|args| args.starts_with(&["run".into(),"-d".into()]) && args.windows(2).any(|pair| pair == ["-p","8443:8443"])));
-    assert!(!calls.iter().any(|args| args.iter().any(|arg| arg == "reload")));
+    assert!(calls.iter().any(|args| args.iter().any(|arg| arg == "reload")));
     std::fs::remove_dir_all(root).unwrap();
 }
 
@@ -523,4 +523,22 @@ fn an_explicit_path_capable_image_does_not_require_a_default_image_tag() {
         assert_eq!(args.last().unwrap(),"box-local-engine-player-auth-portal:0.3.0");
         Ok(r#"{"box.routing.base-path":"runtime-v1"}"#.into())
     }).unwrap();
+}
+
+#[test]
+fn external_manual_preserves_public_urls_and_owner_port_bindings() {
+    let root=fixture_root();
+    std::fs::create_dir_all(root.join("https")).unwrap();
+    set_provider(&root,"external-manual").unwrap();
+    let values=[("BOX_BIND_IP","192.168.1.2")].into_iter().map(|(key,value)|(key.into(),value.into())).collect();
+    let mut derived=[("BOX_PLAY_PUBLIC_URL","https://example.test/play"),("BOX_AUTH_PORTAL_PUBLIC_URL","https://example.test/accounts")].into_iter().map(|(key,value)|(key.into(),value.into())).collect();
+    apply_runtime_urls(&root,&values,&mut derived).unwrap();
+    assert_eq!(derived["BOX_PLAY_PUBLIC_URL"],"https://example.test/play");
+    assert_eq!(derived["BOX_PLAY_BASE_PATH"],"/play");
+    assert_eq!(derived["BOX_AUTH_PORTAL_BASE_PATH"],"/accounts");
+    assert_eq!(derived["BOX_BIND_IP"],"192.168.1.2");
+    assert_eq!(derived["BOX_CREATOR_BIND_IP"],"127.0.0.1");
+    let source="services:\n  play:\n    ports:\n      - '4121:3000'\n";
+    assert_eq!(compose_source(&root,source).unwrap(),source);
+    std::fs::remove_dir_all(root).unwrap();
 }

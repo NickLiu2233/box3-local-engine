@@ -11,6 +11,8 @@ import { isWebManager } from '../../infrastructure/transport.js'
 import { progressPanel } from '../../ui/shell.js'
 import { state } from '../../core/state.js'
 import { authPortalImageSetting } from './auth-portal.js'
+import { externalNginxGuide } from './external-nginx.js'
+import { nginxMode } from '../../configuration/ssl.js'
 import { nginxSetting, sslCertificateSetting } from './ssl.js'
 
 export function setup() {
@@ -147,6 +149,7 @@ export function setup() {
           ])}
         </section>
         <section class="setup-panel ${state.setupSection === 'network' ? 'active' : ''}" data-setup-panel="network">
+          ${nginxMode() === 'external' ? externalNginxGuide() : `
           <div class="network-layout">
             <section class="network-service-card network-access-card">
               <div class="network-card-heading"><h2>访问范围</h2></div>
@@ -203,7 +206,8 @@ export function setup() {
               '保存与生效',
               '共用地址模式在卡片底部显示最终访问地址。缺少 Nginx 时可保存配置，安装并启动后再次保存，公网入口才会生效。',
             ],
-          ])}</section>
+          ])}          `}
+        </section>
         <section class="setup-panel ${state.setupSection === 'capacity' ? 'active' : ''}" data-setup-panel="capacity">
           <div class="config-group"><div class="group-title"><div><h2>实例容量</h2></div></div><div class="form-grid">${input('playRuntimes', '游玩运行时', config.playRuntimes || 8, 'number', '至少 1', false, { min: 1 })}${input('playerLimit', '单实例玩家上限', config.playerLimit || 70, 'number', '1–1000', false, { min: 1, max: 1000 })}${input('creatorEditRuntimes', '编辑运行时', config.creatorEditRuntimes || 6, 'number', '至少 1', false, { min: 1 })}${input('creatorPlayRuntimes', '创作预览', config.creatorPlayRuntimes || 4, 'number', '至少 1', false, { min: 1 })}</div></div>
           <div class="config-group"><div class="group-title"><div><h2>预热策略</h2></div></div><div class="form-grid">${input('playPrewarmRuntimes', 'Play 预热', config.playPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}${input('creatorEditPrewarmRuntimes', '编辑预热', config.creatorEditPrewarmRuntimes ?? 0, 'number', '0 表示按需启动', false, { min: 0 })}</div></div>

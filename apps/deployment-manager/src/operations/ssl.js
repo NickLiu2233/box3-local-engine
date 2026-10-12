@@ -11,6 +11,20 @@ export function captureSslDraft() {
   const mode = document.querySelector('#ssl-mode')
   if (mode) state.sslDraft.mode = mode.value
 }
+export function chooseCertificateInput(service, inputMode) {
+  if (!['upload','path'].includes(inputMode)) return
+  captureSetupForm()
+  state.sslFiles ||= {}
+  state.sslFiles[service] = {...state.sslFiles[service],inputMode}
+  render()
+}
+
+export function setCertificatePath(service, kind, value) {
+  state.sslFiles ||= {}
+  state.sslFiles[service] ||= {inputMode:'path'}
+  state.sslFiles[service][kind] = value.trim()
+}
+
 export async function selectSslFile(kind, file, service) {
   if (!file) return
   const limit = kind === 'certificate' ? 256 * 1024 : 64 * 1024
@@ -109,15 +123,15 @@ export function chooseNginx(mode) {
   if (mode === 'external') return refreshSsl()
 }
 export async function persistNginxSelection() {
-  if (!state.nginxSelectionDirty) return
+  if (!state.nginxSelectionDirty && !(nginxMode() === 'external' && !state.sslStatus?.externalManual)) return
   const mode = nginxMode()
-  if (mode !== state.sslStatus?.provider) {
+  if (mode !== state.sslStatus?.provider || (mode === 'external' && !state.sslStatus?.externalManual)) {
     if (state.sslStatus?.running && mode === 'external') {
       if (!window.confirm('保存外部 Nginx 配置将停止内置 HTTPS 入口，是否继续？'))
         throw new Error('Nginx 切换未保存，内置入口继续运行')
       await invoke('stop_ssl_proxy')
     }
-    await invoke('set_nginx_provider', { mode })
+    await invoke('set_nginx_provider', { mode: mode === 'external' ? 'external-manual' : mode })
     await refreshSsl()
   }
   state.nginxSelectionDirty = false
@@ -150,7 +164,15 @@ export function enableNginx() {
     state.notice = '内置 Nginx 已启用并启动，HTTPS 配置已应用。'
   })
 }
+export function reloadNginx() {
+  return task(async () => {
+    state.sslStatus = await invoke('reload_ssl_proxy')
+    await refreshSsl()
+    state.notice = '内置 Nginx 已重载，证书已重新读取并通过校验。'
+  })
+}
 export function shouldApplySsl() {
+  if (nginxMode() === 'external') return false
   if (state.setupSection !== 'network' && !state.nginxSelectionDirty) return false
   const active = (state.sslStatus?.config?.settings?.routes || []).length > 0
   if (!isPublicMode(state.accessMode || state.config?.playNetworkMode)) return active
@@ -178,9 +200,19 @@ export async function applyCertificateConfiguration() {
   const routes = isPublicMode(state.accessMode || state.config?.playNetworkMode) ? sslRoutes() : []
   validateSslRoutes(routes)
   const certificates = {}
+  const certificatePaths = {}
   for (const route of routes) {
     const local = state.sslFiles?.[route.service]
     const files = state.config?.publicAddressMode === 'shared' ? state.sslFiles?.shared : local
+    const records = state.sslStatus?.certificatePaths || {}
+    const savedPair = state.config?.publicAddressMode === 'shared' ? Object.values(records).find(pair=>pair.source==='shared') : records[route.service]
+    if (files?.inputMode === 'path' || (!files?.inputMode && savedPair)) {
+      const certificatePath = files?.certificatePath ?? savedPair?.certificatePath
+      const privateKeyPath = files?.privateKeyPath ?? savedPair?.privateKeyPath
+      if (!certificatePath || !privateKeyPath) throw new Error('请同时填写证书和私钥绝对路径')
+      certificatePaths[route.service] = {certificatePath,privateKeyPath,source:state.config?.publicAddressMode==='shared' ? 'shared' : 'independent'}
+      continue
+    }
     if (!files?.certificate && !files?.privateKey) continue
     if (!files.certificate || !files.privateKey)
       throw new Error('请为选定证书同时选择完整证书链和私钥')
@@ -195,6 +227,7 @@ export async function applyCertificateConfiguration() {
       settings: { mode, httpsPort: 443, routes },
       externalLocal: mode === 'external' && !isWebManager(),
       certificates,
+      certificatePaths,
     },
   })
   state.sslFiles = {}

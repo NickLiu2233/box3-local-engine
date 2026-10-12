@@ -12,6 +12,7 @@ pub fn mutates_runtime(command: &str) -> bool {
         command,
         "save_raw_environment"
             | "apply_ssl_config"
+            | "reload_ssl_proxy"
             | "delete_ssl_certificate"
             | "install_nginx_image"
             | "set_nginx_provider"

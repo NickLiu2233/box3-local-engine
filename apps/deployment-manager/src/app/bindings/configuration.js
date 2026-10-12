@@ -20,10 +20,13 @@ import {
   captureSslDraft,
   refreshSsl,
   selectSslFile,
+  chooseCertificateInput,
+  setCertificatePath,
   stopSsl,
   chooseNginx,
   downloadNginx,
   enableNginx,
+  reloadNginx,
   deleteSslCertificate,
 } from '../../operations/ssl.js'
 
@@ -36,9 +39,13 @@ export function bindConfigurationEvents() {
     ['ssl-apply-network', applySsl],
     ['nginx-download', downloadNginx],
     ['nginx-enable', enableNginx],
+    ['nginx-reload', reloadNginx],
   ]) {
     document.querySelector(`#${id}`)?.addEventListener('click', handler)
   }
+  document.querySelectorAll('[data-ssl-input-mode]').forEach(node=>node.addEventListener('click',()=>chooseCertificateInput(node.dataset.sslInputService,node.dataset.sslInputMode)))
+  document.querySelectorAll('[data-ssl-cert-path]').forEach(node=>node.addEventListener('input',()=>setCertificatePath(node.dataset.sslCertPath,'certificatePath',node.value)))
+  document.querySelectorAll('[data-ssl-key-path]').forEach(node=>node.addEventListener('input',()=>setCertificatePath(node.dataset.sslKeyPath,'privateKeyPath',node.value)))
   document.querySelectorAll('[data-ssl-kind]').forEach((node) =>
     node.addEventListener('change', async (event) => {
       const valid = await selectSslFile(

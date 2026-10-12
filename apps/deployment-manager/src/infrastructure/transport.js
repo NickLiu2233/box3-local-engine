@@ -66,6 +66,7 @@ const PROGRESS_COMMANDS = new Set([
   'start_managed_service',
   'save_configuration_command',
   'apply_ssl_config',
+  'reload_ssl_proxy',
   'install_nginx_image',
   'set_nginx_provider',
   'stop_ssl_proxy',

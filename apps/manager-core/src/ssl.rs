@@ -4,6 +4,8 @@ mod local;
 mod plan;
 mod apply;
 mod certificates;
+mod path_certificates;
+pub use path_certificates::{reload,refresh_certificate_paths};
 mod proxy;
 pub use runtime::{apply, install_image, install_image_with_progress, set_provider, status, stop, verify_endpoint};
 pub use runtime::{apply_runtime_urls,apply_with_transition,apply_with_transition_progress};
@@ -69,6 +71,8 @@ pub struct Settings {
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Import {
+    #[serde(default)]
+    pub certificate_paths: BTreeMap<String, CertificatePath>,
     pub settings: Settings,
     #[serde(default)]
     pub external_local: bool,
@@ -93,6 +97,15 @@ pub struct Certificate {
     pub source: String,
     pub certificate: String,
     pub private_key: String,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct CertificatePath {
+    pub certificate_path: String,
+    pub private_key_path: String,
+    #[serde(default = "independent_certificate")]
+    pub source: String,
 }
 
 #[derive(Clone, Serialize, Deserialize)]

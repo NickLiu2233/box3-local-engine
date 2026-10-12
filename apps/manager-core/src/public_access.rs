@@ -132,7 +132,7 @@ pub fn certificate_flags(root: &std::path::Path) -> BTreeMap<String, bool> {
 }
 /// Prepare the adapter's existing fields without losing inactive independent drafts.
 pub fn prepare(config: &Map<String, Value>) -> Result<Map<String, Value>, String> {
-    if !config.contains_key("publicAddressMode") {
+    if config.get("externalNginxManual").and_then(Value::as_bool) == Some(true) || !config.contains_key("publicAddressMode") {
         return Ok(config.clone());
     }
     let mode = string(config, "publicAddressMode");

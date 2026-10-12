@@ -18,11 +18,11 @@ import { getServiceUrl } from ${JSON.stringify(path.join(src, 'configuration/add
 import { copyOwnerSecret } from ${JSON.stringify(path.join(src, 'operations/owner-secrets.js'))}
 import { saveConfiguration } from ${JSON.stringify(path.join(src, 'operations/configuration.js'))}
 import { sslRoutes } from ${JSON.stringify(path.join(src, 'configuration/ssl.js'))}
-import { selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate } from ${JSON.stringify(path.join(src, 'operations/ssl.js'))}
+import { selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate } from ${JSON.stringify(path.join(src, 'operations/ssl.js'))}
 import { confirmBackupAction } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
 import { checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate } from ${JSON.stringify(path.join(src, 'operations/updates.js'))}
 import { isNewerVersion, validateRelease } from ${JSON.stringify(path.join(src, 'utils/releases.js'))}
-globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
+globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
 `
 const adapterSource = `
 export const invoke = (...args) => globalThis.adapterInvoke(...args)
