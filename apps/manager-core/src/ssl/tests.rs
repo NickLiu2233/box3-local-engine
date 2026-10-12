@@ -542,3 +542,88 @@ fn external_manual_preserves_public_urls_and_owner_port_bindings() {
     assert_eq!(compose_source(&root,source).unwrap(),source);
     std::fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn certificate_watcher_never_starts_a_stopped_or_external_proxy() {
+    let root=fixture_root();
+    let mut fixture=input();
+    fixture.settings.routes.truncate(1);
+    std::fs::create_dir_all(root.join("https/revisions/old")).unwrap();
+    let saved=Saved {settings:fixture.settings.clone(),external_local:false,pending_local:false,expires_at:"2099-01-01T00:00:00Z".into(),revision:"old".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default()};
+    std::fs::write(root.join("https/settings.json"),serde_json::to_string(&saved).unwrap()).unwrap();
+    std::fs::write(root.join("https/revisions/old/cert.pem"),&fixture.certificate).unwrap();
+    std::fs::write(root.join("https/revisions/old/key.pem"),&fixture.private_key).unwrap();
+    std::fs::write(root.join("renew.pem"),"new source").unwrap();
+    std::fs::write(root.join("renew.key"),"new key").unwrap();
+    super::path_certificates::commit(&root,&[("play".into(),CertificatePath {certificate_path:root.join("renew.pem").to_string_lossy().into(),private_key_path:root.join("renew.key").to_string_lossy().into(),source:"independent".into()})].into_iter().collect()).unwrap();
+    let owner=super::runtime::identity(&root);
+    let mut calls=Vec::new();
+    assert!(!refresh_certificate_paths(&root,&root,"test","",&mut |args| {
+        calls.push(args.join(" "));
+        if args.starts_with(&["container".into(),"ls".into()]) {return Ok("owned".into());}
+        if args.iter().any(|arg|arg.contains("box.https.owner")) {return Ok(owner.clone());}
+        Ok("false".into())
+    }).unwrap());
+    assert!(!calls.iter().any(|line|line.contains("reload") || line.starts_with("run ") || line.starts_with("start ")));
+    set_provider(&root,"external-manual").unwrap();
+    assert!(!refresh_certificate_paths(&root,&root,"test","",&mut |_|panic!("external Nginx must not be touched")).unwrap());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn upstream_transition_checks_images_before_recreating_any_service() {
+    let root = fixture_root();
+    let mut transition = UpstreamTransition::new(&root, "fixture", &input().settings).unwrap();
+    let calls = std::cell::RefCell::new(Vec::<Vec<String>>::new());
+    let error = transition.apply(
+        &mut |args| {
+            if args.first().map(String::as_str) == Some("container") {
+                return Ok("running-play".into());
+            }
+            if args.first().map(String::as_str) == Some("inspect") {
+                return Ok(r#"[{"Image":"sha256:old-image"}]"#.into());
+            }
+            if args.starts_with(&["image".into(), "inspect".into()]) {
+                return Err("No such image: box-local-engine-play:0.3.0".into());
+            }
+            Ok(String::new())
+        },
+        &mut |args| {
+            calls.borrow_mut().push(args.to_vec());
+            if args.first().map(String::as_str) == Some("config") {
+                Ok(r#"{"services":{"play":{"image":"box-local-engine-play:0.3.0"}}}"#.into())
+            } else { Ok(String::new()) }
+        },
+    ).unwrap_err();
+    assert!(error.contains("box-local-engine-play:0.3.0"));
+    assert!(calls.borrow().iter().all(|args| args[0] != "up"));
+    let mut restored = false;
+    transition.rollback("", &mut |_, _| { restored = true; Ok(String::new()) }).unwrap();
+    assert!(!restored, "failed preflight must not recreate containers during rollback");
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn upstream_transition_checks_only_running_targets_and_keeps_custom_images() {
+    let root = fixture_root();
+    let mut transition = UpstreamTransition::new(&root, "fixture", &input().settings).unwrap();
+    let inspected = std::cell::RefCell::new(Vec::<String>::new());
+    let composed = std::cell::RefCell::new(Vec::<Vec<String>>::new());
+    transition.apply(
+        &mut |args| {
+            if args.first().map(String::as_str) == Some("container") { return Ok("running-play".into()); }
+            if args.first().map(String::as_str) == Some("inspect") { return Ok(r#"[{"Image":"sha256:old-image"}]"#.into()); }
+            if args.starts_with(&["image".into(), "inspect".into()]) { inspected.borrow_mut().push(args[2].clone()); }
+            Ok(String::new())
+        },
+        &mut |args| {
+            composed.borrow_mut().push(args.to_vec());
+            if args[0] == "config" {
+                Ok(r#"{"services":{"play":{"image":"custom/play:stable"},"redis":{"image":"missing-redis:latest"}}}"#.into())
+            } else { Ok(String::new()) }
+        },
+    ).unwrap();
+    assert_eq!(*inspected.borrow(), vec!["custom/play:stable"]);
+    assert!(composed.borrow().iter().any(|args| args[0] == "up" && args.last().unwrap() == "play"));
+    std::fs::remove_dir_all(root).unwrap();
+}

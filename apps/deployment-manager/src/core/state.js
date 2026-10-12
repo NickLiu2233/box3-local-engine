@@ -12,6 +12,7 @@ export const state = {
   updateRelease: null,
   updateDownloadTarget: null,
   updateDialogOpen: false,
+  externalNginxDialog: null,
   updateDownloading: false,
   updateReady: false,
   updateRestarting: false,

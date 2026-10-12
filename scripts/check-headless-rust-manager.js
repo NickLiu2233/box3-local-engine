@@ -72,6 +72,7 @@ for (const command of [
   'control_service',
   'list_backups',
   'create_backup',
+  'inspect_backup',
   'restore_backup',
   'get_performance_status',
   'destroy_project_runtime',
@@ -298,7 +299,8 @@ if (core.lib.includes('pub mod backup;')) {
   const backupName = coreImports.get('backup')
   const storeName = coreImports.get('backup_store')
   assert.ok(
-    webAdapter.includes(`${backupName}::restore_archive(`),
+    webAdapter.includes(`${backupName}::restore_archive(`) ||
+      webAdapter.includes(`${backupName}::restore_archive_with_env(`),
     'Web must use shared backup restore_archive',
   )
   for (const operation of ['list', 'resolve', 'create', 'import_bytes']) {

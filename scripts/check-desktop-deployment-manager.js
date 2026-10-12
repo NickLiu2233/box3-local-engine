@@ -500,7 +500,7 @@ assert.equal(
   'access scope must use one generated selector for all modes',
 )
 assert.doesNotMatch(frontend, /data-(?:play|creator)-network-mode=/)
-assert.match(frontend, /name="creatorNetworkMode" type="hidden" value="\$\{accessMode\}"/)
+assert.match(frontend, /name="creatorNetworkMode" type="hidden" value="\$\{state\.accessMode \? accessMode : config\.creatorNetworkMode \|\| accessMode\}"/)
 assert.match(frontend, /config\.creatorHost = config\.publicHost/)
 assert.match(frontend, /name="publicAddressMode" type="hidden"/)
 assert.match(frontend, /config\.publicAddress = primaryAddress/)
@@ -514,7 +514,7 @@ assert.match(
 )
 assert.match(frontend, /creatorNetworkMode: isPublicMode\(state\.accessMode\)/)
 assert.match(frontend, /function accessChoice\(/)
-assert.match(sharedBackend, /游玩端与创作端必须使用相同的访问范围/)
+assert.doesNotMatch(sharedBackend, /游玩端与创作端必须使用相同的访问范围/)
 assert.match(backend, /fn detect_lan_ip/)
 for (const port of ['playPort', 'voxaPort', 'creatorPort', 'playerServicePort', 'authPortalPort']) {
   assert.match(frontend, new RegExp(`portInput\\('${port}'`))
@@ -957,7 +957,8 @@ if (core.lib.includes('pub mod backup;')) {
   const backupName = coreImports.get('backup')
   const storeName = coreImports.get('backup_store')
   assert.ok(
-    desktopCommands.includes(`${backupName}::restore_archive(`),
+    desktopCommands.includes(`${backupName}::restore_archive(`) ||
+      desktopCommands.includes(`${backupName}::restore_archive_with_env(`),
     'desktop must use shared backup restore_archive',
   )
   for (const operation of ['list', 'resolve', 'create', 'import_file']) {

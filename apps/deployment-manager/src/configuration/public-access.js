@@ -30,7 +30,13 @@ export function pathPrefix(value) {
     )
   return path
 }
+export function externalProtocol(config = state.config || {}) {
+  if (state.externalGuideProtocol) return state.externalGuideProtocol
+  const address = config.publicAddressMode === 'shared' ? config.sharedPublicAddress : publicServices.map(([, , field])=>config[field]).find(Boolean)
+  return /^http:\/\//i.test(address || '') ? 'http' : 'https'
+}
 export function publicCertificateFlags(config = state.config || {}) {
+  if ((state.sslDraft?.mode || state.sslStatus?.provider) === 'external') return Object.fromEntries([...publicServices.map(([service])=>[service,externalProtocol(config)==='https']),['shared',externalProtocol(config)==='https']])
   const authoritative = state.sslStatus && Object.hasOwn(state.sslStatus, 'config')
   const saved = authoritative ? state.sslStatus.config : null
   const flags = authoritative ? {} : { ...config.publicSslConfigured }
@@ -80,7 +86,12 @@ function endpoint(value, label, port, secure, shared = false) {
   if (bare && ip && !shared && !explicitPort) url.port = String(port)
   return url
 }
-export function publicEndpoints(config = state.config || {}) {
+export function publicEndpoints(config = state.config || {}, { activeOnly = false } = {}) {
+  const active = (service) => {
+    const mode = config[['creator', 'voxa'].includes(service) ? 'creatorNetworkMode' : 'playNetworkMode']
+    return !mode || isPublicMode(mode)
+  }
+  if (activeOnly && !publicServices.some(([service]) => active(service))) return []
   const shared = config.publicAddressMode === 'shared'
   const certificates = publicCertificateFlags(config)
   const base = shared
@@ -89,6 +100,7 @@ export function publicEndpoints(config = state.config || {}) {
   if (base && base.pathname !== '/')
     throw new Error('共用地址只填写协议和 IP 或域名，自定义路径请在各服务中填写')
   return publicServices.flatMap(([service, label, field, key, fallback]) => {
+    if (activeOnly && !active(service)) return []
     const url = shared
       ? base
         ? new URL(base.href)

@@ -8,7 +8,7 @@ export { publicServices as sslServices } from './public-access.js'
 import { publicEndpoints } from './public-access.js'
 
 export function sslRoutes(config = state.config || {}) {
-  return publicEndpoints(config).filter(({ service }) => {
+  return publicEndpoints(config, { activeOnly: true }).filter(({ service }) => {
     const mode = config[service === 'creator' || service === 'voxa' ? 'creatorNetworkMode' : 'playNetworkMode']
     return !mode || mode === 'public'
   }).map(({ service, domain, port, secure, path }) => ({

@@ -18,7 +18,7 @@ export function getServiceUrl(serviceId) {
     }
   }
   const authority = host.includes(':') ? `[${host.replace(/^\[|\]$/g, '')}]` : host
-  const scheme = state.config?.playNetworkMode === 'public' ? publicAddressScheme() : 'http'
+  const scheme = 'http'
   return `${scheme}://${authority}:${port}${path}`
 }
 
@@ -27,11 +27,6 @@ export function sharedNetworkHost() {
   if (mode === 'lan') return state.config?.lanIp || '127.0.0.1'
   if (mode === 'public') return state.config?.publicHost || '127.0.0.1'
   return '127.0.0.1'
-}
-
-function publicAddressScheme() {
-  const match = String(state.config?.publicAddress || '').match(/^(https?):\/\//i)
-  return match ? match[1].toLowerCase() : 'http'
 }
 
 export function publicEndpointUrl(address, port) {

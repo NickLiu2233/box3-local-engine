@@ -351,9 +351,14 @@ pub(crate) async fn command(
                 fs::remove_file(path).map_err(|error| error.to_string())?;
                 Ok(Value::Null)
             }
+            "inspect_backup" => {
+                let archive = req.body.get("archive").and_then(Value::as_str).ok_or("备份名称无效")?;
+                inspect_backup(&app, archive)
+            }
             "restore_backup" => {
                 let archive = req.body.get("archive").and_then(Value::as_str).ok_or("备份名称无效")?;
-                Ok(json!(restore_backup(&app, archive)?))
+                let include_env = req.body.get("includeEnv").and_then(Value::as_bool).unwrap_or(false);
+                Ok(json!(restore_backup(&app, archive, include_env)?))
             }
             "save_configuration_command" => {
                 let mut input = req

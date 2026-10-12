@@ -14,7 +14,11 @@ export function backupConfirmDialog() {
     ? '恢复会停止全部服务，并替换当前地图、游玩包和 VOXA 本地资源。当前未备份的修改将丢失。'
     : '删除后无法恢复此备份文件。'
   const confirmLabel = restoring ? '确认恢复' : '确认删除'
-  return `<div class="dialog-backdrop" data-backup-dialog-dismiss><section class="start-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-dialog-title"><header><div><h2 id="backup-dialog-title">${title}</h2><p>${description}</p></div></header><div class="backup-dialog-file"><span>备份文件</span><strong>${escapeHtml(dialog.name)}</strong></div><div class="dialog-actions"><button class="button" id="cancel-backup-action-secondary">取消</button><button class="button ${restoring ? 'primary' : 'danger'}" id="confirm-backup-action">${confirmLabel}</button></div></section></div>`
+  const envChoice =
+    restoring && dialog.hasEnv
+      ? `<label class="backup-env-choice"><input type="checkbox" id="restore-backup-env" ${dialog.includeEnv ? 'checked' : ''}/><span>同时恢复备份中的启动器配置（.env）</span></label><p class="backup-env-hint">勾选后会覆盖当前启动器的密码、密钥和访问配置；不勾选则保留当前 .env。</p>`
+      : ''
+  return `<div class="dialog-backdrop" data-backup-dialog-dismiss><section class="start-dialog backup-dialog" role="dialog" aria-modal="true" aria-labelledby="backup-dialog-title"><header><div><h2 id="backup-dialog-title">${title}</h2><p>${description}</p></div></header><div class="backup-dialog-file"><span>备份文件</span><strong>${escapeHtml(dialog.name)}</strong></div>${envChoice}<div class="dialog-actions"><button class="button" id="cancel-backup-action-secondary">取消</button><button class="button ${restoring ? 'primary' : 'danger'}" id="confirm-backup-action">${confirmLabel}</button></div></section></div>`
 }
 
 export function runtimeDestroyDialog() {

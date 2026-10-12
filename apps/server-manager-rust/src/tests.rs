@@ -599,3 +599,39 @@ fn managed_redis_missing_credentials_uses_new_password_without_shared_owner_host
     assert!(!values.contains_key("BOX_PLAY_PUBLIC_HOST"));
     assert!(!values.contains_key("BOX_CREATOR_HOST"));
 }
+
+#[test]
+fn partial_form_does_not_switch_existing_managed_dependencies() {
+    let owner="BOX_DATABASE_MODE=managed\nBOX_DATABASE_HOST=managed-postgres\nBOX_MANAGED_POSTGRES_DATABASE=box\nBOX_MANAGED_POSTGRES_USER=owner\nBOX_MANAGED_POSTGRES_PASSWORD=fixture\nBOX_REDIS_MODE=managed\nBOX_MANAGED_REDIS_PASSWORD=cache-fixture\n";
+    let form=json!({"registrationEnabled":false});
+    let result=configuration_document_for_save(owner,form.as_object().unwrap()).unwrap();
+    let values=parse_env(&result);
+    assert_eq!(values["BOX_DATABASE_MODE"],"managed");
+    assert_eq!(values["BOX_REDIS_MODE"],"managed");
+    assert_eq!(values["BOX_MANAGED_POSTGRES_PASSWORD"],"fixture");
+}
+
+#[test]
+fn external_database_ipv6_form_produces_a_valid_encoded_url() {
+    let form=json!({"databaseMode":"external","databaseHost":"2001:db8::7","databasePort":"5444","databaseName":"box name","databaseUser":"owner@example","databasePassword":"p@ss:+"});
+    let result=configuration_document_for_save("",form.as_object().unwrap()).unwrap();
+    let values=parse_env(&result);
+    let url=box_manager_core::configuration::parse_database_url(&values["BOX_DATABASE_URL"]).unwrap();
+    assert_eq!(url.host,"2001:db8::7");
+    assert_eq!(url.port,5444);
+    assert_eq!(url.password,"p@ss:+");
+}
+
+#[test]
+fn switching_to_passwordless_external_services_does_not_reuse_managed_secrets() {
+    let owner="BOX_DATABASE_MODE=managed\nBOX_DATABASE_HOST=managed-postgres\nBOX_DATABASE_PASSWORD=managed-secret\nBOX_DATABASE_NAME=box\nBOX_DATABASE_USER=owner\nBOX_REDIS_MODE=managed\nREDIS_HOST=managed-redis\nREDIS_PASSWORD=managed-cache-secret\n";
+    let form=json!({"databaseMode":"external","databaseHost":"db.example.test","databasePort":"5432","databaseName":"box","databaseUser":"owner","databasePassword":"","redisMode":"external","redisHost":"redis.example.test","redisPort":"6379","redisPassword":""});
+    let values=parse_env(&configuration_document_for_save(owner,form.as_object().unwrap()).unwrap());
+    assert_eq!(values["BOX_DATABASE_PASSWORD"],"");
+    assert_eq!(values["REDIS_PASSWORD"],"");
+    let form=json!({"databaseMode":"external","databaseHost":"db.example.test","redisMode":"external","redisHost":"redis.example.test"});
+    let owner="BOX_DATABASE_MODE=external\nBOX_DATABASE_PASSWORD=existing-secret\nBOX_DATABASE_NAME=box\nBOX_DATABASE_USER=owner\nBOX_DATABASE_PORT=5432\nBOX_REDIS_MODE=external\nREDIS_PASSWORD=existing-cache-secret\n";
+    let values=parse_env(&configuration_document_for_save(owner,form.as_object().unwrap()).unwrap());
+    assert_eq!(values["BOX_DATABASE_PASSWORD"],"existing-secret");
+    assert_eq!(values["REDIS_PASSWORD"],"existing-cache-secret");
+}

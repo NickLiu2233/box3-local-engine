@@ -268,3 +268,33 @@
   border-radius: 8px;
   background: var(--surface-raised, #222);
 }
+
+.ssl-input-choice {
+  margin: 10px 0 14px;
+}
+.ssl-address-certificate .field input {
+  width: 100%;
+  min-width: 0;
+}
+.external-guide-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.network-access-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+}
+.network-access-controls .external-guide-choices {
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.network-access-controls .external-guide-choices > span {
+  color: var(--muted);
+  font-size: 11px;
+}

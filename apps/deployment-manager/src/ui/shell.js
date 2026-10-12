@@ -1,3 +1,4 @@
+import { externalNginxDialog } from './external-nginx-dialog.js'
 import {
   backupConfirmDialog,
   legalDocumentDialog,
@@ -44,6 +45,7 @@ export function shell(content) {
     ${state.mapRuntimeProfileDialog ? mapRuntimeProfileDialog() : ''}
     ${state.legalDialog ? legalDocumentDialog() : ''}
     ${state.updateDialogOpen ? updateDialog() : ''}
+    ${state.externalNginxDialog ? externalNginxDialog() : ''}
   </div>`
 }
 

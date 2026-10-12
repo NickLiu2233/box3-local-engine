@@ -16,6 +16,8 @@ export function chooseCertificateInput(service, inputMode) {
   captureSetupForm()
   state.sslFiles ||= {}
   state.sslFiles[service] = {...state.sslFiles[service],inputMode}
+  state.sslDisclosureOpen ||= {}
+  state.sslDisclosureOpen[service] = true
   render()
 }
 

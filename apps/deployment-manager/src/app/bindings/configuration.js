@@ -1,3 +1,4 @@
+import { openExternalNginxDialog, closeExternalNginxDialog } from '../../operations/external-nginx.js'
 import { isPublicMode, publicEndpoints } from '../../configuration/public-access.js'
 import { captureSetupForm, switchSetupSection } from '../../configuration/form.js'
 import { clearFeedback } from '../../operations/feedback.js'
@@ -31,6 +32,27 @@ import {
 } from '../../operations/ssl.js'
 
 export function bindConfigurationEvents() {
+  document.querySelector('#open-external-nginx-dialog')?.addEventListener('click', openExternalNginxDialog)
+  document.querySelector('#close-external-nginx-dialog')?.addEventListener('click', closeExternalNginxDialog)
+  document.querySelector('[data-external-nginx-dismiss]')?.addEventListener('click', event => {
+    if (event.target === event.currentTarget) closeExternalNginxDialog()
+  })
+  const panel = document.querySelector('.external-nginx-dialog')
+  panel?.focus()
+  panel?.addEventListener('keydown', event => {
+    if (event.key === 'Escape') closeExternalNginxDialog()
+    if (event.key !== 'Tab') return
+    const controls = [...panel.querySelectorAll('button:not(:disabled), summary')]
+    const first = controls[0], last = controls.at(-1)
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === panel)) {
+      event.preventDefault()
+      last?.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first?.focus()
+    }
+  })
+
   if (state.page !== 'setup' || state.setupSection !== 'network') state.sslFiles = {}
   for (const [id, handler] of [
     ['ssl-apply', applySsl],
@@ -43,6 +65,20 @@ export function bindConfigurationEvents() {
   ]) {
     document.querySelector(`#${id}`)?.addEventListener('click', handler)
   }
+  document.querySelectorAll('[data-external-guide-protocol]').forEach(node => node.addEventListener('click', () => {
+    captureSetupForm()
+    const protocol = node.dataset.externalGuideProtocol
+    state.externalGuideProtocol = protocol
+    const fields = state.config.publicAddressMode === 'shared' ? ['sharedPublicAddress'] : ['playPublicAddressOverride','creatorPublicAddressOverride','voxaPublicAddressOverride','playerServicePublicAddressOverride','authPortalPublicAddressOverride']
+    for (const field of fields) if (/^https?:\/\//i.test(state.config[field] || '')) state.config[field] = state.config[field].replace(/^https?:\/\//i,`${protocol}://`)
+    render()
+  }))
+  document.querySelectorAll('[data-copy-example]').forEach(node => node.addEventListener('click', async () => {
+    const code = document.getElementById(node.dataset.copyExample)?.textContent
+    if (!code) return
+    try { await copyText(code); node.textContent = '已复制' }
+    catch (error) { state.error = String(error); render() }
+  }))
   document.querySelectorAll('[data-ssl-input-mode]').forEach(node=>node.addEventListener('click',()=>chooseCertificateInput(node.dataset.sslInputService,node.dataset.sslInputMode)))
   document.querySelectorAll('[data-ssl-cert-path]').forEach(node=>node.addEventListener('input',()=>setCertificatePath(node.dataset.sslCertPath,'certificatePath',node.value)))
   document.querySelectorAll('[data-ssl-key-path]').forEach(node=>node.addEventListener('input',()=>setCertificatePath(node.dataset.sslKeyPath,'privateKeyPath',node.value)))
@@ -84,9 +120,15 @@ export function bindConfigurationEvents() {
       '[name="sharedPublicAddress"], [name^="publicPath-"], [name$="PublicAddressOverride"], [name="playPort"], [name="creatorPort"], [name="voxaPort"], [name="playerServicePort"], [name="authPortalPort"]',
     )
     .forEach((node) =>
-      node.addEventListener('change', () => {
+      node.addEventListener('input', () => {
         captureSetupForm()
-        render()
+        try {
+          const endpoints = publicEndpoints()
+          document.querySelectorAll('[data-public-preview]').forEach(preview => {
+            const endpoint = endpoints.find(item => item.service === preview.dataset.publicPreview)
+            if (endpoint) preview.querySelector('code').textContent = endpoint.url
+          })
+        } catch {}
       }),
     )
   if (
@@ -191,9 +233,8 @@ export function bindConfigurationEvents() {
         state.config.publicAddressMode = 'shared'
         if (!state.config.sharedPublicAddress && state.config.playPublicAddressOverride) {
           try {
-            const address = state.config.playPublicAddressOverride
-            const url = new URL(address.includes('://') ? address : `http://${address}`)
-            state.config.sharedPublicAddress = `${url.protocol}//${url.hostname}`
+            const endpoint = publicEndpoints({ ...state.config, publicAddressMode: 'independent' }).find(route => route.service === 'play')
+            if (endpoint) state.config.sharedPublicAddress = new URL(endpoint.url).origin
           } catch {}
         }
       } else if (isPublicMode(mode)) state.config.publicAddressMode = 'independent'

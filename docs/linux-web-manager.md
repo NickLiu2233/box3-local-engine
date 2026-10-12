@@ -204,6 +204,7 @@ sed -n 's/^BOX_SERVER_MANAGER_TOKEN=//p' .env
 - PostgreSQL 的 `pg_dump` 或数据库服务商快照。
 
 页面文件备份不包含 PostgreSQL。Redis 和 `box-play-runtime-cache` 是可重新生成的数据，不作为永久数据源。
+页面创建的备份包含根目录 `.env`（含密码、密钥与访问配置，导出后请妥善保管）；恢复时会单独提示是否用备份中的 `.env` 覆盖当前配置。
 
 升级到新目录时，先停止旧部署，将 `.env` 和持久数据复制到新目录，再运行新包的 `./verify.sh` 与 `./install.sh`。
 

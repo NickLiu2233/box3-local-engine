@@ -151,7 +151,8 @@ pub fn prepare(config: &Map<String, Value>) -> Result<Map<String, Value>, String
     if shared && base.is_empty() && string(config, "playNetworkMode") == "public" {
         return Err("公网（共用地址）请填写 IP 或域名".into());
     }
-    let base = if shared && !base.is_empty() {
+    let active_public = ["playNetworkMode", "creatorNetworkMode"].iter().any(|key| config.get(*key).and_then(Value::as_str).is_none_or(|mode| mode == "public"));
+    let base = if shared && active_public && !base.is_empty() {
         let p = parts(base, "共用公网地址", 80, has_ssl("shared"), true)?;
         if !matches!(p.3.as_str(), "" | "/") {
             return Err("共用地址只填写 IP 或域名，路径在各服务中设置".into());
@@ -192,7 +193,10 @@ pub fn prepare(config: &Map<String, Value>) -> Result<Map<String, Value>, String
         } else {
             draft
         };
-        let address = if shared {
+        let network_mode = string(config, if matches!(service,"creator"|"voxa") {"creatorNetworkMode"} else {"playNetworkMode"});
+        let address = if !network_mode.is_empty() && network_mode != "public" {
+            None
+        } else if shared {
             base.clone()
         } else if selected.trim().is_empty() {
             None
@@ -264,6 +268,7 @@ pub fn save_document(content: &str, config: &Map<String, Value>) -> Result<Strin
         return Ok(content.into());
     }
     let prepared = prepare(config)?;
+    let shared = string(config,"publicAddressMode")=="shared";
     let mut output = content.to_string();
     environment::set_env(
         &mut output,
@@ -296,7 +301,9 @@ pub fn save_document(content: &str, config: &Map<String, Value>) -> Result<Strin
             .and_then(|v| v.get(service))
             .and_then(Value::as_str)
             .unwrap_or("");
-        environment::set_env(&mut output, &format!("{key}_PUBLIC_PATH"), &prefix(path)?)?;
+        let active = string(config, if matches!(service,"creator"|"voxa") {"creatorNetworkMode"} else {"playNetworkMode"});
+        let path = if shared && (active.is_empty() || active=="public") {prefix(path)?} else {path.to_string()};
+        environment::set_env(&mut output, &format!("{key}_PUBLIC_PATH"), &path)?;
     }
     Ok(crate::access_settings::independent_owner(&output))
 }
@@ -451,6 +458,26 @@ mod repeated_access_mode_tests {
                 assert_eq!(runtime["BOX_PLAYER_LOGIN_URL"],runtime["BOX_AUTH_PORTAL_PUBLIC_URL"]);
                 assert_eq!(view(&values)["playPublicAddressOverride"],address);
                 assert_eq!(runtime["BOX_BIND_IP"], if mode == "local" {"127.0.0.1"} else {"0.0.0.0"});
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod inactive_draft_tests {
+    use super::*;
+    #[test]
+    fn incomplete_drafts_do_not_block_local_or_lan_save() {
+        for mode in ["local","lan"] {
+            for address_mode in ["shared","independent"] {
+                let config=json!({"publicAddressMode":address_mode,"playNetworkMode":mode,"creatorNetworkMode":mode,"sharedPublicAddress":"https://","playPublicAddressOverride":"https://","publicServicePaths":{"play":"/../in-progress"}});
+                let prepared=prepare(config.as_object().unwrap()).unwrap();
+                crate::configuration::validate_configuration(&prepared).unwrap();
+                let doc=save_document("",config.as_object().unwrap()).unwrap();
+                let values=environment::parse_env(&doc);
+                assert_eq!(view(&values)["playPublicAddressOverride"],"https://");
+                assert_eq!(view(&values)["sharedPublicAddress"],"https://");
+                assert_eq!(prepared["playPublicAddressOverride"],"");
             }
         }
     }

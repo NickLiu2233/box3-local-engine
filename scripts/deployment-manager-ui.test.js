@@ -202,6 +202,34 @@ test('restoring backups retains successful results and optional cleanup warnings
   }
 })
 
+test('restore offers to bring back the launcher .env only when the backup has one', async () => {
+  const app = await createFixture({
+    responses: {
+      inspect_backup: { directories: [], files: 5, dataBytes: 20, hasEnv: true },
+    },
+  })
+  app.api.state.page = 'backups'
+  await app.api.openBackupDialog('restore', 'env-backup.tar.gz', 'env-backup.tar.gz')
+  assert.match(app.html, /id="restore-backup-env"/)
+  assert.match(app.html, /保留当前 \.env/)
+  assert.equal(app.api.state.backupDialog.includeEnv, false)
+  app.api.state.backupDialog.includeEnv = true
+  await app.api.confirmBackupAction()
+  const restore = app.calls.filter((call) => call.command === 'restore_backup').at(-1)
+  assert.equal(restore.payload.archive, 'env-backup.tar.gz')
+  assert.equal(restore.payload.includeEnv, true)
+})
+
+test('restore dialog keeps the current .env when the backup has none', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'backups'
+  await app.api.openBackupDialog('restore', 'data.tar.gz', 'data.tar.gz')
+  assert.doesNotMatch(app.html, /restore-backup-env/)
+  await app.api.confirmBackupAction()
+  const restore = app.calls.filter((call) => call.command === 'restore_backup').at(-1)
+  assert.equal(restore.payload.includeEnv, false)
+})
+
 test('page and visibility transitions retain one appropriate polling timer', async () => {
   const app = await createFixture()
   app.api.render()
@@ -457,7 +485,7 @@ test('public certificate sections are available for every service and default to
   const html = app.api.setup()
   assert.equal((html.match(/ssl-address-certificate/g) || []).length, 5)
   assert.equal(
-    (html.match(/<details class="setup-explainer ssl-address-certificate">/g) || []).length,
+    (html.match(/<details class="setup-explainer ssl-address-certificate"[^>]*>/g) || []).length,
     5,
   )
   assert.ok(!/<details[^>]*\bopen\b[^>]*ssl-address-certificate/.test(html))
@@ -794,15 +822,14 @@ test('authenticated Web console renders streamed service downloads and keeps dep
 test('external Nginx saves unrelated settings without applying or replacing manual networking', async () => {
   const app = await createFixture()
   app.api.state.page = 'setup'
-  app.api.state.setupSection = 'network'
+  app.api.state.setupSection = 'data'
   app.api.state.sslLoaded = true
   app.api.state.sslDraft = { mode: 'external' }
   app.api.state.sslFiles = { play: { certificate: 'CERT', privateKey: 'KEY' } }
   app.api.state.config.playPublicAddressOverride = 'https://bad.example.test/api'
   app.api.render()
-  assert.match(app.html, /外部 Nginx：手动配置/)
-  assert.match(app.html, /proxy_set_header X-Forwarded-Proto/)
-  assert.ok(!app.html.includes('name="playPublicAddressOverride"'))
+  assert.match(app.html, /查看 Nginx 配置/)
+  assert.ok(app.html.includes('name="playPublicAddressOverride"'))
   assert.ok(!app.html.includes('data-ssl-service="play"'))
   await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
   assert.equal(app.api.state.error, '')
@@ -1097,8 +1124,10 @@ test('Linux Web manager presents manual external Nginx configuration', async () 
   app.api.state.sslLoaded = true
   app.api.state.sslDraft = { mode: 'external' }
   app.api.render()
-  assert.match(app.html, /外部 Nginx：手动配置/)
-  assert.match(app.html, /BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE/)
+  assert.match(app.html, /查看 Nginx 配置/)
+  assert.doesNotMatch(app.html, /id="external-example-nginx"/)
+  app.api.openExternalNginxDialog()
+  assert.match(app.html, /proxy_pass http:\/\/127\.0\.0\.1:3121/)
   await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
   assert.ok(!app.calls.some(call => call.command === 'apply_ssl_config'))
 })
@@ -1142,7 +1171,7 @@ test('certificate paths use SSL payload only and incomplete pairs cannot apply',
   app.results.apply_ssl_config = { running: true }
   app.api.render()
   assert.match(app.html, /ssl-cert-path-play/)
-  assert.ok(app.html.includes('每 5 秒'))
+  assert.ok(!app.html.includes('每 5 秒'))
   await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
   assert.equal(app.api.state.error, '')
   const payload = app.calls.find(call => call.command === 'apply_ssl_config').payload.config

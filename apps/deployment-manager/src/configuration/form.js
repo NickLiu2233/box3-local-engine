@@ -35,7 +35,7 @@ export function captureSetupForm() {
       : state.accessMode || state.config?.playNetworkMode || 'local',
     creatorNetworkMode: isPublicMode(state.accessMode)
       ? 'public'
-      : state.accessMode || state.config?.playNetworkMode || 'local',
+      : state.accessMode || state.config?.creatorNetworkMode || state.config?.playNetworkMode || 'local',
     databaseSsl: databaseSsl instanceof HTMLInputElement ? databaseSsl.checked : false,
     autoBackupEnabled:
       autoBackupEnabled instanceof HTMLInputElement ? autoBackupEnabled.checked : false,

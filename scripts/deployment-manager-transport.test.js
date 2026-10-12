@@ -348,6 +348,7 @@ test('only explicitly supported long tasks carry operation IDs', async () => {
     'get_owner_secrets',
     'get_about_info',
     'list_backups',
+    'inspect_backup',
     'has_managed_database_image',
     'has_managed_redis_image',
     'test_remote_connection',

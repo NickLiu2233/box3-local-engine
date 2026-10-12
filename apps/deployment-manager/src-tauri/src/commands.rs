@@ -865,12 +865,9 @@ fn validate_optional_public_address(value: &str, label: &str) -> Result<String, 
         .map_err(|error| format!("{label}：{error}"))
 }
 
-/// The setup UI exposes one access-range choice for both Play and Creator.
-/// Normalize legacy independent values before validation so an old
-/// `BOX_CREATOR_HOST` can never reject an otherwise valid unified setting.
-fn normalize_unified_access_settings(config: &mut InstallConfigInput) {
-    config.creator_host = config.public_host.clone();
-    config.creator_network_mode = config.play_network_mode.clone();
+/// Preserve explicit per-service ranges supplied by advanced configurations.
+fn normalize_access_defaults(config: &mut InstallConfigInput) {
+    if config.creator_host.trim().is_empty() { config.creator_host = config.public_host.clone(); }
 }
 
 /// Compare the migrated owner values before the submitted fields overwrite them.
@@ -895,7 +892,7 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     let prepared = box_manager_core::public_access::prepare(incoming.as_object().ok_or("配置格式无效")?)?;
     config = serde_json::from_value(serde_json::Value::Object(prepared)).map_err(|error|error.to_string())?;
     ensure_runtime_files(app)?;
-    normalize_unified_access_settings(&mut config);
+    normalize_access_defaults(&mut config);
     let database_mode = validate_database_mode(&config.database_mode)?;
     let redis_mode = validate_redis_mode(&config.redis_mode)?;
     let submitted_addresses = serde_json::to_value(&config).map_err(|error| error.to_string())?;
@@ -1228,8 +1225,8 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     } else {
         config.database_password.clone()
     };
-    if password.is_empty() {
-        return Err("PostgreSQL 数据库密码不能为空".into());
+    if database_mode == "managed" && password.is_empty() {
+        return Err("内置 PostgreSQL 数据库密码不能为空".into());
     }
     let existing_redis_mode = existing
         .get("BOX_REDIS_MODE")
@@ -3501,15 +3498,31 @@ async fn create_backup(app: AppHandle) -> Result<String, String> {
 }
 
 #[tauri::command]
-async fn restore_backup(app: AppHandle, archive: String) -> Result<Option<String>, String> {
+async fn inspect_backup(app: AppHandle, archive: String) -> Result<Value, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let archive = backup_store::resolve(&backup_directory(&app)?, &archive)?;
+        let info = backup::validate_archive(&archive, backup::Limits::default())?;
+        serde_json::to_value(info).map_err(|error| error.to_string())
+    })
+    .await
+    .map_err(|error| format!("备份检查任务异常结束：{error}"))?
+}
+
+#[tauri::command]
+async fn restore_backup(
+    app: AppHandle,
+    archive: String,
+    include_env: Option<bool>,
+) -> Result<Option<String>, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let _operation = box_manager_core::operation::mutation_guard()?;
         let archive = backup_store::resolve(&backup_directory(&app)?, &archive)?;
         emit_progress(&app, "restore-validate", "正在校验备份…", 10);
-        let report = backup::restore_archive(
+        let report = backup::restore_archive_with_env(
             &runtime_root(&app)?,
             &archive,
             backup::Limits::default(),
+            include_env.unwrap_or(false),
             |_| {
                 services::stop(&DesktopRuntime(&app))?;
                 emit_progress(&app, "restore", "正在恢复数据…", 50);
@@ -4189,17 +4202,15 @@ mod tests {
     }
 
     #[test]
-    fn unified_access_settings_replace_stale_creator_values_before_validation() {
+    fn independent_access_settings_preserve_creator_range() {
         let mut config = test_install_config();
         config.public_host = "123.123.213.123".into();
         config.play_network_mode = "public".into();
-        config.creator_host = "not a host".into();
+        config.creator_host = "127.0.0.1".into();
         config.creator_network_mode = "local".into();
-
-        normalize_unified_access_settings(&mut config);
-
-        assert_eq!(config.creator_host, config.public_host);
-        assert_eq!(config.creator_network_mode, config.play_network_mode);
+        normalize_access_defaults(&mut config);
+        assert_eq!(config.creator_host,"127.0.0.1");
+        assert_eq!(config.creator_network_mode,"local");
         assert!(validate_install_configuration(&config).is_ok());
     }
 
@@ -4377,6 +4388,7 @@ pub fn run() {
             relocate_data_storage,
             list_backups,
             create_backup,
+            inspect_backup,
             restore_backup,
             delete_backup,
             export_backup,

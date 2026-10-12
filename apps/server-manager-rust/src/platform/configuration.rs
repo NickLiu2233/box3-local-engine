@@ -871,6 +871,8 @@ pub(crate) fn configuration_document_for_save(
     let mut source = migrate_document(content)?;
     clear_overrides_on_configuration_change(&mut source, config)?;
     let existing = parse_env(&source);
+    let original_database_mode=existing.get("BOX_DATABASE_MODE").cloned();
+
     if let Some(value) = config.get("authPortalImage") {
         let image = box_manager_core::auth_portal::validate_image(
             value.as_str().ok_or("登录页面镜像必须是字符串")?,
@@ -884,11 +886,11 @@ pub(crate) fn configuration_document_for_save(
     let database_mode = config
         .get("databaseMode")
         .and_then(Value::as_str)
-        .unwrap_or("external");
+        .unwrap_or_else(|| existing.get("BOX_DATABASE_MODE").map(String::as_str).unwrap_or("external"));
     let redis_mode = config
         .get("redisMode")
         .and_then(Value::as_str)
-        .unwrap_or("disabled");
+        .unwrap_or_else(|| existing.get("BOX_REDIS_MODE").map(String::as_str).unwrap_or("disabled"));
     if !["managed", "external"].contains(&database_mode) {
         return Err("数据库模式无效".into());
     }
@@ -1066,16 +1068,16 @@ pub(crate) fn configuration_document_for_save(
                 .and_then(Value::as_str)
                 .filter(|value| !value.is_empty())
                 .map(str::to_string)
-                .or_else(|| existing.get("BOX_DATABASE_PASSWORD").cloned())
-                .unwrap_or(old_password);
+                .or_else(|| (original_database_mode.as_deref()!=Some("managed")).then(|| existing.get("BOX_DATABASE_PASSWORD").cloned().unwrap_or(old_password)))
+                .unwrap_or_default();
             let authority = if database_user.is_empty() {
-                host.clone()
+                box_manager_core::configuration::origin_host(&host)?
             } else {
                 format!(
                     "{}:{}@{}",
                     urlencoding::encode(&database_user),
                     urlencoding::encode(&database_password),
-                    host
+                    box_manager_core::configuration::origin_host(&host)?
                 )
             };
             source = set_env(source, "BOX_DATABASE_HOST", &host)?;
@@ -1105,6 +1107,9 @@ pub(crate) fn configuration_document_for_save(
     } else if redis_mode == "disabled" {
         source = set_env(source, "REDIS_HOST", "")?;
         source = set_env(source, "REDIS_PASSWORD", "")?;
+    }
+    if redis_mode=="external" && existing.get("BOX_REDIS_MODE").map(String::as_str)==Some("managed") && config.get("redisPassword").and_then(Value::as_str).is_none_or(|password| password.is_empty()) {
+        source = set_env(source,"REDIS_PASSWORD","")?;
     }
     if let Some(host) = config.get("publicHost") {
         let host = json_value(host)?;

@@ -286,7 +286,7 @@ pub fn parse_database_url(value: &str) -> Result<DatabaseUrl, String> {
         return Err("数据库名中的斜杠必须编码".into());
     }
     let (credentials, authority) = authority.split_once('@').ok_or("数据库 URL 缺少账号密码")?;
-    let (user, password) = credentials.split_once(':').ok_or("数据库 URL 缺少密码")?;
+    let (user, password) = credentials.split_once(':').unwrap_or((credentials,""));
     let (host, port) = parse_authority(authority, 5432)?;
     let result = DatabaseUrl {
         host,
@@ -304,12 +304,12 @@ pub fn build_database_url(fields: &DatabaseUrl) -> Result<String, String> {
     for (label, value) in [
         ("数据库名", &fields.database),
         ("数据库账号", &fields.user),
-        ("数据库密码", &fields.password),
     ] {
         if value.is_empty() || value.chars().any(char::is_control) {
             return Err(format!("{label}不能为空或包含控制字符"));
         }
     }
+    if fields.password.chars().any(char::is_control) {return Err("数据库密码不能包含控制字符".into());}
     let host = origin_host(&fields.host)?;
     if fields.port == 0 {
         return Err("数据库端口不能为 0".into());
@@ -675,14 +675,6 @@ pub fn independent_public_base(config: &Map<String, Value>) -> Result<Option<Str
 
 pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String> {
     let independent = independent_public_base(config)?.is_some();
-    if let (Some(play_mode), Some(creator_mode)) = (
-        config.get("playNetworkMode").and_then(Value::as_str),
-        config.get("creatorNetworkMode").and_then(Value::as_str),
-    ) {
-        if play_mode != creator_mode {
-            return Err("游玩端与创作端必须使用相同的访问范围".into());
-        }
-    }
     for key in ["redisDb", "storageCacheRedisDb", "storageCacheRedisTtl"] {
         if let Some(value) = config.get(key) {
             if !value.as_u64().is_some_and(|value| value <= 255) {
@@ -806,7 +798,7 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                 "databasePort" => {
                     let required =
                         config.get("databaseMode").and_then(Value::as_str) == Some("external");
-                    if required || !value.trim().is_empty() {
+                    if required || (!config.contains_key("databaseMode") && !value.trim().is_empty()) {
                         validate_port(value)
                             .map_err(|_| "PostgreSQL 端口必须是 1-65535 之间的整数".to_string())?;
                     }
@@ -814,11 +806,13 @@ pub fn validate_configuration(config: &Map<String, Value>) -> Result<(), String>
                 "redisPort" => {
                     let required =
                         config.get("redisMode").and_then(Value::as_str) == Some("external");
-                    if required || !value.trim().is_empty() {
+                    if required || (!config.contains_key("redisMode") && !value.trim().is_empty()) {
                         validate_port(value)
                             .map_err(|_| "Redis 端口必须是 1-65535 之间的整数".to_string())?;
                     }
                 }
+                "databaseHost" if config.get("databaseMode").and_then(Value::as_str)==Some("managed") => {},
+                "redisHost" if config.get("redisMode").and_then(Value::as_str).is_some_and(|mode| mode!="external") => {},
                 _ if !value.trim().is_empty() => {
                     validate_host(value, key)?;
                 }
@@ -1210,14 +1204,7 @@ mod tests {
     #[test]
     fn form_validation_rejects_web_type_and_range_bypasses() {
         let validate = |v: Value| validate_configuration(v.as_object().unwrap());
-        assert_eq!(
-            validate(json!({
-                "playNetworkMode": "lan",
-                "creatorNetworkMode": "local"
-            }))
-            .unwrap_err(),
-            "游玩端与创作端必须使用相同的访问范围"
-        );
+        assert!(validate(json!({"playNetworkMode":"lan","creatorNetworkMode":"local"})).is_ok());
         assert!(
             validate(json!({"playPort":" 3121 ","voxaPort":3123,"playRuntimes":2,
             "playPrewarmRuntimes":1,"creatorCpuLimit":0.5}))
@@ -1351,5 +1338,30 @@ mod access_conflict_regressions {
         let result = runtime(&[("BOX_PLAY_NETWORK_MODE","local"),("BOX_CREATOR_NETWORK_MODE","local"),("BOX_PLAY_PUBLIC_HOST","127.0.0.1"),("BOX_CREATOR_HOST","127.0.0.1"),("BOX_PLAY_PUBLIC_URL_OVERRIDE","https://old.example.test/play"),("BOX_PLAYER_LOGIN_URL_OVERRIDE","https://old.example.test/login")]);
         assert_eq!(result["BOX_PLAY_PUBLIC_URL"], "http://127.0.0.1:3121");
         assert_eq!(result["BOX_PLAYER_LOGIN_URL"], "http://127.0.0.1:3125");
+    }
+}
+
+#[cfg(test)]
+mod flexible_configuration_tests {
+    use super::*;
+    #[test]
+    fn independent_access_ranges_and_passwordless_postgres_are_supported() {
+        let config=serde_json::json!({"playNetworkMode":"public","creatorNetworkMode":"local"});
+        validate_configuration(config.as_object().unwrap()).unwrap();
+        let parsed=parse_database_url("postgresql://owner@db:5432/box?sslmode=require").unwrap();
+        assert!(parsed.password.is_empty());
+        assert!(build_database_url(&parsed).unwrap().contains("owner:@db"));
+    }
+}
+
+#[cfg(test)]
+mod inactive_dependency_tests {
+    use super::*;
+    #[test]
+    fn switching_away_from_unfinished_external_dependencies_ignores_hidden_fields() {
+        let form=serde_json::json!({"databaseMode":"managed","databaseHost":"https://unfinished","databasePort":"invalid","redisMode":"disabled","redisHost":"unfinished:port","redisPort":"invalid"});
+        validate_configuration(form.as_object().unwrap()).unwrap();
+        let form=serde_json::json!({"databaseMode":"external","databaseHost":"https://unfinished","databasePort":"invalid"});
+        assert!(validate_configuration(form.as_object().unwrap()).is_err());
     }
 }

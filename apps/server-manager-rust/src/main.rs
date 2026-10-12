@@ -58,7 +58,9 @@ use box_manager_core::services::{
 use box_manager_core::{backup, backup_store};
 use http::web::*;
 use operations::Operations;
-use platform::backups::{backup_dir, backup_file, create_backup, list_backups, restore_backup};
+use platform::backups::{
+    backup_dir, backup_file, create_backup, inspect_backup, list_backups, restore_backup,
+};
 use platform::configuration::*;
 use platform::monitoring::*;
 use platform::security_data::*;

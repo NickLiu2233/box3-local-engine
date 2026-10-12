@@ -16,13 +16,15 @@ import { render } from ${JSON.stringify(path.join(src, 'app/render.js'))}
 import { setup } from ${JSON.stringify(path.join(src, 'views/setup/index.js'))}
 import { getServiceUrl } from ${JSON.stringify(path.join(src, 'configuration/addresses.js'))}
 import { copyOwnerSecret } from ${JSON.stringify(path.join(src, 'operations/owner-secrets.js'))}
-import { saveConfiguration } from ${JSON.stringify(path.join(src, 'operations/configuration.js'))}
+import { saveRawEnvironment, saveConfiguration } from ${JSON.stringify(path.join(src, 'operations/configuration.js'))}
+import { openExternalNginxDialog, closeExternalNginxDialog } from ${JSON.stringify(path.join(src, 'operations/external-nginx.js'))}
+import { externalNginxConfiguration } from ${JSON.stringify(path.join(src, 'configuration/external-nginx.js'))}
 import { sslRoutes } from ${JSON.stringify(path.join(src, 'configuration/ssl.js'))}
-import { selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate } from ${JSON.stringify(path.join(src, 'operations/ssl.js'))}
-import { confirmBackupAction } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
+import { chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate } from ${JSON.stringify(path.join(src, 'operations/ssl.js'))}
+import { confirmBackupAction, openBackupDialog } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
 import { checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate } from ${JSON.stringify(path.join(src, 'operations/updates.js'))}
 import { isNewerVersion, validateRelease } from ${JSON.stringify(path.join(src, 'utils/releases.js'))}
-globalThis.manager = { state, render, setup, getServiceUrl, copyOwnerSecret, saveConfiguration, confirmBackupAction, sslRoutes, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
+globalThis.manager = { openExternalNginxDialog, closeExternalNginxDialog, externalNginxConfiguration, state, render, setup, getServiceUrl, copyOwnerSecret, saveRawEnvironment, saveConfiguration, confirmBackupAction, openBackupDialog, sslRoutes, chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
 `
 const adapterSource = `
 export const invoke = (...args) => globalThis.adapterInvoke(...args)
@@ -164,6 +166,7 @@ async function createFixture({
     renderCount = 0,
     form = null,
     modes = [],
+    rawTextarea = null,
     resetLoginImage = null,
     updateProgressLabel = null,
     updateProgressBar = null,
@@ -206,6 +209,7 @@ async function createFixture({
     get_managed_service_info: { configured: true, ready: true, imageAvailable: true },
     get_data_storage_info: { path: '/tmp/engine-fixture' },
     get_raw_environment: 'FIXTURE=true',
+    inspect_backup: { directories: [], files: 0, dataBytes: 0, hasEnv: false },
     list_backups: [],
     get_project_runtime_status: { creator: [], play: [], playMaps: [] },
     get_owner_secrets: {
@@ -244,6 +248,7 @@ async function createFixture({
           }
         : null
       form = html.includes('id="setup-form"') ? new FixtureForm(html) : null
+      rawTextarea = { value: html.match(/id="raw-environment"[^>]*>([\s\S]*?)<\/textarea>/)?.[1] || '' }
       resetLoginImage = html.includes('id="restore-default-login-image"')
         ? new FixtureElement()
         : null
@@ -297,6 +302,7 @@ async function createFixture({
       if (selector === '#launcher-update-progress-label') return updateProgressLabel
       if (selector === '#launcher-update-progress') return updateProgressBar
       if (selector === '#setup-form') return form
+      if (selector === '#raw-environment') return rawTextarea
       if (selector === '#restore-default-login-image') return resetLoginImage
       if (selector === 'main') return mainScroll
       if (selector === '.setup-panels') return setupScroll

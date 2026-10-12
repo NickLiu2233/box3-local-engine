@@ -1,3 +1,4 @@
+import { showExternalNginxConfiguration } from './external-nginx.js'
 import {
   captureSetupForm,
   normalizeInactiveServicePorts,
@@ -19,6 +20,7 @@ import {
 import { nginxMode, sslRoutes } from '../configuration/ssl.js'
 import {
   publicEndpoints,
+  isPublicMode,
   publicServices,
   publicCertificateFlags,
 } from '../configuration/public-access.js'
@@ -128,7 +130,7 @@ export async function saveConfiguration(event) {
   for (const key of Object.keys(config)) if (key.startsWith('publicPath-') || key.startsWith('ssl-cert-path-') || key.startsWith('ssl-key-path-')) delete config[key]
   let primaryAddress = '127.0.0.1'
   try {
-    if (nginxMode() !== 'external') primaryAddress = publicEndpoints(config)[0]?.url || primaryAddress
+    if (isPublicMode(config.playNetworkMode) && !(nginxMode() === 'external' && state.setupSection !== 'network')) primaryAddress = publicEndpoints(config, { activeOnly: true })[0]?.url || primaryAddress
   } catch (error) {
     state.error = String(error)
     render()
@@ -152,10 +154,8 @@ export async function saveConfiguration(event) {
     hasPlayerAuthApiKey: Boolean(config.playerAuthApiKey) || state.config?.hasPlayerAuthApiKey,
     hasPlayAdminToken: Boolean(config.playAdminToken) || state.config?.hasPlayAdminToken,
   }
-  config.externalNginxManual = nginxMode() === 'external'
-  if (config.externalNginxManual) {
-    for (const key of ['publicAddress','publicHost','creatorHost','playNetworkMode','creatorNetworkMode','publicAddressMode','sharedPublicAddress','publicServicePaths','independentPublicAddresses','publicSslConfigured','playPort','creatorPort','voxaPort','playerServicePort','authPortalPort',...publicServices.map(([, , field])=>field)]) delete config[key]
-  }
+  config.externalNginxManual = nginxMode() === 'external' && state.setupSection !== 'network'
+  if (config.externalNginxManual) removeNetworkFields(config)
   await persistConfiguration(config)
 }
 
@@ -163,6 +163,8 @@ export async function installManagedService(service) {
   if (state.busy || !['postgresql', 'redis'].includes(service)) return
   captureSetupForm()
   const config = normalizedConfig()
+  config.externalNginxManual = nginxMode() === 'external'
+  if (config.externalNginxManual) removeNetworkFields(config)
   if (service === 'postgresql') config.databaseMode = 'managed'
   else config.redisMode = 'managed'
   state.config = { ...state.config, ...config }
@@ -199,7 +201,7 @@ async function persistConfiguration(config) {
   clearFeedback()
   render()
   try {
-    if (shouldApplySsl()) validateSslRoutes(sslRoutes(config))
+    if (shouldApplySsl() || (nginxMode() === 'external' && state.setupSection === 'network' && isPublicMode(config.playNetworkMode))) validateSslRoutes(sslRoutes(config))
     await invoke('save_configuration_command', { config })
     configurationSaved = true
     state.savedAuthPortalImage = (config.authPortalImage || '').trim()
@@ -217,12 +219,19 @@ async function persistConfiguration(config) {
     }
     await persistNginxSelection()
     if (shouldApplySsl()) await applyCertificateConfiguration()
+    else if (nginxMode() === 'external' && state.setupSection === 'network') state.notice = isPublicMode(config.playNetworkMode) ? '访问设置已保存。请复制生成的 Nginx 配置到外部服务器，校验并重载。' : '本机或局域网设置已保存，请重新启动受影响的服务。'
+    if (nginxMode() === 'external' && state.setupSection === 'network' && isPublicMode(config.playNetworkMode)) {
+      showExternalNginxConfiguration(config, '访问设置已保存，请复制配置到外部 Nginx，修改证书路径后校验并重载。')
+    }
     state.progress = { stage: 'saved', message: '配置已保存', percent: 100 }
   } catch (error) {
     state.progress = { stage: 'error', message: String(error), percent: 100 }
     state.error = configurationSaved
       ? `配置已保存，但后续应用失败：${String(error)}`
       : String(error)
+    if (configurationSaved && nginxMode() === 'external' && state.setupSection === 'network' && isPublicMode(config.playNetworkMode)) {
+      showExternalNginxConfiguration(config, state.error)
+    }
   } finally {
     state.busy = false
     if (configurationSaved) await refreshStatus()
@@ -245,7 +254,6 @@ export async function saveRawEnvironment() {
       ? '环境变量已保存；创作端的公网配置已自动改回本机或局域网范围。'
       : '环境变量已保存，不会自动重启服务。'
     state.notice = state.environmentMessage
-    if (shouldApplySsl()) await applyCertificateConfiguration()
     state.progress = { stage: 'saved', message: '环境变量已保存', percent: 100 }
   } catch (error) {
     state.error = String(error)
@@ -266,4 +274,8 @@ export async function reloadRawEnvironment() {
     state.error = String(error)
   }
   render()
+}
+
+function removeNetworkFields(config) {
+  for (const key of ['publicAddress','publicHost','creatorHost','playNetworkMode','creatorNetworkMode','publicAddressMode','sharedPublicAddress','publicServicePaths','independentPublicAddresses','publicSslConfigured','playPort','creatorPort','voxaPort','playerServicePort','authPortalPort',...publicServices.map(([, , field])=>field)]) delete config[key]
 }

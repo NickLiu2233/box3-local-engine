@@ -306,6 +306,24 @@ impl UpstreamTransition {
                 snapshots.insert(service.clone(), data[0].clone());
             }
         }
+        if snapshots.is_empty() {
+            return Ok(());
+        }
+        // Resolve the same Compose configuration that will recreate these
+        // containers. Check every image before Compose can stop any service.
+        let configuration = compose(&["config".into(), "--format".into(), "json".into()])?;
+        let configuration: serde_json::Value = serde_json::from_str(&configuration)
+            .map_err(|_| "无法读取服务镜像配置，未重建服务")?;
+        for service in snapshots.keys() {
+            let image = configuration["services"][service]["image"]
+                .as_str()
+                .filter(|image| !image.is_empty())
+                .ok_or_else(|| format!("{service} 缺少镜像配置，未重建服务"))?;
+            docker(&["image".into(), "inspect".into(), image.into()])
+                .map_err(|error| format!(
+                    "无法使用 {service} 的镜像 {image}：{error}。未重建服务，请先导入或下载匹配版本的镜像。"
+                ))?;
+        }
         let mut args = vec![
             "up".into(),
             "-d".into(),
@@ -315,12 +333,8 @@ impl UpstreamTransition {
             "never".into(),
             "--force-recreate".into(),
         ];
-        let empty = snapshots.is_empty();
         args.extend(snapshots.keys().cloned());
         self.snapshots = Some(snapshots);
-        if empty {
-            return Ok(());
-        }
         compose(&args).map(|_| ())
     }
     pub fn rollback(

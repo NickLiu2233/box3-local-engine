@@ -6,7 +6,8 @@
 //!
 //! Readers accept raw/gzip TAR (USTAR, GNU/PAX ordinary long names) and legacy ZIP
 //! (stored/deflated), detected by content, with optional `./` path prefixes.
-//! Paths are repository-relative: BACKUP-README.txt and DATA_DIRECTORIES only.
+//! Paths are repository-relative: BACKUP-README.txt, the root `.env` and
+//! DATA_DIRECTORIES only.
 //! Links, special/sparse files, encryption and path-changing global PAX records
 //! are rejected. Metadata is never applied. Only safe AppleDouble sidecars under
 //! __MACOSX for whitelisted paths are ignored, after path/type checks and CRC
@@ -47,7 +48,9 @@ pub const DATA_DIRECTORIES: [&str; 4] = [
     "apps/voxa/data",
 ];
 const README: &str = "BACKUP-README.txt";
-const README_TEXT: &str = "BOX3 Engine 数据备份。此文件不包含根目录 .env、密码或密钥。\n";
+const README_TEXT: &str =
+    "BOX3 Engine 数据备份。包含地图数据；如包含根目录 .env，则其中含有密码、密钥和访问配置，请妥善保管。\n";
+pub const ENV_FILE: &str = ".env";
 static NEXT: AtomicU64 = AtomicU64::new(0);
 pub type Result<T> = std::result::Result<T, String>;
 
@@ -67,11 +70,13 @@ impl Default for Limits {
         }
     }
 }
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ArchiveInfo {
     pub directories: Vec<String>,
     pub files: usize,
     pub data_bytes: u64,
+    pub has_env: bool,
 }
 #[derive(Debug)]
 pub struct RestoreReport {
@@ -176,25 +181,45 @@ fn copy_tree(source: &Path, destination: &Path) -> Result<()> {
         if m.is_dir() {
             copy_tree(&from, &to)?;
         } else if m.is_file() {
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::MetadataExt;
-                if m.nlink() != 1 {
-                    return Err(invalid("source contains a hard link"));
-                }
-            }
-            let mut input = open_backup_file(&from)?;
-            let mut output = OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(to)
-                .map_err(err)?;
-            io::copy(&mut input, &mut output).map_err(err)?;
+            copy_plain_file(&from, &to)?;
         } else {
             return Err(invalid("source contains a special file"));
         }
     }
     Ok(())
+}
+
+/// Copy one ordinary, single-link file; never follow or preserve links.
+fn copy_plain_file(source: &Path, destination: &Path) -> Result<()> {
+    let metadata = fs::symlink_metadata(source).map_err(err)?;
+    if metadata.file_type().is_symlink() || !metadata.is_file() {
+        return Err(invalid("source contains a special file"));
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if metadata.nlink() != 1 {
+            return Err(invalid("source contains a hard link"));
+        }
+    }
+    let mut input = open_backup_file(source)?;
+    let mut output = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(destination)
+        .map_err(err)?;
+    io::copy(&mut input, &mut output).map_err(err)?;
+    Ok(())
+}
+
+/// Distinguish a missing optional file from a link or special file.
+fn plain_file_exists(path: &Path) -> Result<bool> {
+    match fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_file() && !metadata.file_type().is_symlink() => Ok(true),
+        Ok(_) => Err(format!("Not a plain file: {}", path.display())),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(err(e)),
+    }
 }
 
 // Keep compatibility with files written by containers with mode 0200. Restore
@@ -300,6 +325,10 @@ pub fn create_archive(root: &Path, destination: &Path, limits: Limits) -> Result
     fs::create_dir(&tree).map_err(err)?;
     fs::write(tree.join(README), README_TEXT).map_err(err)?;
     let mut paths = vec![README];
+    if plain_file_exists(&root.join(ENV_FILE))? {
+        copy_plain_file(&root.join(ENV_FILE), &tree.join(ENV_FILE))?;
+        paths.push(ENV_FILE);
+    }
     for relative in DATA_DIRECTORIES {
         if check_directory(&root, relative)? {
             let target = tree.join(relative);
@@ -375,12 +404,13 @@ struct Contents {
     directories: HashSet<String>,
     present: [bool; 4],
     readme: bool,
+    env: bool,
     count: usize,
     bytes: u64,
 }
 fn permitted(name: &str, directory: bool) -> bool {
     (directory && ["", "apps", "apps/local-engine", "apps/voxa"].contains(&name))
-        || (!directory && name == README)
+        || (!directory && (name == README || name == ENV_FILE))
         || DATA_DIRECTORIES
             .iter()
             .any(|root| (directory && name == *root) || name.starts_with(&format!("{root}/")))
@@ -449,6 +479,9 @@ impl Contents {
         let ignored = apple_metadata(&name, directory)?;
         if !ignored && !permitted(&name, directory) {
             return Err(invalid("entry outside the four data directories"));
+        }
+        if !ignored && !directory && name == ENV_FILE {
+            self.env = true;
         }
         let mut spelling = name.as_str();
         loop {
@@ -540,6 +573,7 @@ impl Contents {
         if !self.readme {
             return Err(invalid("missing BACKUP-README.txt"));
         }
+        self.info.has_env = self.env;
         self.info.directories = DATA_DIRECTORIES
             .iter()
             .zip(self.present)
@@ -813,12 +847,30 @@ fn read_archive(archive: &Path, staging: Option<&Path>, limits: Limits) -> Resul
 }
 
 /// Validates/extracts once to private staging, then invokes the callback, then
-/// replaces ONLY directories present in the archive. Callback failure leaves
-/// live data unchanged. Existing root directory identities are preserved.
+/// replaces ONLY the data directories present in the archive. The root `.env`
+/// is left untouched; use `restore_archive_with_env` to opt into replacing it.
+/// Callback failure leaves live data unchanged. Existing root directory
+/// identities are preserved.
 pub fn restore_archive<F>(
     root: &Path,
     archive: &Path,
     limits: Limits,
+    before_replace: F,
+) -> Result<RestoreReport>
+where
+    F: FnOnce(&ArchiveInfo) -> Result<()>,
+{
+    restore_archive_with_env(root, archive, limits, false, before_replace)
+}
+
+/// Same as `restore_archive`, with an explicit choice for the archived root
+/// `.env`. The saved file is only replaced when `restore_env` is true and the
+/// archive actually contains one; a missing `.env` is simply created.
+pub fn restore_archive_with_env<F>(
+    root: &Path,
+    archive: &Path,
+    limits: Limits,
+    restore_env: bool,
     before_replace: F,
 ) -> Result<RestoreReport>
 where
@@ -830,7 +882,7 @@ where
     let tree = scratch.path.join("new");
     fs::create_dir(&tree).map_err(err)?;
     let info = read_archive(archive, Some(&tree), limits)?;
-    if info.directories.is_empty() {
+    if info.directories.is_empty() && !(restore_env && info.has_env) {
         return Ok(RestoreReport {
             archive: info,
             cleanup_warning: None,
@@ -861,6 +913,30 @@ where
             fs::create_dir(&old).map_err(err)?;
             move_children(&destination, &old, &mut moves)?;
             move_children(&tree.join(relative), &destination, &mut moves)?;
+        }
+        if restore_env && info.has_env {
+            let source = tree.join(ENV_FILE);
+            let destination = root.join(ENV_FILE);
+            let old = scratch.path.join("old-env");
+            match fs::symlink_metadata(&destination) {
+                Ok(metadata) if metadata.is_file() && !metadata.file_type().is_symlink() => {
+                    fs::rename(&destination, &old).map_err(err)?;
+                    moves.push((destination.clone(), old));
+                    fs::rename(&source, &destination).map_err(err)?;
+                    moves.push((source, destination));
+                }
+                Ok(_) => {
+                    return Err(format!(
+                        "现有 .env 不是普通文件，未替换：{}",
+                        destination.display()
+                    ));
+                }
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                    fs::rename(&source, &destination).map_err(err)?;
+                    moves.push((source, destination));
+                }
+                Err(e) => return Err(err(e)),
+            }
         }
         Ok(())
     })();
@@ -935,11 +1011,12 @@ mod tests {
                 b"new\0data\n",
             );
         }
-        put(&source, ".env", b"never archive root secrets");
+        put(&source, ".env", b"BOX_IMAGE_TAG=fixture\n");
         let archive = parent.join("backup.tar.gz");
         let info = create_archive(&source, &archive, Limits::default()).unwrap();
         assert_eq!(info.directories.len(), 4);
-        assert_eq!(info.files, 4);
+        assert_eq!(info.files, 5);
+        assert!(info.has_env);
         (source, archive)
     }
     fn header(name: &str, kind: u8, data: &[u8]) -> Vec<u8> {
@@ -1031,7 +1108,66 @@ mod tests {
             fs::read(independent.join("apps/voxa/data/nested/new.txt")).unwrap(),
             b"new\0data\n"
         );
-        assert!(!independent.join(".env").exists());
+        assert_eq!(
+            fs::read(independent.join(".env")).unwrap(),
+            b"BOX_IMAGE_TAG=fixture\n"
+        );
+    }
+    #[test]
+    fn env_is_replaced_only_when_the_caller_opts_in() {
+        let temp = temp();
+        let (_, archive) = fixture(&temp.path);
+        let info = validate_archive(&archive, Limits::default()).unwrap();
+        assert!(info.has_env);
+        let target = temp.path.join("target");
+        put(&target, ".env", b"current configuration\n");
+        restore_archive(&target, &archive, Limits::default(), |_| Ok(())).unwrap();
+        assert_eq!(
+            fs::read(target.join(".env")).unwrap(),
+            b"current configuration\n",
+            "default restore must keep the live .env"
+        );
+        let result = restore_archive_with_env(&target, &archive, Limits::default(), true, |_| Ok(()))
+            .unwrap();
+        assert!(result.cleanup_warning.is_none());
+        assert_eq!(
+            fs::read(target.join(".env")).unwrap(),
+            b"BOX_IMAGE_TAG=fixture\n"
+        );
+        // A .env-only archive still restores when explicitly requested.
+        let only_env = temp.path.join("only-env");
+        fs::create_dir(&only_env).unwrap();
+        put(&only_env, ".env", b"only env\n");
+        let only_env_archive = temp.path.join("only-env.tar.gz");
+        create_archive(&only_env, &only_env_archive, Limits::default()).unwrap();
+        restore_archive_with_env(&target, &only_env_archive, Limits::default(), true, |_| Ok(()))
+            .unwrap();
+        assert_eq!(fs::read(target.join(".env")).unwrap(), b"only env\n");
+        // Requesting an env restore on an archive without one is a no-op.
+        let no_env = temp.path.join("no-env");
+        fs::create_dir(&no_env).unwrap();
+        let no_env_archive = temp.path.join("no-env.tar.gz");
+        create_archive(&no_env, &no_env_archive, Limits::default()).unwrap();
+        restore_archive_with_env(&target, &no_env_archive, Limits::default(), true, |_| Ok(()))
+            .unwrap();
+        assert_eq!(fs::read(target.join(".env")).unwrap(), b"only env\n");
+    }
+    #[test]
+    fn env_restore_refuses_a_non_file_target_and_rolls_back() {
+        let temp = temp();
+        let (_, archive) = fixture(&temp.path);
+        let target = temp.path.join("target");
+        fs::create_dir_all(target.join(".env")).unwrap();
+        put(&target, "apps/local-engine/projects/old", b"old");
+        let error = restore_archive_with_env(&target, &archive, Limits::default(), true, |_| Ok(()))
+            .unwrap_err();
+        assert!(error.contains(".env"), "{error}");
+        assert!(target.join(".env").is_dir());
+        assert_eq!(
+            fs::read(target.join("apps/local-engine/projects/old")).unwrap(),
+            b"old",
+            "failed env replacement must roll the data directories back"
+        );
     }
     #[test]
     fn empty_backup_is_valid_noop_and_explicit_empty_directory_clears_only_it() {
@@ -1039,10 +1175,9 @@ mod tests {
         let source = temp.path.join("source");
         fs::create_dir(&source).unwrap();
         let archive = temp.path.join("empty.tar.gz");
-        assert!(create_archive(&source, &archive, Limits::default())
-            .unwrap()
-            .directories
-            .is_empty());
+        let info = create_archive(&source, &archive, Limits::default()).unwrap();
+        assert!(info.directories.is_empty());
+        assert!(!info.has_env, "installations without a .env must not claim one");
         let target = temp.path.join("target");
         for p in DATA_DIRECTORIES {
             put(&target, &format!("{p}/old"), b"old");
@@ -1083,7 +1218,6 @@ mod tests {
             ("apps/local-engine/projects/C:evil", b'0'),
             ("apps/local-engine/projects/NUL", b'0'),
             ("apps/local-engine/projects/name.", b'0'),
-            (".env", b'0'),
             ("docker-compose.yml", b'0'),
             ("apps/local-engine/.env", b'0'),
             ("apps/voxa/config", b'0'),
@@ -1513,11 +1647,9 @@ mod tests {
             "C:\\escape",
             "\\\\server\\escape",
             "apps\\voxa\\data\\..\\..\\escape",
-            ".env",
             "apps/voxa/config",
             "__MACOSX/../../escape",
             "__MACOSX/payload",
-            "__MACOSX/._.env",
             "__MACOSX/apps/local-engine/._.env",
             "__MACOSX/apps/voxa/data/._..",
         ] {
@@ -1533,6 +1665,10 @@ mod tests {
                 .is_err()
             );
         }
+        zip_fixture(&archive, &[(".env", b"S=1")], zip::CompressionMethod::Stored);
+        assert!(validate_archive(&archive, Limits::default())
+            .unwrap()
+            .has_env);
         zip_fixture(
             &archive,
             &[
@@ -1671,7 +1807,7 @@ mod tests {
         let archive = temp.path.join("bad.tar.gz");
         for (key, value) in [
             ("path", &b"../escape"[..]),
-            ("path", b".env"),
+            ("path", b"docker-compose.yml"),
             ("path", b"__MACOSX/../../escape"),
             ("linkpath", b"escape"),
             ("GNU.sparse.name", b"apps/voxa/data/file"),

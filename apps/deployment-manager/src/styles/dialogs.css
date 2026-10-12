@@ -255,6 +255,27 @@
   white-space: nowrap;
 }
 
+.backup-env-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.backup-env-choice input {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+}
+
+.backup-env-hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
@@ -347,4 +368,22 @@
   margin: 0;
   font-size: 14px;
   font-weight: 650;
+}
+
+.start-dialog.external-nginx-dialog {
+  width: min(880px, calc(100vw - 48px));
+  max-height: calc(100dvh - 64px);
+  overflow-y: auto;
+}
+.external-nginx-dialog:focus { outline: none; }
+.external-nginx-dialog h2 { margin: 0; font-size: 18px; }
+.external-nginx-dialog p { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.external-nginx-dialog pre {
+  padding: 16px;
+  max-height: 44dvh;
+  overflow: auto;
+  border-radius: 8px;
+  background: var(--panel-soft);
+  font-size: 12px;
+  line-height: 1.6;
 }

@@ -40,6 +40,7 @@ export function render() {
   if (state.busy && refreshProgressPanel()) return
   normalizeAccessiblePage()
   const scrollPositions = captureScrollPositions()
+  const disclosures = new Map([...document.querySelectorAll('details[data-disclosure]')].map(node => [node.dataset.disclosure, node.open]))
   const content =
     state.page === 'web-login'
       ? webLogin()
@@ -55,6 +56,9 @@ export function render() {
                 ? about()
                 : overview()
   document.querySelector('#app').innerHTML = shell(content)
+  document.querySelectorAll('details[data-disclosure]').forEach(node => {
+    if (disclosures.has(node.dataset.disclosure)) node.open = disclosures.get(node.dataset.disclosure)
+  })
   restoreScrollPositions(scrollPositions)
   bindEvents()
   syncOverviewPolling()
