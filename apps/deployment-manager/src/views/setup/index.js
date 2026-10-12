@@ -43,6 +43,24 @@ export function setup() {
   }
   const tab = (id, label) =>
     `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`
+  const nginxConfigAvailable = Boolean(state.sslStatus?.nginxConfigAvailable)
+  const rawNginxPanel = nginxConfigAvailable
+    ? `<section class="setup-panel environment-panel ${state.setupSection === 'nginx' ? 'active' : ''}" data-setup-panel="nginx"><div class="config-group raw-config-group"><div class="group-title"><div><h2>原始 Nginx 配置</h2><span>保存前会校验语法，通过后重载内置 Nginx</span></div><button type="button" class="text-button" id="reload-raw-nginx" ${state.nginxConfigSaving ? 'disabled' : ''}>重新读取</button></div><textarea id="raw-nginx-config" class="raw-environment" spellcheck="false" ${state.nginxConfigSaving ? 'disabled' : ''}>${escapeHtml(state.nginxConfigFile)}</textarea></div>${setupExplanation(
+        '配置说明：什么时候需要编辑原始 Nginx 配置？',
+        [
+          ['适合场景', '需要手动调整代理头、超时、缓冲，或排查入口转发问题时使用。'],
+          [
+            '保存生效',
+            '保存前会先用内置 Nginx 校验语法；通过后写入并重载内置入口。校验失败不会改动现有配置。',
+          ],
+          [
+            '覆盖提醒',
+            '之后在“访问设置”保存配置时，会按页面设置重新生成该文件，手工修改的内容会被覆盖。',
+          ],
+          ['安全提醒', '错误配置可能导致入口不可用；修改前请先记下原内容。'],
+        ],
+      )}</section>`
+    : ''
   const secretCard = (name, label, configured) => {
     const editing = Boolean(state.ownerSecretEditing[name])
     const secret = config[name] || state.ownerSecrets?.[name] || ''
@@ -95,8 +113,8 @@ export function setup() {
     </section>`
   return `<header><div><h1>数据配置</h1></div></header>
     ${state.busy || state.sslBusy ? progressPanel() : ''}
-    <form id="setup-form" novalidate class="${state.setupSection === 'environment' ? 'environment-mode' : ''}">
-      <div class="setup-tabs">${tab('data', '数据服务')}${tab('storage', '数据存储')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}</div>
+    <form id="setup-form" novalidate class="${['environment', 'nginx'].includes(state.setupSection) ? 'environment-mode' : ''}">
+      <div class="setup-tabs">${tab('data', '数据服务')}${tab('storage', '数据存储')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}${nginxConfigAvailable ? tab('nginx', '原始 Nginx 配置') : ''}</div>
       <div class="setup-panels">
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
           <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2></div>${databaseMode === 'external' ? '<button type="button" class="text-button" data-test-connection="postgresql">测试连接</button>' : ''}</div><input name="databaseMode" type="hidden" value="${databaseMode}"/><div class="database-mode-choice"><button type="button" class="${databaseMode === 'managed' ? 'active' : ''}" data-database-mode="managed"><strong>内置数据库</strong><span>启动器自动配置和维护</span></button><button type="button" class="${databaseMode === 'external' ? 'active' : ''}" data-database-mode="external"><strong>外部数据库</strong><span>连接已有的 PostgreSQL</span></button></div>${databaseMode === 'managed' ? managedServicePanel('postgresql', state.managedDatabaseInfo) : `<div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost === 'managed-postgres' ? '' : config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '无密码认证可留空')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>`}</div>
@@ -254,9 +272,9 @@ export function setup() {
             ],
           ],
         )}</section>
-        ${rawEnvironmentPanel}
+        ${rawEnvironmentPanel}${rawNginxPanel}
       </div>
-      <div class="form-actions submit-actions">${state.setupSection === 'environment' ? `<button class="button primary" type="button" data-save-raw-environment ${state.environmentFileSaving ? 'disabled' : ''}>保存配置</button>` : `<button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button>`}</div>
+      <div class="form-actions submit-actions">${state.setupSection === 'environment' ? `<button class="button primary" type="button" data-save-raw-environment ${state.environmentFileSaving ? 'disabled' : ''}>保存配置</button>` : state.setupSection === 'nginx' ? `<button class="button primary" type="button" data-save-raw-nginx ${state.nginxConfigSaving ? 'disabled' : ''}>保存并重载</button>` : `<button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button>`}</div>
     </form>`
 }
 

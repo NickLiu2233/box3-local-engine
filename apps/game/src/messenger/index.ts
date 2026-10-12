@@ -10,6 +10,7 @@ import type { GroundEmote } from '@box/schema/animation/ik-schema';
 import { IframeEventBus } from '@box/iframe-event-bus';
 
 import { clientConfig } from 'src/config/client';
+import { resolvePublicUrl } from 'src/utils/public-url';
 import type { Settings } from 'src/engine/settings/settings-schema';
 import { UIConfigState } from 'src/redux/slices/UIConfig';
 import { UiState } from 'src/redux/edit/ui';
@@ -187,7 +188,7 @@ class MessageController {
       });
       return;
     }
-    let link = url;
+    let link = resolvePublicUrl(url);
     if (isLoginBack) {
       link += `?referrer=${encodeURIComponent(window.location.href)}`;
     }

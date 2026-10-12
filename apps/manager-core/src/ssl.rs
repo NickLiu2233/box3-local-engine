@@ -6,6 +6,8 @@ mod apply;
 mod certificates;
 mod path_certificates;
 pub use path_certificates::{reload,refresh_certificate_paths};
+mod raw;
+pub use raw::{read_raw_nginx_config,save_raw_nginx_config};
 mod proxy;
 pub use runtime::{apply, install_image, install_image_with_progress, set_provider, status, stop, verify_endpoint};
 pub use runtime::{apply_runtime_urls,apply_with_transition,apply_with_transition_progress};

@@ -12,6 +12,7 @@ import {
 
 import { usePlayer } from 'src/client/play/play-context';
 import { clientConfig } from 'src/config/client';
+import { resolvePublicUrl } from 'src/utils/public-url';
 import {
   PlayerProfileDialog,
   type PlayerProfileChanges,
@@ -169,7 +170,7 @@ export function LocalGameHud() {
               <p>{intlMessage('localHud.exitDescription')}</p>
               <footer>
                 <button className={style.secondaryButton} onClick={() => setPanel(null)}>{intlMessage('localHud.continuePlaying')}</button>
-                <button className={style.dangerButton} onClick={() => window.location.assign('/')}>{intlMessage('localHud.exitMap')}</button>
+                <button className={style.dangerButton} onClick={() => window.location.assign(resolvePublicUrl('/'))}>{intlMessage('localHud.exitMap')}</button>
               </footer>
             </section>
           </div>

@@ -230,6 +230,7 @@ pub fn status(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
         .map(|expiry| (expiry.with_timezone(&chrono::Utc) - chrono::Utc::now()).num_days());
     let running = owned(root, docker).unwrap_or(None).unwrap_or(false);
     let provider = provider(root, config.as_ref().map(|c| c.settings.mode.as_str()));
+    let nginx_config_available = provider == "managed" && root.join("https/nginx.conf").is_file();
     let image = call(docker, &["image", "inspect", IMAGE]);
     let image_available = image.is_ok();
     let metadata = if running {
@@ -246,7 +247,7 @@ pub fn status(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
                 .find_map(|entry| entry.strip_prefix("NGINX_VERSION=").map(str::to_owned))
         });
     Ok(
-        json!({"config":config,"running":running,"daysRemaining":days,"provider":provider,"imageAvailable":image_available,"imageVersion":image_version,"certificatePaths":super::path_certificates::status(root)["paths"],"certificatePathError":super::path_certificates::status(root)["error"],"externalNginx":super::local::status(),"externalManual":fs::read_to_string(root.join("https/provider")).is_ok_and(|value|value.trim()=="external-manual")}),
+        json!({"config":config,"running":running,"daysRemaining":days,"provider":provider,"nginxConfigAvailable":nginx_config_available,"imageAvailable":image_available,"imageVersion":image_version,"certificatePaths":super::path_certificates::status(root)["paths"],"certificatePathError":super::path_certificates::status(root)["error"],"externalNginx":super::local::status(),"externalManual":fs::read_to_string(root.join("https/provider")).is_ok_and(|value|value.trim()=="external-manual")}),
     )
 }
 pub(super) fn openssl_command() -> std::process::Command {

@@ -6,10 +6,13 @@ import { copyOwnerSecret, toggleOwnerSecretEditor } from '../../operations/owner
 import { copyText } from '../../utils/clipboard.js'
 import {
   installManagedService,
+  loadRawNginxConfig,
   reloadRawEnvironment,
+  reloadRawNginxConfig,
   relocateDataStorage,
   saveConfiguration,
   saveRawEnvironment,
+  saveRawNginxConfig,
   testConnection,
 } from '../../operations/configuration.js'
 import { render } from '../../core/render-request.js'
@@ -163,6 +166,12 @@ export function bindConfigurationEvents() {
   document.querySelector('#reload-raw-environment')?.addEventListener('click', reloadRawEnvironment)
 
   document
+    .querySelector('[data-save-raw-nginx]')
+    ?.addEventListener('click', saveRawNginxConfig)
+
+  document.querySelector('#reload-raw-nginx')?.addEventListener('click', reloadRawNginxConfig)
+
+  document
     .querySelectorAll('[data-secret-edit]')
     .forEach((node) =>
       node.addEventListener('click', () => void toggleOwnerSecretEditor(node.dataset.secretEdit)),
@@ -189,6 +198,9 @@ export function bindConfigurationEvents() {
       // values already typed before changing the visible section.
       event.preventDefault()
       switchSetupSection(node.dataset.setupSection)
+      if (node.dataset.setupSection === 'nginx' && !state.nginxConfigLoaded) {
+        void loadRawNginxConfig()
+      }
     }),
   )
 

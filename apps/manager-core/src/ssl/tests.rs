@@ -115,6 +115,110 @@ fn nginx_preserves_websocket_and_original_http_host() {
     assert!(config.contains("listen 8443 ssl"));
 }
 
+#[test]
+fn path_routes_assign_the_upstream_before_the_break_rewrite() {
+    let mut settings = input().settings;
+    settings.routes[0].path = "/abc".into();
+    let config = configuration(&settings, "revision", "");
+    let set = config
+        .find("set $box_upstream http://play:3000;")
+        .expect("prefixed routes must keep a variable upstream");
+    let rewrite = config
+        .find("rewrite ^/abc(/.*)$ $1 break;")
+        .expect("prefixed routes must strip the public prefix");
+    let proxy = config
+        .find("proxy_pass $box_upstream;")
+        .expect("prefixed routes must proxy through the variable");
+    assert!(
+        set < rewrite && rewrite < proxy,
+        "rewrite ... break ends the rewrite phase, so the upstream variable must be set first"
+    );
+}
+
+#[test]
+fn raw_nginx_save_validates_then_reloads_and_rolls_back_rejections() {
+    let root = fixture_root();
+    std::fs::create_dir_all(root.join("https")).unwrap();
+    std::fs::write(root.join("https/nginx.conf"), "old configuration").unwrap();
+    std::fs::write(root.join("https/provider"), "managed").unwrap();
+    let owner = runtime::identity(&root);
+    // Invalid text never touches the live configuration.
+    let mut docker = |args: &[String]| {
+        if args.first().map(String::as_str) == Some("run") {
+            return Err("nginx: [emerg] invalid directive".into());
+        }
+        Ok(String::new())
+    };
+    let error = save_raw_nginx_config(&root, &root, "events {}\nhttp { invalid }", &mut docker)
+        .unwrap_err();
+    assert!(error.contains("已保留原配置"), "{error}");
+    assert_eq!(
+        std::fs::read_to_string(root.join("https/nginx.conf")).unwrap(),
+        "old configuration"
+    );
+    // A running entry reloads validated text and leaves no staging file behind.
+    let mut reloads = 0;
+    let mut docker = |args: &[String]| {
+        if args.contains(&"container".into()) && args.contains(&"ls".into()) {
+            return Ok("owned".into());
+        }
+        if args.iter().any(|value| value.contains("box.https.owner")) {
+            return Ok(owner.clone());
+        }
+        if args.iter().any(|value| value.contains("State.Running")) {
+            return Ok("true".into());
+        }
+        if args.contains(&"reload".into()) {
+            reloads += 1;
+        }
+        Ok(String::new())
+    };
+    assert!(save_raw_nginx_config(&root, &root, "events {}\nhttp {}\n", &mut docker).unwrap());
+    assert_eq!(reloads, 1);
+    assert_eq!(
+        std::fs::read_to_string(root.join("https/nginx.conf")).unwrap(),
+        "events {}\nhttp {}\n"
+    );
+    assert!(!root.join("https/nginx.raw-pending.conf").exists());
+    // The running entry rejecting the text restores the previous configuration.
+    let mut docker = |args: &[String]| {
+        if args.contains(&"container".into()) && args.contains(&"ls".into()) {
+            return Ok("owned".into());
+        }
+        if args.iter().any(|value| value.contains("box.https.owner")) {
+            return Ok(owner.clone());
+        }
+        if args.iter().any(|value| value.contains("State.Running")) {
+            return Ok("true".into());
+        }
+        if args.first().map(String::as_str) == Some("exec") && args.contains(&"-t".into()) {
+            return Err("bad configuration".into());
+        }
+        Ok(String::new())
+    };
+    let error = save_raw_nginx_config(&root, &root, "events {}\n", &mut docker).unwrap_err();
+    assert!(error.contains("已恢复原配置"), "{error}");
+    assert_eq!(
+        std::fs::read_to_string(root.join("https/nginx.conf")).unwrap(),
+        "events {}\nhttp {}\n"
+    );
+    // A stopped entry stores the text and reports that no reload happened.
+    let mut docker = |args: &[String]| {
+        if args.contains(&"container".into()) && args.contains(&"ls".into()) {
+            return Ok(String::new());
+        }
+        Ok(String::new())
+    };
+    assert!(!save_raw_nginx_config(
+        &root,
+        &root,
+        "events {}\nhttp { server { listen 80; } }\n",
+        &mut docker
+    )
+    .unwrap());
+    std::fs::remove_dir_all(root).unwrap();
+}
+
 fn fixture_root() -> std::path::PathBuf {
     let root = std::env::temp_dir().join(format!(
         "box-ssl-test-{}-{}",

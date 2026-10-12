@@ -77,6 +77,8 @@ for (const command of [
   'get_performance_status',
   'destroy_project_runtime',
   'get_owner_secrets',
+  'get_raw_nginx_config',
+  'save_raw_nginx_config',
   'test_remote_connection',
   'export_diagnostics',
   'prepare_managed_database',

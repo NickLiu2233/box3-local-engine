@@ -12,6 +12,7 @@ import styles from './projects.module.css';
 import { customMapSizeMessage } from '../../components/project-management/project-presentation';
 import zhMessages from '../../i18n/zh.json';
 import { CreatorModelLibrary } from '../../components/creator-model-library';
+import { resolvePublicUrl } from '../../src/utils/public-url';
 import {
   PlayerAccount,
   type PlayerAccountIdentity,
@@ -113,7 +114,7 @@ export default function ProjectsPage({
       return;
     }
     await apiClient.postApiCreatorLogout();
-    window.location.assign('/projects');
+    window.location.assign(resolvePublicUrl('/projects'));
   };
 
   const saveCreatorProfile = async (changes: PlayerProfileChanges) => {

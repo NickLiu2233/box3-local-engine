@@ -245,13 +245,18 @@ pub(super) fn configuration(
                 " location {}{location} {{\n",
                 if route.path.is_empty() { "" } else { "^~ " }
             ));
-            if !route.path.is_empty() {
-                output.push_str(&format!("  rewrite ^{}(/.*)$ $1 break;\n", route.path));
-            }
             if settings.mode == "managed" {
                 output.push_str("  resolver 127.0.0.11 valid=30s ipv6=off;\n");
             }
-            output.push_str(&format!("  set $box_upstream http://{target};\n  proxy_pass $box_upstream;\n  proxy_http_version 1.1;\n  proxy_set_header Host $http_host;\n  proxy_set_header X-Forwarded-Proto {};\n  proxy_set_header X-Forwarded-Host $http_host;\n  proxy_set_header X-Forwarded-For $remote_addr;\n  proxy_set_header X-Forwarded-Prefix \"{}\";\n  proxy_set_header Accept-Encoding \"\";\n  proxy_set_header Upgrade $http_upgrade;\n  proxy_set_header Connection $box_ssl_connection;\n  proxy_read_timeout 3600s;\n }}\n",if route.secure{"https"}else{"http"},route.path));
+            // `set` runs in the rewrite phase and must precede `rewrite ...
+            // break`, which ends that phase for this location. Otherwise
+            // $box_upstream stays empty and proxy_pass fails with
+            // "invalid URL prefix in \"\"" (HTTP 500) for prefixed routes.
+            output.push_str(&format!("  set $box_upstream http://{target};\n"));
+            if !route.path.is_empty() {
+                output.push_str(&format!("  rewrite ^{}(/.*)$ $1 break;\n", route.path));
+            }
+            output.push_str(&format!("  proxy_pass $box_upstream;\n  proxy_http_version 1.1;\n  proxy_set_header Host $http_host;\n  proxy_set_header X-Forwarded-Proto {};\n  proxy_set_header X-Forwarded-Host $http_host;\n  proxy_set_header X-Forwarded-For $remote_addr;\n  proxy_set_header X-Forwarded-Prefix \"{}\";\n  proxy_set_header Accept-Encoding \"\";\n  proxy_set_header Upgrade $http_upgrade;\n  proxy_set_header Connection $box_ssl_connection;\n  proxy_read_timeout 3600s;\n }}\n",if route.secure{"https"}else{"http"},route.path));
         }
         if routes.iter().all(|r| !r.path.is_empty()) {
             output.push_str(" location / { return 404; }\n");

@@ -56,6 +56,8 @@ export function bindNavigationEvents() {
     state.legal = null
     state.environmentFile = ''
     state.environmentFileLoaded = false
+    state.nginxConfigFile = ''
+    state.nginxConfigLoaded = false
     resetOwnerSecretState()
     state.backups = []
     state.performance = null

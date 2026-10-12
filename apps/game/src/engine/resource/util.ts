@@ -1,5 +1,7 @@
 import { clientConfig } from 'src/config/client';
 
+import { resolvePublicUrl } from 'src/utils/public-url';
+
 export function resolveOSSResourceUrl(
   baseURL: string,
   hash: string,
@@ -20,7 +22,7 @@ export function resolveOSSResourceUrl(
  */
 export function getOSSResourceUrl(hash: string) {
   return resolveOSSResourceUrl(
-    clientConfig.OSS_CDN_URL,
+    resolvePublicUrl(clientConfig.OSS_CDN_URL),
     hash,
     typeof window === 'undefined' ? '' : window.location.origin,
   );

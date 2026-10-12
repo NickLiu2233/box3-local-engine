@@ -15,6 +15,7 @@ import {
   shouldApplySsl,
   applyCertificateConfiguration,
   persistNginxSelection,
+  refreshSsl,
   validateSslRoutes,
 } from './ssl.js'
 import { nginxMode, sslRoutes } from '../configuration/ssl.js'
@@ -270,6 +271,55 @@ export async function reloadRawEnvironment() {
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentMessage = '已重新读取磁盘中的 .env。'
     state.notice = state.environmentMessage
+  } catch (error) {
+    state.error = String(error)
+  }
+  render()
+}
+
+export async function loadRawNginxConfig() {
+  if (state.nginxConfigSaving) return
+  clearFeedback()
+  try {
+    state.nginxConfigFile = await invoke('get_raw_nginx_config')
+    state.nginxConfigLoaded = true
+    state.nginxConfigMessage = ''
+  } catch (error) {
+    state.error = String(error)
+  }
+  render()
+}
+
+export async function saveRawNginxConfig() {
+  const textarea = document.querySelector('#raw-nginx-config')
+  if (!textarea || state.nginxConfigSaving) return
+  state.nginxConfigSaving = true
+  clearFeedback()
+  state.nginxConfigFile = textarea.value
+  render()
+  try {
+    const reloaded = await invoke('save_raw_nginx_config', { content: state.nginxConfigFile })
+    state.nginxConfigMessage = reloaded
+      ? '内置 Nginx 配置已校验并重载。'
+      : '配置已保存；内置 Nginx 未运行，下次启动时生效。'
+    state.notice = state.nginxConfigMessage
+    state.progress = { stage: 'saved', message: '内置 Nginx 配置已保存', percent: 100 }
+    await refreshSsl()
+  } catch (error) {
+    state.error = String(error)
+  } finally {
+    state.nginxConfigSaving = false
+    render()
+  }
+}
+
+export async function reloadRawNginxConfig() {
+  if (state.nginxConfigSaving) return
+  clearFeedback()
+  try {
+    state.nginxConfigFile = await invoke('get_raw_nginx_config')
+    state.nginxConfigMessage = '已重新读取磁盘中的 Nginx 配置。'
+    state.notice = state.nginxConfigMessage
   } catch (error) {
     state.error = String(error)
   }

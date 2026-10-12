@@ -13,6 +13,7 @@ import { messenger } from 'src/messenger';
 import { LoadingStage } from 'src/defs/loading-stage';
 import { LangType } from 'src/apis/createra';
 import { clientConfig } from 'src/config/client';
+import { resolvePublicUrl } from 'src/utils/public-url';
 import type { GameClient } from 'src/engine/game-client';
 import { GameContext } from 'src/client/context';
 
@@ -44,7 +45,7 @@ export const MainPage = (props: MainPageProps) => {
       !messenger.messageTool.isInIframe() &&
       !messenger.messageTool.isInIosWebview()
     ) {
-      window.location.assign(clientConfig.WEBSITE_URL);
+      window.location.assign(resolvePublicUrl(clientConfig.WEBSITE_URL));
       return;
     }
 

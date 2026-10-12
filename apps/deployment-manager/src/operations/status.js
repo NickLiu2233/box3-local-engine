@@ -46,6 +46,13 @@ export async function refreshStatus() {
     state.accessMode = ''
     state.environmentFile = await invoke('get_raw_environment')
     state.environmentFileLoaded = true
+    if (state.page === 'setup' && !state.sslStatus) {
+      try {
+        state.sslStatus = await invoke('get_ssl_status')
+      } catch {
+        // The 访问设置 panel surfaces SSL errors when the operator opens it.
+      }
+    }
   } catch (error) {
     state.status = {
       dockerReady: false,

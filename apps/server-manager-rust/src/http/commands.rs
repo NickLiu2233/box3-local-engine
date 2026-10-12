@@ -86,6 +86,20 @@ pub(crate) async fn command(
                 generate_runtime_environment(&app)?;
                 Ok(json!(false))
             }
+            "get_raw_nginx_config" => Ok(json!(box_manager_core::ssl::read_raw_nginx_config(&app.root)?)),
+            "save_raw_nginx_config" => {
+                let content = req
+                    .body
+                    .get("content")
+                    .and_then(Value::as_str)
+                    .ok_or("配置内容无效")?;
+                Ok(json!(box_manager_core::ssl::save_raw_nginx_config(
+                    &app.root,
+                    &host_project_root(&app)?,
+                    content,
+                    &mut |args| docker(&args.iter().map(String::as_str).collect::<Vec<_>>()),
+                )?))
+            }
             "get_install_config" => {
                 let values = parse_env(
                     &fs::read_to_string(env_path(&app)).map_err(|error| error.to_string())?,

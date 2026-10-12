@@ -3,6 +3,7 @@ import { GameClientState } from '../game-client-schema';
 import { TeleportProtocol } from '@box/schema/teleport/teleport-protocol';
 import { messenger } from 'src/messenger';
 import { clientConfig } from 'src/config/client';
+import { resolvePublicUrl } from 'src/utils/public-url';
 
 export class TeleportClient {
   public protocol: MuClientProtocol<typeof TeleportProtocol>;
@@ -27,7 +28,7 @@ export class TeleportClient {
           if (!editHash) return;
           if (clientConfig.isLocalGameServer) {
             messenger.jumpTo({
-              url: `/e/${encodeURIComponent(editHash)}`,
+              url: resolvePublicUrl(`/e/${encodeURIComponent(editHash)}`),
             });
             return;
           }

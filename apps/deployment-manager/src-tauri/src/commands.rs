@@ -1477,28 +1477,36 @@ fn offline_image_digest_path(app: &AppHandle) -> Result<PathBuf, String> {
     Ok(runtime_root(app)?.join(format!(".offline-image-{IMAGE_TAG}.sha256")))
 }
 
+/// Report whether any application image the launcher starts is absent.
+/// `inspect` returns true when the image is missing.
+fn application_images_missing(tag: &str, inspect: &mut dyn FnMut(&str) -> bool) -> bool {
+    SERVICE_NAMES.iter().any(|name| {
+        let image = match *name {
+            "player-auth-portal" => "box-local-engine-player-auth-portal".to_string(),
+            other => format!("box-local-engine-{other}"),
+        };
+        inspect(&format!("{image}:{tag}"))
+    })
+}
+
 fn ensure_images(app: &AppHandle, services: &[&str]) -> Result<(), String> {
     synchronize_runtime_image_tag(app)?;
     let tag = IMAGE_TAG;
-    let missing = SERVICE_NAMES.iter().any(|name| {
-        let image_name = match *name {
-            "player-auth-portal" => "box-local-engine-player-auth-portal",
-            other => {
-                return docker_output(&[
-                    "image",
-                    "inspect",
-                    &format!("box-local-engine-{other}:{tag}"),
-                ])
-                .is_err()
-            }
-        };
-        docker_output(&["image", "inspect", &format!("{image_name}:{tag}")]).is_err()
+    let missing = application_images_missing(tag, &mut |image| {
+        docker_output(&["image", "inspect", image]).is_err()
     });
     let expected = if cfg!(target_arch = "aarch64") {
         "arm64"
     } else {
         "amd64"
     };
+    if !missing {
+        // Every image the launcher starts is already present under this
+        // launcher's release tag. Prefer those local bits (operators may have
+        // built them from this checkout) instead of replacing them with the
+        // embedded catalog by digest.
+        return Ok(());
+    }
     if let Some(release) = crate::image_download::embedded_release()? {
         release.validate(expected)?;
         return crate::image_updates::prepare(&release, tag, services, &DesktopImageRuntime(app));
@@ -1509,8 +1517,11 @@ fn ensure_images(app: &AppHandle, services: &[&str]) -> Result<(), String> {
         .find(|path| {
             path.file_name()
                 .is_some_and(|name| name.to_string_lossy().contains(expected))
-        })
-        .ok_or_else(|| format!("未找到 {expected} 离线镜像归档。请重新下载完整离线包。"))?;
+        });
+    let Some(archive) = archive else {
+        // Neither a downloadable manifest nor a bundled archive is available.
+        return Err(format!("未找到 {expected} 离线镜像归档。请重新下载完整离线包。"));
+    };
     let archive_digest = verify_offline_image_archive(app, &archive)?;
     let digest_path = offline_image_digest_path(app)?;
     let imported_digest = fs::read_to_string(&digest_path)
@@ -2148,6 +2159,20 @@ fn save_raw_environment(app: AppHandle, content: String) -> Result<bool, String>
     let normalized = enforce_creator_network_policy(&app)?;
     generate_runtime_environment(&app)?;
     Ok(normalized)
+}
+
+#[tauri::command]
+fn get_raw_nginx_config(app: AppHandle) -> Result<String, String> {
+    box_manager_core::ssl::read_raw_nginx_config(&runtime_root(&app)?)
+}
+
+#[tauri::command]
+fn save_raw_nginx_config(app: AppHandle, content: String) -> Result<bool, String> {
+    let _operation = box_manager_core::operation::mutation_guard()?;
+    let root = runtime_root(&app)?;
+    box_manager_core::ssl::save_raw_nginx_config(&root, &root, &content, &mut |args| {
+        docker_output(&args.iter().map(String::as_str).collect::<Vec<_>>())
+    })
 }
 
 #[tauri::command]
@@ -4371,6 +4396,8 @@ pub fn run() {
             get_owner_secrets,
             get_raw_environment,
             save_raw_environment,
+            get_raw_nginx_config,
+            save_raw_nginx_config,
             get_system_status,
             get_project_runtime_status,
             list_map_runtime_profiles,
@@ -4420,6 +4447,27 @@ pub fn run() {
 #[cfg(test)]
 mod desktop_runtime_contract_tests {
     use super::*;
+    #[test]
+    fn application_images_missing_names_every_started_image() {
+        let mut seen = Vec::new();
+        assert!(!application_images_missing("v0.3.0-linux-arm64", &mut |image| {
+            seen.push(image.to_string());
+            false
+        }));
+        for expected in [
+            "box-local-engine-play:v0.3.0-linux-arm64",
+            "box-local-engine-creator:v0.3.0-linux-arm64",
+            "box-local-engine-voxa:v0.3.0-linux-arm64",
+            "box-local-engine-player-service:v0.3.0-linux-arm64",
+            "box-local-engine-player-auth-portal:v0.3.0-linux-arm64",
+        ] {
+            assert!(seen.contains(&expected.to_string()), "{expected}");
+        }
+        assert!(application_images_missing("v0.3.0-linux-arm64", &mut |image| {
+            image == "box-local-engine-player-auth-portal:v0.3.0-linux-arm64"
+        }));
+    }
+
     #[test]
     fn path_validation_receives_the_same_derived_environment_as_compose() {
         let owner = "BOX_PLAY_NETWORK_MODE=public\nBOX_CREATOR_NETWORK_MODE=local\nBOX_PLAY_PUBLIC_ADDRESS_OVERRIDE=http://127.0.0.1/abc\nBOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE=http://127.0.0.1/sjixs\n".to_string();

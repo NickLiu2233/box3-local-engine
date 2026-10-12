@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { allowAuthenticatedCreatorApi } from '../../../../server/creator-api-security';
+import { publicPath } from '../../../../server/public-path';
 
 type RuntimeMode = 'edit' | 'play';
 
@@ -48,8 +49,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const status = await runtimeControl(id, mode, req.method === 'POST' ? 'start' : 'status');
     return res.status(req.method === 'POST' ? 202 : 200).json({
       ...status,
-      editUrl: `/e/${id}`,
-      playUrl: `/p/${id}`,
+      editUrl: publicPath(`/e/${id}`),
+      playUrl: publicPath(`/p/${id}`),
     });
   } catch (error) {
     return res.status(500).json({

@@ -18,11 +18,12 @@ import { BackendClientRPC } from './backend-rpc-client';
 import { getMuRef } from './client-schema';
 import { getToken, setToken } from 'src/utils/token';
 import { EventBus } from '@box/utils/event';
+import { resolvePublicUrl } from 'src/utils/public-url';
 
 function localRuntimeURL(mode: 'play' | 'edit') {
   if (typeof window === 'undefined') return '';
   if (!clientConfig.isLocalGameServer) return '';
-  return `${window.location.origin}/runtime/${mode}`;
+  return `${window.location.origin}${resolvePublicUrl(`/runtime/${mode}`)}`;
 }
 
 /**

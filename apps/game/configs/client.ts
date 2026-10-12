@@ -149,12 +149,22 @@ export function extractServerConfigForClient(
   // are valid for the web process, but must never be serialized to a browser.
   // Edit requests must use the writable runtime; play requests use the
   // read-only runtime.
-  const runtimeURL =
+  const localRuntimePath =
     process.env.BOX_DEPLOYMENT_MODE === 'creator'
       ? `/runtime/${mode}/${encodeURIComponent(containerName)}`
       : process.env.BOX_PLAY_LIBRARY_PATH && mode === 'play'
       ? `/runtime/play/${encodeURIComponent(containerName)}`
       : `/runtime/${mode}`;
+  // Prefix public asset and API base paths so server-rendered inline styles
+  // and background images resolve under the deployment path prefix too.
+  const basePath =
+    typeof window === 'undefined'
+      ? process.env.BOX_APP_BASE_PATH || ''
+      : (window as unknown as { __BOX_APP_BASE_PATH__?: string }).__BOX_APP_BASE_PATH__ || '';
+  const runtimeURL =
+    basePath && localRuntimePath.startsWith('/') && !localRuntimePath.startsWith(`${basePath}/`)
+      ? `${basePath}${localRuntimePath}`
+      : localRuntimePath;
   return {
     ...clientConfig,
     ARENA_URL: '',

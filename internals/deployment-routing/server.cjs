@@ -10,7 +10,12 @@ function configuration() {
 }
 function html(source, config = configuration()) {
   if (!config.basePath) return source
-  const transform = tag => tag.replace(/\b(href|src|srcset|action|poster|data)=("|')([^"']*)\2/gi, (whole,key,quote,value) => `${key}=${quote}${key.toLowerCase() === 'srcset' ? path.srcSet(value,config.basePath,config.peerPaths) : path.publicPath(value,config.basePath,config.peerPaths)}${quote}`)
+  const transform = tag => tag.replace(/\b(href|src|srcset|action|poster|data|style)=("|')([^"']*)\2/gi, (whole,key,quote,value) => {
+    const resolved = key.toLowerCase() === 'style'
+      ? css(value,config).replace(new RegExp(quote,'g'),quote === '"' ? '&quot;' : '&#39;')
+      : key.toLowerCase() === 'srcset' ? path.srcSet(value,config.basePath,config.peerPaths) : path.publicPath(value,config.basePath,config.peerPaths)
+    return `${key}=${quote}${resolved}${quote}`
+  })
   let raw = ''
   const result = source.replace(/<(?:[^"'>]|"[^"]*"|'[^']*')*>/g, tag => {
     if (raw) { if (new RegExp(`^<\\/${raw}\\s*>$`,'i').test(tag)) raw = ''; return tag }
@@ -23,7 +28,25 @@ function html(source, config = configuration()) {
     if (!/^https?:\/\//i.test(value.assetPrefix || '')) value.assetPrefix = path.publicPath(value.assetPrefix || '/',config.basePath,config.peerPaths) .replace(/\/$/,'')
     return opening + JSON.stringify(value).replace(/</g,'\\u003c') + closing
   })
-  return data.replace(/<head(?:\s[^>]*)?>/i, opening => `${opening}<script>${bootstrap(config)}</script>`)
+  // Stylesheet URLs inside CSS are resolved by the browser, not by the HTML
+  // attribute rewrite above, so inline styles and stylesheet responses are
+  // prefix-rewritten as well (fonts, background images, @import).
+  const styled = data.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (whole,opening,body,closing) => `${opening}${css(body,config)}${closing}`)
+  return styled.replace(/<head(?:\s[^>]*)?>/i, opening => `${opening}<script>${bootstrap(config)}</script>`)
+}
+function css(source, config = configuration()) {
+  if (!config.basePath) return source
+  return source
+    .replace(/url\(\s*(?:"([^"]*)"|'([^']*)'|([^)"']*?))\s*\)/gi, (whole,dq,sq,bare) => {
+      const value = dq ?? sq ?? bare ?? ''
+      const resolved = path.publicPath(value,config.basePath,config.peerPaths)
+      return resolved === value ? whole : `url("${resolved}")`
+    })
+    .replace(/(@import\s+)(?:"([^"]*)"|'([^']*)')/gi, (whole,prefix,dq,sq) => {
+      const value = dq ?? sq ?? ''
+      const resolved = path.publicPath(value,config.basePath,config.peerPaths)
+      return resolved === value ? whole : `${prefix}"${resolved}"`
+    })
 }
 function install() {
   if (http.ServerResponse.prototype.__boxPrefixInstalled) return
@@ -32,7 +55,10 @@ function install() {
   const writeHead = http.ServerResponse.prototype.writeHead
   const flush = http.ServerResponse.prototype.flushHeaders
   const context = response => response.__boxPrefixConfig || configuration()
-  const enabled = response => Boolean(context(response).basePath) && /^text\/html/i.test(String(response.getHeader('content-type') || response.__boxContentType || ''))
+  const contentType = response => String(response.getHeader('content-type') || response.__boxContentType || '')
+  const isHtml = response => Boolean(context(response).basePath) && /^text\/html/i.test(contentType(response))
+  const isCss = response => Boolean(context(response).basePath) && /^text\/css/i.test(contentType(response))
+  const buffered = response => isHtml(response) || isCss(response)
   http.ServerResponse.prototype.writeHead = function(status, ...args) {
     const headers = args.find(value => value && typeof value === 'object')
     if (headers && !Array.isArray(headers)) {
@@ -40,12 +66,14 @@ function install() {
     }
     const location = this.getHeader('location')
     if (typeof location === 'string') this.setHeader('location',path.publicPath(location,context(this).basePath,context(this).peerPaths))
-    if (enabled(this)) { this.statusCode = status; return this }
+    const link = this.getHeader('link')
+    if (typeof link === 'string') this.setHeader('link',link.replace(/<([^>]*)>/g,(whole,value) => `<${path.publicPath(value,context(this).basePath,context(this).peerPaths)}>`))
+    if (buffered(this)) { this.statusCode = status; return this }
     return writeHead.call(this,status,...args)
   }
-  http.ServerResponse.prototype.flushHeaders = function() { if (!enabled(this)) return flush.call(this) }
+  http.ServerResponse.prototype.flushHeaders = function() { if (!buffered(this)) return flush.call(this) }
   http.ServerResponse.prototype.write = function(chunk, encoding, callback) {
-    if (!enabled(this)) return write.call(this,chunk,encoding,callback)
+    if (!buffered(this)) return write.call(this,chunk,encoding,callback)
     this.__boxChunks ||= []
     const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk,typeof encoding === 'string' ? encoding : undefined)
     this.__boxSize = (this.__boxSize || 0) + bytes.length
@@ -56,14 +84,14 @@ function install() {
     return true
   }
   http.ServerResponse.prototype.end = function(chunk, encoding, callback) {
-    if (!enabled(this)) return end.call(this,chunk,encoding,callback)
+    if (!buffered(this)) return end.call(this,chunk,encoding,callback)
     if (chunk) this.write(chunk,typeof encoding === 'string' ? encoding : undefined)
     const source = Buffer.concat(this.__boxChunks || []).toString('utf8')
-    const result = html(source,context(this))
+    const result = isCss(this) ? css(source,context(this)) : html(source,context(this))
     this.removeHeader('content-length'); this.removeHeader('etag')
     writeHead.call(this,this.statusCode)
     return end.call(this,result,typeof encoding === 'function' ? encoding : callback)
   }
   http.ServerResponse.prototype.__boxPrefixInstalled = true
 }
-module.exports = {html, install, configuration}
+module.exports = {html, css, install, configuration}

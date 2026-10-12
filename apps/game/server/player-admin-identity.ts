@@ -16,6 +16,7 @@ import {
   type PlayerAdminRole,
 } from '../shared/player-admin-policy';
 import { requestClientAddress } from './client-address';
+import { publicPath } from './public-path';
 import {
   PlayerAdminRequestError,
   playerAdminSessionError,
@@ -365,7 +366,9 @@ function setSessionCookies(
       httpOnly: true,
       sameSite: 'strict',
       secure: secureCookie(req),
-      path: '/api/play-admin',
+      // Prefix-aware: the browser stores and returns this cookie for the
+      // public path (for example /csnjncsk/api/play-admin) only.
+      path: publicPath('/api/play-admin'),
       maxAge: Math.floor(SESSION_ABSOLUTE_MS / 1000),
     }),
   );
@@ -383,7 +386,7 @@ function setSessionCookies(
 
 export function clearPlayerAdminSession(req: NextApiRequest, res: NextApiResponse) {
   for (const [name, httpOnly, path] of [
-    [ADMIN_SESSION_COOKIE, true, '/api/play-admin'],
+    [ADMIN_SESSION_COOKIE, true, publicPath('/api/play-admin')],
     [ADMIN_CSRF_COOKIE, false, '/'],
   ] as const) {
     appendCookie(

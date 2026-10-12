@@ -1186,3 +1186,37 @@ test('certificate paths use SSL payload only and incomplete pairs cannot apply',
   assert.match(app.api.state.error, /同时填写证书和私钥/)
   assert.equal(app.calls.filter(call => call.command === 'apply_ssl_config').length, before)
 })
+
+test('raw Nginx configuration appears with a managed config and saves validated text', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'
+  app.api.state.setupSection = 'data'
+  app.api.state.sslLoaded = true
+  app.results.get_ssl_status = { provider: 'managed', running: true, nginxConfigAvailable: true }
+  app.api.state.sslStatus = { provider: 'managed', running: true, nginxConfigAvailable: false }
+  app.api.render()
+  assert.ok(!app.html.includes('原始 Nginx 配置'))
+  app.api.state.sslStatus = { provider: 'managed', running: true, nginxConfigAvailable: true }
+  app.api.render()
+  assert.ok(app.html.includes('原始 Nginx 配置'))
+  await app.api.loadRawNginxConfig()
+  const textarea = app.document.querySelector('#raw-nginx-config')
+  assert.ok(textarea)
+  assert.match(textarea.value, /events \{\}/)
+  textarea.value = 'events {}\nhttp { server { listen 8080; } }\n'
+  await app.api.saveRawNginxConfig()
+  const call = app.calls.filter((item) => item.command === 'save_raw_nginx_config').at(-1)
+  assert.equal(call.payload.content, 'events {}\nhttp { server { listen 8080; } }\n')
+  assert.equal(app.api.state.nginxConfigMessage, '内置 Nginx 配置已校验并重载。')
+  assert.equal(app.api.state.error, '')
+})
+
+test('raw Nginx configuration stays hidden without a built-in config', async () => {
+  const app = await createFixture()
+  app.api.state.page = 'setup'
+  app.api.state.setupSection = 'environment'
+  app.api.state.sslLoaded = true
+  app.api.state.sslStatus = { provider: 'external', nginxConfigAvailable: false }
+  app.api.render()
+  assert.ok(!app.html.includes('原始 Nginx 配置'))
+})

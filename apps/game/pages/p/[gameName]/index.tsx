@@ -12,6 +12,7 @@ import { Error, ErrorProps } from '../../../components/error';
 import { PlayLoading } from '../../../components/play-loading';
 import { bootstrapPlayResourceCache, PlayResourceCacheBootstrap, shouldBootstrapPlayResourceCache } from '../../../components/play-resource-cache-bootstrap';
 import { getArenaServerRenderProps } from '../../../server/server-render';
+import { resolvePublicUrl } from 'src/utils/public-url';
 import { hashToUrl } from '../../../server/utils/hash';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../../../server/player-service-client';
 import { findPlayWorld } from '../../../server/play-worlds';
@@ -211,7 +212,7 @@ function Home(props: SSRProps) {
   }
 
   const launcherAssetBase = launcherServiceWorkerMode && typeof window !== 'undefined' && world
-    ? `${window.location.origin}/runtime/play/${encodeURIComponent(world)}`
+    ? `${window.location.origin}${resolvePublicUrl(`/runtime/play/${encodeURIComponent(world)}`)}`
     : '';
   const activeClientConfig = !props.loadingConfig && launcherServiceWorkerMode
     ? {

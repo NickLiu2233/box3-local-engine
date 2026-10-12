@@ -1,5 +1,6 @@
 import { clientConfig } from 'src/config/client';
 import { resolveContentURL } from '@box/content-server/content-fetch';
+import { resolvePublicUrl } from './public-url';
 
 export function resolveHashURL(cdnPath: string, value: string) {
   if (!value) {
@@ -10,7 +11,7 @@ export function resolveHashURL(cdnPath: string, value: string) {
 }
 
 export function hashURL(hash: string) {
-  return resolveHashURL(clientConfig.CDN_PATH || '', hash);
+  return resolvePublicUrl(resolveHashURL(clientConfig.CDN_PATH || '', hash));
 }
 
 export type ImageFormats =

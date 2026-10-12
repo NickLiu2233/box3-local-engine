@@ -5,6 +5,7 @@ import { IntlProvider } from 'react-intl';
 import { PlayLoading } from '../components/play-loading';
 import { PlayResourceCacheBootstrap } from '../components/play-resource-cache-bootstrap';
 import { LoadingStage } from '../src/defs/loading-stage';
+import { resolvePublicUrl } from '../src/utils/public-url';
 import { hasAuthenticatedPlayer, playerLoginURL, requestPlayerServiceIp } from '../server/player-service-client';
 import { findPlayWorld } from '../server/play-worlds';
 
@@ -61,7 +62,10 @@ export default function PlayLaunchPage({ cover, worldName }: PlayLaunchProps) {
         if (cancelled) return;
         setStatus(next);
         if (next.phase === 'ready') {
-          window.setTimeout(() => window.location.replace(`/p/${encodeURIComponent(world)}`), 300);
+          window.setTimeout(
+            () => window.location.replace(resolvePublicUrl(`/p/${encodeURIComponent(world)}`)),
+            300,
+          );
           return;
         }
         if (next.phase !== 'error') timer = window.setTimeout(poll, 800);

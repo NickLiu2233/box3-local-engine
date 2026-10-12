@@ -11,6 +11,7 @@ import { ReactEvents } from '../react-event';
 import { messenger } from 'src/messenger';
 import { CloseType } from 'src/engine/game-client-schema';
 import { touchable } from 'src/utils/mobile';
+import { resolvePublicUrl } from 'src/utils/public-url';
 
 import {
   ClientStateSchema,
@@ -236,7 +237,7 @@ export class PlayClient extends EngineClient {
       const roomPath = serverId && serverId !== 'public'
         ? `/__room/${encodeURIComponent(serverId)}`
         : '';
-      const runtimeBase = `/runtime/play/${encodeURIComponent(hash)}${roomPath}`;
+      const runtimeBase = resolvePublicUrl(`/runtime/play/${encodeURIComponent(hash)}${roomPath}`);
       const assetBase = clientConfig.launcherServiceWorkerMode
         ? clientConfig.CDN_PATH
         : runtimeBase;

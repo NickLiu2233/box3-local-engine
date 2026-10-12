@@ -72,6 +72,7 @@ const PROGRESS_COMMANDS = new Set([
   'stop_ssl_proxy',
   'verify_ssl_endpoint',
   'save_raw_environment',
+  'save_raw_nginx_config',
   'create_backup',
   'restore_backup',
   'export_diagnostics',

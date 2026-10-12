@@ -107,6 +107,8 @@ export function switchSetupSection(section) {
 function captureRawEnvironment() {
   const textarea = document.querySelector('#raw-environment')
   if (textarea) state.environmentFile = textarea.value
+  const nginx = document.querySelector('#raw-nginx-config')
+  if (nginx) state.nginxConfigFile = nginx.value
 }
 
 export function normalizeInactiveServicePorts(config) {
