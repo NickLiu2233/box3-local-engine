@@ -76,6 +76,7 @@ export function bindPlayerAccountEvents({
     state.busy = true
     state.playerProfileError = ''
     const playerAtStart = state.player
+    let ownedPlayer = playerAtStart
     render()
     try {
       const result = await remoteApi.updateProfile(server.endpoint, {
@@ -91,6 +92,7 @@ export function bindPlayerAccountEvents({
         throw new Error(result.error?.message || '保存账号设置失败，请稍后重试。')
       }
       state.player = result.data.player
+      ownedPlayer = state.player
       state.playerProfileName = state.player.displayName || displayName
       state.playerProfileSkinId = state.player.avatarSkinId || state.playerProfileSkinId
       state.playerSettingsOpen = false
@@ -99,7 +101,7 @@ export function bindPlayerAccountEvents({
       if (state.selectedId !== server.id || state.player !== playerAtStart) return
       state.playerProfileError = error.message || '保存账号设置失败，请稍后重试。'
     } finally {
-      if (state.selectedId === server.id && (state.player === playerAtStart || !state.player)) {
+      if (state.selectedId === server.id && (state.player === ownedPlayer || !state.player)) {
         state.busy = false
         render()
       }

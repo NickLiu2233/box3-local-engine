@@ -27,7 +27,7 @@ const temp =
 app.setPath('userData', temp)
 nativeTheme.themeSource = 'light'
 const server = { id: 'smoke-server', name: '测试服务器', endpoint: 'http://127.0.0.1:3121' }
-const player = { username: 'test-player', displayName: '测试玩家', avatarSkinId: 'explorer' }
+let player = { username: 'test-player', displayName: '测试玩家', avatarSkinId: 'explorer' }
 const cover = `data:image/png;base64,${fs.readFileSync(path.resolve(__dirname, '../../game/public/map-templates/blank-template.png')).toString('base64')}`
 let cleared = false
 let mapCleared = false
@@ -36,6 +36,7 @@ let loginAttempts = 0
 let browserCleared = false
 let cacheReads = 0
 let expireNextLibraryPatch = false
+let completeProfileSave: () => void
 const favoriteMapIds = new Set<string>()
 const emptyServer = { id: 'empty-server', name: '空缓存服务器', endpoint: 'http://127.0.0.1:9999' }
 
@@ -75,6 +76,12 @@ ipcMain.handle('launcher:invoke', async (_event, command, payload) => {
   }
   if (command === 'api_request') {
     const url = new URL(payload.request.url)
+    if (url.pathname.endsWith('/play-profile')) {
+      const changes = JSON.parse(payload.request.body)
+      await new Promise<void>(resolve => { completeProfileSave = resolve })
+      player = {...player,displayName:changes.displayName,avatarSkinId:changes.avatarSkinId}
+      return {status:200,headers:[['content-type','application/json']],body:JSON.stringify({player})}
+    }
     if (url.pathname.endsWith('/play-library')) {
       if (!authenticated) return { status: 401, body: '{"message":"AUTH_REQUIRED"}', headers: [] }
       if (payload.request.method === 'PATCH') {
@@ -227,6 +234,17 @@ app
       'document.querySelectorAll(".world-card").length === 2 && [...document.querySelectorAll(".world-cover, .brand-icon, .player-account-avatar")].every(image => image.naturalWidth > 0)',
     )
     await waitFor('document.querySelector("[data-map-filter=recent]")?.textContent === "最近游玩"')
+    await run('document.querySelector("[data-action=toggle-player-menu]").click()')
+    await run('document.querySelector("[data-action=open-player-settings]").click()')
+    await waitFor('Boolean(document.querySelector("#player-profile-form"))')
+    await run('{document.querySelector("[data-player-skin=cowboy]").click(); const input=document.querySelector("#player-profile-name");input.value="保存测试";input.dispatchEvent(new Event("input",{bubbles:true}));document.querySelector("#player-profile-form").requestSubmit()}')
+    await waitFor('document.querySelector("#player-profile-form button[type=submit]")?.disabled')
+    completeProfileSave()
+    await waitFor('!document.querySelector("#player-profile-form") && document.body.textContent.includes("账号设置已保存。")')
+    await run('document.querySelector("[data-action=toggle-player-menu]").click()')
+    await run('document.querySelector("[data-action=open-player-settings]").click()')
+    await waitFor('document.querySelector("#player-profile-name")?.value === "保存测试" && document.querySelector("[data-player-skin=cowboy]")?.getAttribute("aria-pressed") === "true" && !document.querySelector("#player-profile-form button[type=submit]").disabled')
+    await run('document.querySelector("[data-close-player-settings]").click()')
     await run('document.querySelector("[data-map-filter=recent]").click()')
     await waitFor(
       'document.querySelectorAll(".world-card").length === 1 && document.querySelector(".world-card h3")?.textContent === "星梦小镇" && Boolean(document.querySelector(".world-favorite:not(:disabled)"))',
@@ -336,7 +354,7 @@ app
     if (errors.length) throw new Error(errors.join('\n'))
     window.destroy()
     console.log(
-      'Desktop smoke passed: login expiry/relogin, Chinese IME, library sync, independent cache clearing and packaged assets',
+      'Desktop smoke passed: profile saving, login expiry/relogin, Chinese IME, library sync, independent cache clearing and packaged assets',
     )
     app.exit(0)
   })
