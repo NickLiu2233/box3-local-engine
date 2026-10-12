@@ -482,6 +482,47 @@ fn managed_https_runtime_links_use_listener_ports_without_changing_engine_ports(
 }
 
 #[test]
+fn independent_runtime_addresses_clear_shared_prefixes_for_all_services() {
+    use std::fs;
+    for mode in ["managed", "external"] {
+        let root = fixture_root();
+        fs::create_dir(root.join("https")).unwrap();
+        let routes: Vec<Route> = SERVICES.iter().filter(|service| service.0 != "server-manager").enumerate().map(|(index, service)| Route {
+            service: service.0.into(), domain: format!("{}.example.test", service.0),
+            port: Some(18381 + index as u16), secure: index % 2 == 1, path: String::new(),
+        }).collect();
+        let saved = Saved {
+            settings: Settings { mode: mode.into(), https_port: 443, routes: routes.clone(), upstream_ports: Default::default() },
+            pending_local: false, external_local: false, expires_at: String::new(), revision: "fixture".into(),
+            external_config: String::new(), certificate_sources: Default::default(), certificate_expiries: Default::default(),
+        };
+        fs::write(root.join("https/settings.json"), serde_json::to_string(&saved).unwrap()).unwrap();
+        let values = [("BOX_PLAY_NETWORK_MODE", "public"), ("BOX_CREATOR_NETWORK_MODE", "public")]
+            .into_iter().map(|(key, value)| (key.into(), value.into())).collect();
+        let mut derived = BTreeMap::new();
+        for service in SERVICES {
+            let key = service.3.trim_end_matches("_PORT");
+            derived.insert(format!("{key}_BASE_PATH"), "/stale-shared-prefix".into());
+            derived.insert(format!("{key}_PUBLIC_URL"), "http://old.example.test/stale-shared-prefix".into());
+        }
+        derived.insert("BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(), r#"{"http://old.example.test":["/stale-shared-prefix"]}"#.into());
+        apply_runtime_urls(&root, &values, &mut derived).unwrap();
+        for route in &routes {
+            let service = SERVICES.iter().find(|service| service.0 == route.service).unwrap();
+            let key = service.3.trim_end_matches("_PORT");
+            assert_eq!(derived[&format!("{key}_BASE_PATH")], "");
+            assert_eq!(derived[&format!("{key}_PUBLIC_URL")], format!("{}://{}:{}", if route.secure { "https" } else { "http" }, route.domain, route.port.unwrap()));
+        }
+        assert_eq!(derived["BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN"], "{}");
+        let config = configuration(&saved.settings, "fixture", "");
+        assert_eq!(config.matches("server {").count(), 5);
+        assert_eq!(config.matches("location / {").count(), 5);
+        assert!(!config.contains("rewrite ^"));
+        fs::remove_dir_all(root).unwrap();
+    }
+}
+
+#[test]
 fn failed_route_reload_preserves_the_certificate_being_deleted() {
     let root = fixture_root();
     std::fs::create_dir_all(root.join("https/revisions/old")).unwrap();

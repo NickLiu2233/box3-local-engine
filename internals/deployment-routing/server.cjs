@@ -48,12 +48,28 @@ function css(source, config = configuration()) {
       return resolved === value ? whole : `${prefix}"${resolved}"`
     })
 }
+function imageRequest(value, config = configuration()) {
+  if (!config.basePath || typeof value !== 'string') return value
+  let url
+  try { url = new URL(value, 'http://box.internal') } catch { return value }
+  if (url.pathname !== '/_next/image' || url.searchParams.getAll('url').length !== 1) return value
+  const source = url.searchParams.get('url')
+  if (!source.startsWith(config.basePath + '/')) return value
+  // Next fetches local optimizer sources inside its own unprefixed router.
+  url.searchParams.set('url', source.slice(config.basePath.length))
+  return url.pathname + url.search
+}
 function install() {
   if (http.ServerResponse.prototype.__boxPrefixInstalled) return
   const write = http.ServerResponse.prototype.write
   const end = http.ServerResponse.prototype.end
   const writeHead = http.ServerResponse.prototype.writeHead
   const flush = http.ServerResponse.prototype.flushHeaders
+  const emit = http.Server.prototype.emit
+  http.Server.prototype.emit = function(event, ...args) {
+    if (event === 'request' && args[0]) args[0].url = imageRequest(args[0].url)
+    return emit.call(this,event,...args)
+  }
   const context = response => response.__boxPrefixConfig || configuration()
   const contentType = response => String(response.getHeader('content-type') || response.__boxContentType || '')
   const isHtml = response => Boolean(context(response).basePath) && /^text\/html/i.test(contentType(response))
@@ -94,4 +110,4 @@ function install() {
   }
   http.ServerResponse.prototype.__boxPrefixInstalled = true
 }
-module.exports = {html, css, install, configuration}
+module.exports = {html, css, imageRequest, install, configuration}
