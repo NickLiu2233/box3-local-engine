@@ -8,7 +8,7 @@ import { createServerStore, normalizeEndpoint } from './server-store'
 test('normalizes loopback and public endpoints while rejecting unsafe schemes', () => {
   assert.equal(normalizeEndpoint('127.0.0.1:3492'), 'http://127.0.0.1:3492')
   assert.equal(normalizeEndpoint('play.example.com/'), 'https://play.example.com')
-  assert.equal(normalizeEndpoint('192.168.1.20:3121'), 'https://192.168.1.20:3121')
+  assert.equal(normalizeEndpoint('192.168.1.20:3121'), 'http://192.168.1.20:3121')
   assert.equal(normalizeEndpoint('[2001:db8::1]:3121'), 'https://[2001:db8::1]:3121')
   assert.equal(normalizeEndpoint('::1'), 'http://[::1]')
   assert.throws(() => normalizeEndpoint('122111222'))
@@ -16,6 +16,15 @@ test('normalizes loopback and public endpoints while rejecting unsafe schemes', 
   assert.throws(() => normalizeEndpoint('不是服务器地址'))
   assert.throws(() => normalizeEndpoint('ftp://play.example.com'))
   assert.throws(() => normalizeEndpoint('https://user:pass@play.example.com'))
+})
+
+test('LAN shorthand keeps paths and uses HTTP unless a protocol is explicit', () => {
+  assert.equal(normalizeEndpoint('10.240.28.131/abc'), 'http://10.240.28.131/abc')
+  assert.equal(normalizeEndpoint('172.16.4.2:3121/team/play'), 'http://172.16.4.2:3121/team/play')
+  assert.equal(normalizeEndpoint('172.31.255.255'), 'http://172.31.255.255')
+  assert.equal(normalizeEndpoint('172.32.0.1'), 'https://172.32.0.1')
+  assert.equal(normalizeEndpoint('203.0.113.9/abc'), 'https://203.0.113.9/abc')
+  assert.equal(normalizeEndpoint('https://10.240.28.131/abc'), 'https://10.240.28.131/abc')
 })
 
 test('persists server selection, nickname and removal atomically', async (context) => {

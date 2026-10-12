@@ -18,7 +18,7 @@ import { createPublicImageTransport } from './network/public-image-transport'
 import { createWindowStateStore } from './storage/window-state'
 import { createMapLabels } from './storage/map-labels'
 import { createGameWindowManager } from './runtime/game-window-manager'
-import { hideApplicationMenu } from './runtime/application-menu'
+import { hideApplicationMenu, installEditingShortcuts } from './runtime/application-menu'
 import { validateDescriptor } from './security/package-descriptor'
 import { createServerStore } from './storage/server-store'
 import type { ElectronCommandPayload } from './types'
@@ -94,6 +94,7 @@ function createRememberedWindow(
     width: size.width,
     height: size.height,
   })
+  installEditingShortcuts(created.webContents)
   if (process.platform !== 'darwin') {
     created.setMenu(null)
     created.setMenuBarVisibility(false)

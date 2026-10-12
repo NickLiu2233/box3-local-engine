@@ -84,7 +84,9 @@ export function normalizeServerAddress(value: string): string {
     throw new Error(ADDRESS_ERROR)
   }
 
-  if (!hasScheme && isLoopback(url.hostname)) url.protocol = 'http:'
+  const ipv4 = isIPv4(bareHost) ? bareHost.split('.').map(Number) : null
+  const privateIPv4 = ipv4 && (ipv4[0] === 10 || (ipv4[0] === 172 && ipv4[1] >= 16 && ipv4[1] <= 31) || (ipv4[0] === 192 && ipv4[1] === 168))
+  if (!hasScheme && (isLoopback(url.hostname) || privateIPv4)) url.protocol = 'http:'
   return url.toString().replace(/\/$/, '')
 }
 
