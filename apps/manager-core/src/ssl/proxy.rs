@@ -17,6 +17,23 @@ pub(super) fn ports(settings: &Settings) -> std::collections::BTreeSet<u16> {
         })
         .collect()
 }
+/// Docker bindings include both the public port and Nginx's internal listener.
+/// A protocol change can retain the public port while changing the listener.
+pub(super) fn bindings(settings: &Settings) -> std::collections::BTreeSet<(u16, u16)> {
+    settings
+        .routes
+        .iter()
+        .map(|route| {
+            let internal = route.port.unwrap_or(if route.secure { 443 } else { 80 });
+            let public = route.port.unwrap_or(if route.secure {
+                settings.https_port
+            } else {
+                80
+            });
+            (public, internal)
+        })
+        .collect()
+}
 pub(super) fn run_proxy(
     root: &Path,
     network: &str,
@@ -38,17 +55,8 @@ pub(super) fn run_proxy(
         "--mount".into(),
         bind.into(),
     ];
-    for route in &settings.routes {
-        let internal = route.port.unwrap_or(if route.secure { 443 } else { 80 });
-        let public = route.port.unwrap_or(if route.secure {
-            settings.https_port
-        } else {
-            80
-        });
-        let mapping = format!("{public}:{internal}");
-        if !args.contains(&mapping) {
-            args.extend(["-p".into(), mapping]);
-        }
+    for (public, internal) in bindings(settings) {
+        args.extend(["-p".into(), format!("{public}:{internal}")]);
     }
     args.extend([
         IMAGE.into(),

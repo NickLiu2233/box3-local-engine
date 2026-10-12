@@ -2,7 +2,7 @@ import type { PlayerSessionStore } from '../storage/player-session-store'
 import type { ApiRequest, ApiResponse, ApiTransport } from '../types'
 import type { ApiRequestTiming } from './request-diagnostics'
 import { normalizeServerAddress } from '../../shared/server-address'
-import { isAllowedPlayerApi, playerBootstrapPath, playerLoginPath } from '../../shared/api-policy'
+import { isAllowedPlayerApi, playerBootstrapPath, playerAuthBaseUrl, isPlayerLoginUrl } from '../../shared/api-policy'
 
 const MAX_API_RESPONSE_BYTES = 16 * 1024 * 1024
 const PLAYER_COOKIE_NAMES = new Set(['box_local_player_session', 'box_local_player_device'])
@@ -69,18 +69,7 @@ function rememberAuthPortal(endpoint: string, body: string, origins: Map<string,
   origins.delete(endpoint)
   try {
     const bootstrap = JSON.parse(body)
-    const loginUrl = new URL(bootstrap.loginApiUrl)
-    const allowedScheme = ['http:', 'https:'].includes(loginUrl.protocol)
-    if (
-      allowedScheme &&
-      loginUrl.pathname === playerLoginPath &&
-      !loginUrl.username &&
-      !loginUrl.password &&
-      !loginUrl.search &&
-      !loginUrl.hash
-    ) {
-      origins.set(endpoint, loginUrl.origin)
-    }
+    origins.set(endpoint, playerAuthBaseUrl(bootstrap.loginApiUrl))
   } catch {
     /* A malformed bootstrap cannot authorize an external login origin. */
   }
@@ -158,7 +147,7 @@ export function createApiTransport({
       try {
         targetUrl = validateRequestUrl(endpointUrl, requestUrl, authOrigins.get(endpoint), method)
         if (!ALLOWED_METHODS.has(method)) throw new Error('不支持的 API 请求方法')
-        if (method === 'POST' && targetUrl.pathname === playerLoginPath) {
+        if (method === 'POST' && isPlayerLoginUrl(targetUrl)) {
           budget = loginTimeoutMs
           version += 1
           versions.set(endpoint, version)
@@ -216,7 +205,7 @@ export function createApiTransport({
         }
         const setCookieHeaders = response.headers.getSetCookie?.() || []
         if (version === (versions.get(endpoint) || 0)) {
-          if (response.status === 401 && targetUrl.pathname !== playerLoginPath)
+          if (response.status === 401 && !isPlayerLoginUrl(targetUrl))
             clearCookies(endpoint)
           else if (setCookieHeaders.length)
             saveCookies(endpoint, mergeCookies(readCookies(endpoint), setCookieHeaders))

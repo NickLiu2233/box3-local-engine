@@ -50,6 +50,14 @@ function validateCatalog(catalog, architecture) {
   return catalog
 }
 
+function localImageTag(catalog) {
+  const tags = new Set(catalog.images.map(image => image.imageTag))
+  if (tags.size !== 1) throw new Error('本地测试镜像必须使用同一版本标签')
+  const tag = [...tags][0]
+  if (!/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/.test(tag)) throw new Error('本地镜像标签无效')
+  return tag
+}
+
 function splitArchive(archive, architecture, destination) {
   const version = require('../package.json').version
   const result = spawnSync(
@@ -77,4 +85,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { splitArchive, validateCatalog }
+module.exports = { splitArchive, validateCatalog, localImageTag }

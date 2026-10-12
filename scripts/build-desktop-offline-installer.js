@@ -221,6 +221,8 @@ function tauriBuildFailure(result) {
 }
 
 function main() {
+  const local = process.argv.includes('--local')
+  if (local) process.env.BOX_ALLOW_DIRTY_RELEASE = 'true'
   prepareReleaseMetadata()
   const version = require(path.join(managerRoot, 'package.json')).version
   const platform = process.argv[2]
@@ -237,6 +239,7 @@ function main() {
   if (!archive || !fs.statSync(archive, { throwIfNoEntry: false })?.isFile()) {
     fail('离线镜像归档不存在')
   }
+  if (local && archive.endsWith('.json')) fail('本地模式需要完整镜像归档，不能仅提供清单')
   const expectedArchitecture = platform.endsWith('arm64') ? 'arm64' : 'amd64'
   const catalogPath = archive.endsWith('.json')
     ? archive
@@ -261,13 +264,14 @@ function main() {
     )
     if (result.status !== 0) fail('无法生成独立服务镜像包')
   }
-  const { validateCatalog } = require('./build-image-downloads')
+  const { validateCatalog, localImageTag } = require('./build-image-downloads')
   const imageManifest = validateCatalog(
     JSON.parse(fs.readFileSync(catalogPath, 'utf8')),
     expectedArchitecture,
   )
   const imageDetails = imageManifest.images
-  const imageTag = imageManifest.imageTag
+  const imageTag = local ? localImageTag(imageManifest) : imageManifest.imageTag
+  if (local) imageManifest.imageTag = imageTag
   const payloadImageInfo = path.join(managerRoot, 'src-tauri/payload/IMAGE-INFO.json')
   const payloadMetadata = path.join(managerRoot, 'src-tauri/payload/metadata')
   const originalImageInfo = fs.readFileSync(payloadImageInfo, 'utf8')
@@ -280,14 +284,21 @@ function main() {
       fail(`轻量启动器资源目录中存在离线归档，请移走后重试：${name}`)
     }
   }
-  // Embed only metadata; the immutable image archive is published separately.
+  const packageMode = { mode: local ? 'local' : 'slim', imageTag, platform: imageManifest.platform }
+  const offline = local ? { formatVersion: 1, archive: `box-local-engine-images-local-linux-${expectedArchitecture}${archive.endsWith('.gz') ? '.tar.gz' : '.tar'}`, imageTag, platform: imageManifest.platform, sha256: sha256(archive) } : null
+  if (local && spec.bundle) {
+    fs.copyFileSync(archive, path.join(path.dirname(payloadImageInfo), offline.archive))
+    fs.writeFileSync(path.join(path.dirname(payloadImageInfo), 'BOX-OFFLINE-IMAGE.json'), JSON.stringify(offline, null, 2) + '\n')
+  }
+  // Metadata and local test images must be embedded before signing.
   if (spec.bundle) {
     // Tauri signs the complete .app bundle. Metadata must become a resource
     // before that step; writing it into Contents/Resources afterwards makes
     // macOS report the application as damaged.
     fs.rmSync(payloadMetadata, { recursive: true, force: true })
     fs.mkdirSync(payloadMetadata, { recursive: true })
-    fs.writeFileSync(
+    fs.writeFileSync(path.join(payloadMetadata, 'BOX-PACKAGE-MODE.json'), JSON.stringify(packageMode, null, 2) + '\n')
+    if (!local) fs.writeFileSync(
       path.join(payloadMetadata, 'BOX-REMOTE-IMAGE.json'),
       `${JSON.stringify(imageManifest, null, 2)}\n`,
     )
@@ -310,7 +321,7 @@ function main() {
       env: tauriBuildEnvironment({
         ...process.env,
         BOX_MANAGER_IMAGE_TAG: imageTag,
-        BOX_MANAGER_REMOTE_IMAGE: JSON.stringify(imageManifest),
+        BOX_MANAGER_REMOTE_IMAGE: local ? undefined : JSON.stringify(imageManifest),
       }),
       shell: invocation.shell,
       stdio: 'inherit',
@@ -318,6 +329,10 @@ function main() {
     if (result.error || result.status !== 0) throw new Error(tauriBuildFailure(result))
   } finally {
     fs.writeFileSync(payloadImageInfo, originalImageInfo)
+    if (local && spec.bundle) {
+      fs.rmSync(path.join(path.dirname(payloadImageInfo), offline.archive))
+      fs.rmSync(path.join(path.dirname(payloadImageInfo), 'BOX-OFFLINE-IMAGE.json'))
+    }
     if (spec.bundle) {
       fs.rmSync(payloadMetadata, { recursive: true, force: true })
     }
@@ -332,7 +347,7 @@ function main() {
   }
 
   fs.mkdirSync(outputRoot, { recursive: true })
-  const packageName = `BOX-Local-Engine-${version}-${platform}`
+  const packageName = `BOX-Local-Engine-${version}-${platform}${local ? '-local' : ''}`
   const packageRoot = path.join(outputRoot, packageName)
   fs.rmSync(packageRoot, { recursive: true, force: true })
   fs.mkdirSync(packageRoot, { recursive: true })
@@ -347,8 +362,13 @@ function main() {
     ? path.join(executableDestination, 'Contents/Resources/payload/metadata')
     : packageRoot
   if (!spec.bundle) {
+    if (local) {
+      fs.copyFileSync(archive, path.join(packageRoot, offline.archive))
+      fs.writeFileSync(path.join(packageRoot, 'BOX-OFFLINE-IMAGE.json'), JSON.stringify(offline, null, 2) + '\n')
+    }
+    fs.writeFileSync(path.join(metadataRoot, 'BOX-PACKAGE-MODE.json'), JSON.stringify(packageMode, null, 2) + '\n')
     fs.mkdirSync(metadataRoot, { recursive: true })
-    fs.writeFileSync(
+    if (!local) fs.writeFileSync(
       path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json'),
       `${JSON.stringify(imageManifest, null, 2)}\n`,
     )

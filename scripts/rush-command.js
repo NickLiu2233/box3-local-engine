@@ -24,10 +24,10 @@ if (command === 'package-images') {
   run('package-offline-images.js', [option('architecture'), option('service')].filter(Boolean))
 }
 if (command === 'package-desktop') {
-  run('package-release.js', ['desktop', option('target'), option('archive')].filter(Boolean))
+  run('package-release.js', ['desktop', option('target'), option('archive') || '', option('mode') || 'slim'])
 }
 if (command === 'package-web') {
-  run('package-release.js', ['web', option('architecture'), option('archive')].filter(Boolean))
+  run('package-release.js', ['web', option('architecture'), option('archive') || '', option('mode') || 'slim'])
 }
 
 throw new Error(`Unknown Rush package command: ${command || '(missing)'}`)

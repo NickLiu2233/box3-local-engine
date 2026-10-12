@@ -1,6 +1,6 @@
 import { apiOperations, createApiClient } from '@box/apis'
 import type { PlayerInvoke, ServerBootstrap } from '../types'
-import { isAllowedPlayerApi, playerLoginPath } from '../../shared/api-policy'
+import { isAllowedPlayerApi, playerAuthBaseUrl } from '../../shared/api-policy'
 
 export interface PlayerApiOptions {
   invoke: PlayerInvoke
@@ -73,7 +73,7 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
       !isAllowedPlayerApi(
         base,
         target,
-        authPortalBase ? new URL(authPortalBase).origin : undefined,
+        authPortalBase || undefined,
         request.method,
       )
     ) {
@@ -126,18 +126,7 @@ export function createPlayerApi({ invoke, isNative, onSessionExpired }: PlayerAp
   function authClient(endpoint: string, bootstrap: ServerBootstrap) {
     const loginUrl = String(bootstrap?.loginApiUrl || '')
     if (!loginUrl) throw new Error('该服务器未配置玩家账号登录服务')
-    const url = new URL(loginUrl)
-    if (
-      !['https:', 'http:'].includes(url.protocol) ||
-      url.pathname !== playerLoginPath ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash
-    ) {
-      throw new Error('服务器提供的玩家登录地址无效')
-    }
-    return client(endpoint, url.origin)
+    return client(endpoint, playerAuthBaseUrl(loginUrl))
   }
 
   return {

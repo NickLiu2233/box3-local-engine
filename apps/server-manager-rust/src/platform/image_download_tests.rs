@@ -167,3 +167,27 @@ fn real_http_download_streams_progress_resumes_and_reuses_verified_cache() {
     );
     fs::remove_dir_all(root).unwrap();
 }
+
+#[test]
+fn local_test_package_reuses_verified_archive_and_never_falls_back_to_network() {
+    let root = std::env::temp_dir().join(format!("box-local-image-{}",random_hex(8)));
+    fs::create_dir_all(root.join("cache/engine-images")).unwrap();
+    let app = App { root:root.clone(),token:String::new(),runtime_token:String::new(),compose_file:root.join("compose.yml"),environment_file:root.join(".env"),operations:Arc::new(Operations::default()),operation_id:None };
+    fs::write(root.join("BOX3-PACKAGE-MODE.json"),r#"{"mode":"local"}"#).unwrap();
+    let bytes=b"local snapshot";
+    let digest=format!("{:x}",Sha256::digest(bytes));
+    let image=RemoteImage {image:"box-local-engine-play".into(),image_id:format!("sha256:{digest}"),image_ids:vec![format!("sha256:{digest}")],archive:"fixture.tar.gz".into(),sha256:digest,image_tag:"fixture".into(),platform:"linux/arm64".into(),size:bytes.len() as u64};
+    let file=root.join("cache/engine-images/fixture.tar.gz");
+    fs::write(&file,bytes).unwrap();
+    let unavailable="http://127.0.0.1:1/should-never-be-contacted";
+    assert_eq!(download_image_archive_from(&app,&image,"play",&mut |_,_|{},unavailable).unwrap(),file);
+    fs::write(&file,b"corrupted").unwrap();
+    let error=download_image_archive_from(&app,&image,"play",&mut |_,_|{},unavailable).unwrap_err();
+    assert!(error.contains("本地镜像归档缺失或损坏"),"{error}");
+    for mode in ["invalid JSON", r#"{"mode":"unknown"}"#] {
+        fs::write(root.join("BOX3-PACKAGE-MODE.json"),mode).unwrap();
+        let error=download_image_archive_from(&app,&image,"play",&mut |_,_|{},unavailable).unwrap_err();
+        assert!(error.contains("打包模式清单无效"),"{error}");
+    }
+    fs::remove_dir_all(root).unwrap();
+}

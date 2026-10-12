@@ -57,3 +57,20 @@ test('a player can log in again after logout clears the local session', async ()
   assert.equal(secondLoginError, '')
   assert.equal(loginAttempts, 2)
 })
+
+test('native bootstrap, login and logout preserve a shared-domain portal prefix', async () => {
+  const endpoint = 'https://example.test/play'
+  const loginApiUrl = 'https://example.test/accounts/api/auth/login'
+  const requests: string[] = []
+  const transport = createApiTransport({ fetchImpl: async (input) => {
+    const url = String(input)
+    requests.push(url)
+    if (url.endsWith('/api/player-launcher/bootstrap')) return Response.json({ loginApiUrl, loginRequired:true })
+    return Response.json({ player: { username:'test-player' } })
+  } })
+  const api = createPlayerApi({ isNative: () => true, invoke: async (_command, payload) => transport.request(payload.request) })
+  const bootstrap = await api.readBootstrap(endpoint)
+  await api.login(endpoint, bootstrap, 'test-player', 'fixture-password')
+  await api.logout(endpoint, bootstrap)
+  assert.deepEqual(requests, [`${endpoint}/api/player-launcher/bootstrap`, loginApiUrl, 'https://example.test/accounts/api/auth/logout'])
+})

@@ -21,6 +21,20 @@ fn run(program: &str, args: &[&str]) -> String {
     );
     String::from_utf8_lossy(&output.stdout).trim().into()
 }
+fn play_response(args: &[&str]) -> serde_json::Value {
+    let mut last = String::new();
+    for _ in 0..30 {
+        let output = Command::new("curl").args(args).output().unwrap();
+        if output.status.success() {
+            if let Ok(value) = serde_json::from_slice::<serde_json::Value>(&output.stdout) {
+                if value["service"] == "play" { return value; }
+                last = value.to_string();
+            }
+        } else { last = String::from_utf8_lossy(&output.stderr).into_owned(); }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    panic!("public endpoint {:?} never reached Play after reload: {last}", args.last());
+}
 struct Cleanup {
     root: PathBuf,
     network: String,
@@ -51,7 +65,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         upstream: format!("{network}-upstream"),
         creator: format!("{network}-creator"),
     };
-    fs::write(root.join("openssl.cnf"),"[req]\ndistinguished_name=dn\nx509_extensions=ext\nprompt=no\n[dn]\nCN=play.example.com\n[ext]\nsubjectAltName=DNS:play.example.com,DNS:creator.example.com\nbasicConstraints=critical,CA:TRUE\n").unwrap();
+    fs::write(root.join("openssl.cnf"),"[req]\ndistinguished_name=dn\nx509_extensions=ext\nprompt=no\n[dn]\nCN=play.example.com\n[ext]\nsubjectAltName=DNS:play.example.com,DNS:creator.example.com,IP:203.0.113.10\nbasicConstraints=critical,CA:TRUE\n").unwrap();
     run(
         "openssl",
         &[
@@ -131,8 +145,7 @@ fn real_nginx_https_wss_import_and_rollback() {
         .unwrap()
         .contains("PRIVATE KEY"));
     let check_http = || {
-        let text = run(
-            "curl",
+        let data = play_response(
             &[
                 "--noproxy",
                 "*",
@@ -149,9 +162,9 @@ fn real_nginx_https_wss_import_and_rollback() {
                 &format!("https://play.example.com:{port}/"),
             ],
         );
-        let data: serde_json::Value = serde_json::from_str(&text).unwrap();
         assert_eq!(data["proto"], "https");
         assert_eq!(data["host"], format!("play.example.com:{port}"));
+        assert_eq!(data["service"], "play");
     };
     check_http();
     let creator = run("curl", &["--noproxy", "*", "--retry", "4", "--retry-connrefused", "--cacert", root.join("test.pem").to_str().unwrap(), "--resolve", &format!("creator.example.com:{port}:127.0.0.1"), &format!("https://creator.example.com:{port}/")]);
@@ -172,6 +185,62 @@ fn real_nginx_https_wss_import_and_rollback() {
         &["exec", &cleanup.upstream, "node", "-e", &client]
     )
     .contains("WSS echo verified"));
+    // Reconfigure the real listener repeatedly between a domain and an IP SAN.
+    for host in ["203.0.113.10", "play.example.com", "203.0.113.10", "play.example.com"] {
+        let mut switched = settings.clone();
+        switched.routes[0].domain = host.into();
+        apply(&root, &root, &network, "", Import {
+            settings: switched,
+            external_local: false,
+            certificate: certificate.clone(),
+            private_key: key.clone(),
+            certificates: Default::default(),
+            delete_services: Vec::new(),
+        }, &mut docker).unwrap();
+        if host == "203.0.113.10" {
+            let data = play_response(&[
+                "--noproxy", "*", "--retry", "4", "--retry-connrefused", "--retry-delay", "1",
+                "-fsS", "--cacert", root.join("test.pem").to_str().unwrap(),
+                "--connect-to", &format!("{host}:{port}:127.0.0.1:{port}"),
+                &format!("https://{host}:{port}/"),
+            ]);
+            assert_eq!(data["proto"], "https");
+            assert_eq!(data["host"], format!("{host}:{port}"));
+            assert_eq!(data["service"], "play");
+        } else {
+            check_http();
+        }
+    }
+    // Keep the same public port while switching TLS off and on. The internal
+    // listener changes from the legacy 443 binding to the explicit HTTP port.
+    let mut plain = settings.clone();
+    plain.routes.truncate(1);
+    plain.routes[0].secure = false;
+    plain.routes[0].port = Some(port);
+    for host in ["play.example.com", "203.0.113.10", "play.example.com"] {
+        plain.routes[0].domain = host.into();
+        apply(&root, &root, &network, "", Import {
+            settings: plain.clone(),
+            external_local: false,
+            certificate: String::new(),
+            private_key: String::new(),
+            certificates: Default::default(),
+            delete_services: Vec::new(),
+        }, &mut docker).unwrap();
+        let data = play_response(&["--noproxy", "*", "--max-time", "1", "-fsS", "--connect-to", &format!("{host}:{port}:127.0.0.1:{port}"), &format!("http://{host}:{port}/")]);
+        assert_eq!(data["proto"], "http");
+        assert_eq!(data["host"], format!("{host}:{port}"));
+        assert_eq!(data["service"], "play");
+    }
+    apply(&root, &root, &network, "", Import {
+        settings: settings.clone(),
+        external_local: false,
+        certificate: certificate.clone(),
+        private_key: key.clone(),
+        certificates: Default::default(),
+        delete_services: Vec::new(),
+    }, &mut docker).unwrap();
+    check_http();
     // Nginx must reject a private key mismatch before touching the active config.
     let old = fs::read_to_string(root.join("https/nginx.conf")).unwrap();
     assert!(apply(

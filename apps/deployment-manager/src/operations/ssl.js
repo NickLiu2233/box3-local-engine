@@ -1,4 +1,4 @@
-import { invoke, exportSslConfiguration } from '../infrastructure/transport.js'
+import { invoke, exportSslConfiguration, isWebManager } from '../infrastructure/transport.js'
 import { state } from '../core/state.js'
 import { render } from '../core/render-request.js'
 import { captureSetupForm } from '../configuration/form.js'
@@ -193,7 +193,7 @@ export async function applyCertificateConfiguration() {
   state.sslStatus = await invoke('apply_ssl_config', {
     config: {
       settings: { mode, httpsPort: 443, routes },
-      externalLocal: mode === 'external',
+      externalLocal: mode === 'external' && !isWebManager(),
       certificates,
     },
   })

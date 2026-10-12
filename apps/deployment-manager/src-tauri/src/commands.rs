@@ -749,6 +749,19 @@ fn enforce_creator_network_policy(app: &AppHandle) -> Result<bool, String> {
 
 use shared_config::database_url;
 
+/// Assemble the persisted runtime file and the view returned to its callers.
+fn assemble_runtime_environment(
+    owner: String,
+    derived: BTreeMap<String, String>,
+) -> Result<(String, BTreeMap<String, String>), String> {
+    let mut runtime = owner;
+    for (key, value) in derived {
+        set_env(&mut runtime, &key, &value)?;
+    }
+    let values = parse_env(&runtime);
+    Ok((runtime, values))
+}
+
 fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, String>, String> {
     ensure_runtime_files(app)?;
     enforce_creator_network_policy(app)?;
@@ -775,15 +788,12 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
         },
     )?;
     box_manager_core::ssl::apply_runtime_urls(&runtime_root(app)?, &values, &mut derived)?;
-    let mut runtime = owner;
-    for (key, value) in derived {
-        set_env(&mut runtime, &key, &value)?;
-    }
+    let (runtime, runtime_values) = assemble_runtime_environment(owner, derived)?;
     let runtime_path = runtime_env_path(app)?;
     if fs::read_to_string(&runtime_path).ok().as_deref() != Some(runtime.as_str()) {
         write_private_file(&runtime_path, runtime, "运行时配置")?;
     }
-    Ok(values)
+    Ok(runtime_values)
 }
 
 use shared_config::validate_port;
@@ -4379,4 +4389,27 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running BOX Local Engine manager");
+}
+
+
+#[cfg(test)]
+mod desktop_runtime_contract_tests {
+    use super::*;
+    #[test]
+    fn path_validation_receives_the_same_derived_environment_as_compose() {
+        let owner = "BOX_PLAY_NETWORK_MODE=public\nBOX_CREATOR_NETWORK_MODE=local\nBOX_PLAY_PUBLIC_ADDRESS_OVERRIDE=http://127.0.0.1/abc\nBOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE=http://127.0.0.1/sjixs\n".to_string();
+        let derived = shared_config::runtime_environment(&parse_env(&owner), &shared_config::RuntimeInputs {
+            lan_ip:None,image_tag:"0.3.0",platform:"linux/arm64",database_required:false,web_manager:false,
+        }).unwrap();
+        let (document, returned) = assemble_runtime_environment(owner, derived).unwrap();
+        let settings = box_manager_core::ssl::Settings {
+            mode:"managed".into(),https_port:443,upstream_ports:Default::default(),
+            routes:vec![box_manager_core::ssl::Route {service:"play".into(),domain:"127.0.0.1".into(),port:Some(80),path:"/abc".into(),secure:false}],
+        };
+        box_manager_core::ssl::validate_path_images(&settings,&returned,&mut |args| {
+            assert_eq!(args.last().unwrap(),"box-local-engine-play:0.3.0");
+            Ok(r#"{"box.routing.base-path":"runtime-v1"}"#.into())
+        }).unwrap();
+        assert_eq!(returned, parse_env(&document));
+    }
 }

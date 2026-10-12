@@ -6,10 +6,10 @@ const path = require('node:path')
 const { spawnSync } = require('node:child_process')
 
 const repoRoot = path.resolve(__dirname, '..')
-const outputRoot = path.join(repoRoot, 'apps/local-engine/dist/server-packages')
+const outputRoot = process.env.BOX_LAUNCHER_OUTPUT_DIRECTORY || path.join(repoRoot, 'apps/local-engine/dist/server-packages')
 const templateRoot = path.join(repoRoot, 'distribution/server')
 const supportedArchitectures = new Set(['amd64', 'arm64'])
-const { splitArchive, validateCatalog } = require('./build-image-downloads')
+const { splitArchive, validateCatalog, localImageTag } = require('./build-image-downloads')
 
 function fail(message) {
   console.error(`ERROR: ${message}`)
@@ -79,10 +79,12 @@ function headlessCompose() {
 }
 
 function main() {
-  const architecture = process.argv[2]
-  const catalogOnly = process.argv[3] === '--catalog'
-  const archive = !catalogOnly && process.argv[3] ? path.resolve(process.argv[3]) : ''
-  const suppliedCatalogPath = process.argv[4] ? path.resolve(process.argv[4]) : ''
+  const local = process.argv.includes('--local')
+  const args = process.argv.slice(2).filter(value => value !== '--local')
+  const architecture = args[0]
+  const catalogOnly = args[1] === '--catalog'
+  const archive = !catalogOnly && args[1] ? path.resolve(args[1]) : ''
+  const suppliedCatalogPath = args[2] ? path.resolve(args[2]) : ''
   if (!supportedArchitectures.has(architecture)) {
     fail(
       '用法: node scripts/build-headless-server-package.js <amd64|arm64> <完整镜像归档.tar.gz> | --catalog <catalog.json>',
@@ -102,9 +104,9 @@ function main() {
   }
 
   const version = require(path.join(repoRoot, 'package.json')).version
-  const packageName = `BOX3-Engine-Server-${version}-linux-${architecture}`
+  const packageName = `BOX3-Engine-Server-${version}-linux-${architecture}${local ? '-local' : ''}`
   const packageRoot = path.join(outputRoot, packageName)
-  const imageTag = `v${version}-linux-${architecture}`
+  let imageTag = `v${version}-linux-${architecture}`
   fs.rmSync(packageRoot, { recursive: true, force: true })
   fs.mkdirSync(packageRoot, { recursive: true })
 
@@ -126,15 +128,24 @@ function main() {
   }
   const manager = catalog.images.find((image) => image.image === 'box-local-engine-server-manager')
   if (!manager) fail('镜像清单中缺少 Server Manager')
+  if (local) { imageTag = localImageTag(catalog); catalog.imageTag = imageTag }
   if (catalog.imageTag !== imageTag) fail('镜像清单版本与服务器包版本不匹配')
-  fs.copyFileSync(
-    suppliedCatalogPath || generatedCatalogPath,
-    path.join(packageRoot, 'BOX3-IMAGE-CATALOG.json'),
-  )
+  fs.writeFileSync(path.join(packageRoot,'BOX3-IMAGE-CATALOG.json'),JSON.stringify(catalog,null,2)+'\n')
   fs.writeFileSync(
     path.join(packageRoot, 'BOX3-MANAGER-IMAGE.json'),
     `${JSON.stringify({ image: manager.image, imageTag: manager.imageTag, platform: manager.platform, archive: manager.archive, sha256: manager.sha256, size: manager.size, contentTag: `${manager.image}:launcher-content-${manager.imageId.slice(7)}` }, null, 2)}\n`,
   )
+  fs.writeFileSync(path.join(packageRoot, 'BOX3-PACKAGE-MODE.json'), JSON.stringify({mode:local ? 'local' : 'slim',imageTag,platform:catalog.platform},null,2)+'\n')
+  if (local) {
+    const source = suppliedCatalogPath ? path.dirname(suppliedCatalogPath) : splitRoot
+    const cache = path.join(packageRoot,'cache/engine-images')
+    fs.mkdirSync(cache,{recursive:true})
+    for (const image of catalog.images) {
+      const archive = path.join(source,image.archive)
+      if (!fs.statSync(archive,{throwIfNoEntry:false})?.isFile() || fs.statSync(archive).size !== image.size || sha256(archive) !== image.sha256) fail(`本地镜像归档缺失或损坏：${image.image}`)
+      fs.copyFileSync(archive,path.join(cache,image.archive))
+    }
+  }
   if (!suppliedCatalogPath) fs.rmSync(splitRoot, { recursive: true, force: true })
 
   const envTemplate = fs
@@ -155,9 +166,10 @@ function main() {
 
   const files = fs
     .readdirSync(packageRoot)
-    .filter((file) => file !== 'SHA256SUMS')
+    .filter((file) => file !== 'SHA256SUMS' && fs.statSync(path.join(packageRoot,file)).isFile())
     .sort()
     .map((file) => `${sha256(path.join(packageRoot, file))}  ${file}`)
+  if (local) for (const image of catalog.images) files.push(`${image.sha256}  cache/engine-images/${image.archive}`)
   fs.writeFileSync(path.join(packageRoot, 'SHA256SUMS'), `${files.join('\n')}\n`)
 
   const zip = path.join(outputRoot, `${packageName}.zip`)

@@ -29,24 +29,27 @@ function architectureForDesktopTarget(target) {
 
 function usage(kind) {
   if (kind === 'desktop') {
-    return '用法: rush package-desktop --target <windows-amd64|windows-arm64|macos-amd64|macos-arm64|linux-amd64|linux-arm64> [--archive 镜像归档.tar.gz]'
+    return '用法: rush package-desktop --target <windows-amd64|windows-arm64|macos-amd64|macos-arm64|linux-amd64|linux-arm64> [--archive 镜像归档.tar.gz] [--mode slim|local]'
   }
-  return '用法: rush package-web --architecture <amd64|arm64> [--archive 镜像归档.tar.gz]'
+  return '用法: rush package-web --architecture <amd64|arm64> [--archive 镜像归档.tar.gz] [--mode slim|local]'
 }
 
-function createReleasePlan(kind, target, archiveArgument, version) {
+function createReleasePlan(kind, target, archiveArgument, version, mode = 'slim') {
+  if (!['slim', 'local'].includes(mode)) throw new Error('打包模式只能是 slim 或 local')
   const architecture =
     kind === 'desktop' ? architectureForDesktopTarget(target || '') : target || ''
   const suppliedArchive = String(archiveArgument || '').trim()
+  if (mode === 'local' && suppliedArchive.endsWith('.json')) throw new Error('本地模式需要完整镜像归档')
   return {
     architecture,
     archive: suppliedArchive
       ? path.resolve(root, suppliedArchive)
       : path.join(
-          outputDirectory,
+          mode === 'local' ? path.join(root, 'apps/local-engine/dist/local-images') : outputDirectory,
           `box-local-engine-images-v${version}-linux-${architecture}.tar.gz`,
         ),
     buildImages: suppliedArchive.length === 0,
+    mode,
   }
 }
 
@@ -61,6 +64,7 @@ function executeReleasePlan(
     execute(process.execPath, [
       path.join('scripts', 'package-offline-images.js'),
       plan.architecture,
+      ...(plan.mode === 'local' ? ['--local'] : []),
     ])
   }
 
@@ -76,7 +80,8 @@ function executeReleasePlan(
         : 'build-headless-server-package.js',
     ),
     kind === 'desktop' ? target : plan.architecture,
-    plan.archive,
+    ...(kind === 'web' && plan.archive.endsWith('.json') ? ['--catalog',plan.archive] : [plan.archive]),
+    ...(plan.mode === 'local' ? ['--local'] : []),
   ])
 }
 
@@ -100,7 +105,7 @@ function main() {
   run(process.execPath, [path.join('scripts', 'sync-root-version.js')])
 
   const version = require(path.join(root, 'package.json')).version
-  const plan = createReleasePlan(kind, target, process.argv[4], version)
+  const plan = createReleasePlan(kind, target, process.argv[4], version, process.argv[5] || 'slim')
   executeReleasePlan(kind, target, plan)
 }
 

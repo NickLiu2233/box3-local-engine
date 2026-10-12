@@ -11,6 +11,7 @@ import {
   verifyPlayerLauncherDownloadTicket,
 } from './player-launcher-map-packages'
 import { getPlayResourceCacheManifest } from './play-resource-cache'
+import { validateDescriptor } from '../../player-launcher/electron/security/package-descriptor'
 
 const roots: string[] = []
 const previousLibraryPath = process.env.BOX_PLAY_LIBRARY_PATH
@@ -31,6 +32,7 @@ function createPublishedWorld() {
   const blobs = path.join(data, 'blobs')
   fs.mkdirSync(blobs, { recursive: true })
   const publicAsset = writeBlob(blobs, 'public terrain fixture')
+  const emptyAsset = writeBlob(blobs, Buffer.alloc(0))
   const uiImage = writeBlob(
     blobs,
     Buffer.from(
@@ -59,11 +61,11 @@ function createPublishedWorld() {
     permissionHash,
   }))
   fs.writeFileSync(path.join(data, 'project-state.json'), JSON.stringify({ permissionHash }))
-  fs.writeFileSync(path.join(data, 'runtime-blobs.json'), JSON.stringify({ hashes: [publicAsset.hash, uiImage.hash, privateAsset.hash] }))
+  fs.writeFileSync(path.join(data, 'runtime-blobs.json'), JSON.stringify({ hashes: [publicAsset.hash, emptyAsset.hash, uiImage.hash, privateAsset.hash] }))
   fs.writeFileSync(path.join(data, 'private-blobs.json'), JSON.stringify({ hashes: [privateAsset.hash] }))
   process.env.BOX_PLAY_LIBRARY_PATH = root
   process.env.BOX_RUNTIME_CACHE_PATH = runtimeCacheRoot
-  return { root, publicAsset, privateAsset, derivedAsset, uiImage }
+  return { root, publicAsset, emptyAsset, privateAsset, derivedAsset, uiImage }
 }
 
 afterEach(() => {
@@ -77,6 +79,22 @@ afterEach(() => {
 })
 
 describe('player launcher map package descriptors', () => {
+  test('launcher accepts the server-signed descriptor containing an empty public blob', () => {
+    const fixture = createPublishedWorld()
+    const descriptor = getPlayerLauncherPackageDescriptor('public-map')
+    expect(descriptor.required).toContainEqual({
+      hash: fixture.emptyAsset.hash,
+      size: 0,
+      kind: 'static',
+      contentType: 'application/octet-stream',
+    })
+    const trustedKey = {
+      keyId: descriptor.signature.keyId,
+      publicKey: descriptor.signature.publicKey,
+    }
+    expect(validateDescriptor(JSON.stringify(descriptor), JSON.stringify(trustedKey))).toEqual(descriptor)
+  })
+
   test('describes image resources with an image MIME type for native WebViews', () => {
     const fixture = createPublishedWorld()
     const descriptor = getPlayerLauncherPackageDescriptor('public-map')

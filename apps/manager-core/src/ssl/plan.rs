@@ -29,8 +29,11 @@ pub fn compose_source(root: &Path, source: &str) -> Result<String, String> {
     if !controller_owned(root, &settings) {
         return Ok(source.into());
     }
-    let targets: std::collections::BTreeSet<&str> =
-        settings.routes.iter().map(|r| r.service.as_str()).collect();
+    let values = crate::environment::parse_env(&fs::read_to_string(root.join(".env")).unwrap_or_default());
+    let targets: std::collections::BTreeSet<&str> = settings.routes.iter().filter(|route| {
+        let mode = if matches!(route.service.as_str(), "creator" | "voxa") { "BOX_CREATOR_NETWORK_MODE" } else { "BOX_PLAY_NETWORK_MODE" };
+        values.get(mode).is_none_or(|value| value == "public")
+    }).map(|route| route.service.as_str()).collect();
     let mut result = String::new();
     let mut service = "";
     let mut skipping = false;
@@ -441,19 +444,12 @@ pub fn validate_path_images(
             "player-auth-portal" => "BOX_AUTH_PORTAL_IMAGE",
             _ => return Err("当前服务不支持入口路径".into()),
         };
-        let tag = environment
-            .get("BOX_IMAGE_TAG")
-            .ok_or("无法确定服务镜像版本")?;
-        let image = environment.get(key).cloned().unwrap_or_else(|| {
-            format!(
-                "box-local-engine-{}:{tag}",
-                if route.service == "player-auth-portal" {
-                    "player-auth-portal"
-                } else {
-                    &route.service
-                }
-            )
-        });
+        let image = if let Some(image) = environment.get(key).filter(|image| !image.trim().is_empty()) {
+            image.clone()
+        } else {
+            let tag = environment.get("BOX_IMAGE_TAG").filter(|tag| !tag.trim().is_empty()).ok_or("无法确定服务镜像版本")?;
+            format!("box-local-engine-{}:{tag}", route.service)
+        };
         let args = vec![
             "image".into(),
             "inspect".into(),

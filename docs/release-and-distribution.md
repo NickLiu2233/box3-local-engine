@@ -18,6 +18,15 @@ rush verify
 rush-pnpm audit --prod --audit-level critical
 ```
 
+支持精简发行和携带本地镜像的开发测试两种模式，详见[启动器打包模式](launcher-package-modes.md)。本地测试示例：
+
+```sh
+rush package-desktop --target macos-arm64 --mode local
+rush package-web --architecture arm64 --mode local
+```
+
+本地模式只导出已有镜像，输出包带 `-local`，不覆盖精简包。
+
 构建完整 Linux 镜像归档：
 
 ```bash
@@ -27,13 +36,13 @@ rush package-images --architecture <amd64|arm64>
 构建桌面包或 Linux 无桌面服务器包：
 
 ```bash
-rush package-desktop --target <target> [--archive 镜像归档.tar.gz]
-rush package-web --architecture <amd64|arm64> [--archive 镜像归档.tar.gz]
+rush package-desktop --target <target> [--archive 镜像归档.tar.gz或清单.json] [--mode slim|local]
+rush package-web --architecture <amd64|arm64> [--archive 镜像归档.tar.gz或清单.json] [--mode slim|local]
 ```
 
 桌面目标支持 `windows-amd64`、`windows-arm64`、`macos-amd64`、`macos-arm64`、`linux-amd64` 和 `linux-arm64`。桌面包必须在目标操作系统和 CPU 架构的原生构建机生成；当前公开流水线不构建 `macos-amd64`。
 
-不传镜像归档时，`package-desktop` 和 `package-web` 会先构建六个发行镜像，再生成安装包。传入匹配版本与架构的完整归档时会跳过镜像重建：
+精简模式不传镜像归档时，`package-desktop` 和 `package-web` 会先构建六个发行镜像，再生成安装包。传入匹配版本与架构的完整归档时会跳过镜像重建：
 
 ```bash
 rush package-desktop --target macos-arm64 \
@@ -56,7 +65,7 @@ rush export-images
 | 桌面包         | `apps/local-engine/dist/desktop-installers/BOX-Local-Engine-<version>-<target>.zip`    |
 | Linux 服务器包 | `apps/local-engine/dist/server-packages/BOX3-Engine-Server-<version>-linux-<arch>.zip` |
 
-桌面启动器包只包含启动器程序和单镜像清单，不内置业务镜像。Linux 服务器 ZIP 只包含脚本、配置模板和清单；安装时从 OSS 下载 Server Manager 镜像，Creator、Play、VOXA、Player Service 和参考登录门户镜像会在首次启动对应服务时按需下载。PostgreSQL、Redis 和托管 Nginx 镜像也只在用户选择启用时下载。
+默认精简模式的桌面启动器包只包含启动器程序和单镜像清单，不内置业务镜像。Linux 服务器 ZIP 只包含脚本、配置模板和清单；安装时从 OSS 下载 Server Manager 镜像，Creator、Play、VOXA、Player Service 和参考登录门户镜像会在首次启动对应服务时按需下载。PostgreSQL、Redis 和托管 Nginx 镜像也只在用户选择启用时下载。
 
 ## 本地增量测试包
 

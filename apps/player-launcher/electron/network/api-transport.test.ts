@@ -176,3 +176,12 @@ test('forgetting a removed server revokes its advertised login portal', async ()
   )
   assert.equal(fetchCalls, 1)
 })
+
+test('advertised subpath login is scoped to its exact portal prefix', async () => {
+  const endpoint = 'https://play.example.test'
+  const transport = createApiTransport({ fetchImpl: async () => Response.json({ loginApiUrl: 'https://auth.example.test/accounts/api/auth/login' }) })
+  await transport.request({ endpoint, url: `${endpoint}/api/player-launcher/bootstrap`, method: 'GET' })
+  await transport.request({ endpoint, url: 'https://auth.example.test/accounts/api/auth/login', method: 'POST', body: '{}' })
+  await assert.rejects(transport.request({ endpoint, url:'https://auth.example.test/api/auth/login',method:'POST',body:'{}' }), /API 请求必须指向/)
+  await assert.rejects(transport.request({ endpoint, url:'https://auth.example.test/other/api/auth/login',method:'POST',body:'{}' }), /API 请求必须指向/)
+})

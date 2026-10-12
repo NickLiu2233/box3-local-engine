@@ -40,3 +40,5 @@ macOS 本地打包：
 cd apps/deployment-manager
 npm run tauri -- build --bundles app
 ```
+
+生成安装包请使用根目录的打包命令，支持 OSS 精简版与携带当前 Docker 镜像的本地测试版，详见[启动器打包模式](../../docs/launcher-package-modes.md)。直接运行 Tauri build 仅用于界面开发，不会自动生成镜像发行资源。

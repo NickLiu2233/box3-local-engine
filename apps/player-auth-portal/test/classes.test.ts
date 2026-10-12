@@ -68,3 +68,14 @@ test('configuration hides the secret in serialization and validates redirect ori
       }),
   )
 })
+
+test('configured HTTPS public origin survives an HTTP reverse proxy without trusting arbitrary headers', () => {
+  const settings = new PortalConfig({ apiKey: 'private-test-key-not-for-browser', playerServiceURL: new URL('http://player-service:3213'), publicURL: new URL('https://auth.example.test/accounts') })
+  const request = new IncomingMessage(new Socket())
+  request.headers = { host: 'player-auth-portal:3214', origin: 'https://auth.example.test', 'x-forwarded-proto':'http' }
+  assert.equal(settings.sameOrigin(request), true)
+  assert.equal(settings.protocol(request), 'https')
+  request.headers.origin = 'https://evil.example.test'
+  assert.equal(settings.sameOrigin(request), false)
+  request.socket.destroy()
+})

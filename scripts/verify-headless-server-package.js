@@ -17,6 +17,7 @@ function main() {
   const catalog = JSON.parse(
     fs.readFileSync(path.join(packageRoot, 'BOX3-IMAGE-CATALOG.json'), 'utf8'),
   )
+  require('./build-image-downloads').validateCatalog(catalog,catalog.platform?.split('/')[1])
   assert.equal(catalog.formatVersion, 2)
   assert.match(catalog.platform, /^linux\/(amd64|arm64)$/)
   assert.equal(manager.platform, catalog.platform)
@@ -32,6 +33,22 @@ function main() {
   assert.ok(manager.size > 0)
   const managerContentTag = `${manager.image}:launcher-content-${managerEntry.imageId.slice(7)}`
   assert.equal(manager.contentTag, managerContentTag)
+  const modeFile = path.join(packageRoot,'BOX3-PACKAGE-MODE.json')
+  const mode = fs.existsSync(modeFile) ? JSON.parse(fs.readFileSync(modeFile,'utf8')).mode : 'slim'
+  assert.ok(['slim','local'].includes(mode),'invalid package mode')
+  if (mode === 'local') {
+    for (const image of catalog.images) {
+      const file = path.join(packageRoot,'cache/engine-images',image.archive)
+      assert.equal(fs.statSync(file).size,image.size,'local image size mismatch')
+      const digest = require('crypto').createHash('sha256')
+      const descriptor = fs.openSync(file,'r')
+      const buffer = Buffer.alloc(128 * 1024)
+      let read
+      try { while ((read = fs.readSync(descriptor,buffer,0,buffer.length,null)) > 0) digest.update(buffer.subarray(0,read)) } finally { fs.closeSync(descriptor) }
+      const hash = digest.digest('hex')
+      assert.equal(hash,image.sha256,'local image digest mismatch')
+    }
+  }
   const archives = fs.readdirSync(packageRoot).filter((file) => file.endsWith('.tar.gz'))
   assert.deepEqual(archives, [], 'server package must not bundle Docker image archives')
 

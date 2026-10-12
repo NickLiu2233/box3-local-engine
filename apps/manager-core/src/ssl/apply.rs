@@ -1,6 +1,6 @@
 //! Validate and apply a routing revision, restoring the previous state on failure.
 use super::certificates::material;
-use super::proxy::{ports, run_proxy};
+use super::proxy::{bindings, ports, run_proxy};
 use super::runtime::*;
 use super::*;
 use serde_json::{json, Value};
@@ -68,6 +68,10 @@ pub(super) fn execute(
     transition: &mut dyn FnMut(bool) -> Result<(), String>,
     controlled: bool,
 ) -> Result<Value, String> {
+    // A containerized manager cannot control the host's Nginx process.
+    if input.settings.mode == "external" && root != host_root {
+        input.external_local = false;
+    }
     validate(&mut input)?;
     let directory = root.join("https");
     fs::create_dir_all(directory.join("revisions")).map_err(|error| error.to_string())?;
@@ -92,7 +96,7 @@ pub(super) fn execute(
     if original.is_some() && old.is_none() {
         return Err("已有内置 Nginx 缺少配置记录，请先停止入口再重新保存".into());
     }
-    if controlled && input.external_local {
+    if controlled && input.settings.mode == "external" {
         backend_ports(&mut input.settings, environment, old.as_ref())?;
     }
     if !controlled && input.settings.mode == "managed" {
@@ -319,7 +323,7 @@ pub(super) fn execute(
         if input.settings.mode == "managed" {
             let change_ports = old
                 .as_ref()
-                .is_some_and(|previous| ports(&previous.settings) != ports(&input.settings));
+                .is_some_and(|previous| bindings(&previous.settings) != bindings(&input.settings));
             let mut existing = original;
             if original.is_some() && (change_ports || input.settings.routes.is_empty()) {
                 call(docker, &["rm", "-f", &name(root)])?;
@@ -375,15 +379,11 @@ pub(super) fn execute(
             pending_local,
             expires_at: expiry,
             revision: revision.clone(),
-            external_config: configuration_multiple(
-                &Settings {
-                    mode: "external".into(),
-                    ..input.settings.clone()
-                },
-                &revision,
-                environment,
-                true,
-            ),
+            external_config: super::local::configuration(
+                &configuration_multiple(&Settings { mode: "external".into(), ..input.settings.clone() }, &revision, environment, true),
+                host_root,
+                &identity(root),
+            )?,
             certificate_sources: sources,
             certificate_expiries: expiries,
         };
@@ -395,7 +395,7 @@ pub(super) fn execute(
             fs::remove_file(&pending).map_err(|error| error.to_string())?;
         }
         Ok(
-            json!({"config":saved,"running":input.settings.mode=="managed" && !input.settings.routes.is_empty(),"externalLocalApplied":local_transaction.is_some(),"sslWarning":if pending_local {"公网配置和证书已保存；需要安装并启动本机 Nginx 后再次保存，入口尚未生效。"}else{""},"daysRemaining":null}),
+            json!({"config":saved,"running":input.settings.mode=="managed" && !input.settings.routes.is_empty(),"externalLocalApplied":local_transaction.is_some(),"sslWarning":if pending_local {"公网配置和证书已保存；需要安装并启动本机 Nginx 后再次保存，入口尚未生效。"}else if input.settings.mode == "external" && !input.external_local && !input.settings.routes.is_empty() {"公网配置已生成，请在宿主机 Nginx 中导入配置、检查并重载后验证访问。"} else{""},"daysRemaining":null}),
         )
     })();
     if let Err(error) = result {

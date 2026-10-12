@@ -6,9 +6,10 @@ export function getServiceUrl(serviceId) {
   const service = services.find(([id]) => id === serviceId)
   if (!service) return ''
   const [, , , portKey, defaultPort, path] = service
-  const host = sharedNetworkHost()
+  const mode = state.config?.[serviceId === 'creator' || serviceId === 'voxa' ? 'creatorNetworkMode' : 'playNetworkMode'] || 'local'
+  const host = mode === 'lan' ? state.config?.lanIp || '127.0.0.1' : mode === 'local' ? '127.0.0.1' : sharedNetworkHost()
   const port = Number(state.config?.[portKey]) || defaultPort
-  if (state.config?.playNetworkMode === 'public') {
+  if (mode === 'public') {
     try {
       const endpoint = publicEndpoints().find((endpoint) => endpoint.service === serviceId)
       return endpoint ? `${endpoint.url}${path}` : ''

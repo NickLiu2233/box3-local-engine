@@ -1,3 +1,4 @@
+import { isWebManager } from '../../infrastructure/transport.js'
 import { state } from '../../core/state.js'
 import { fileInput } from '../../ui/forms.js'
 import { escapeHtml } from '../../ui/html.js'
@@ -28,6 +29,10 @@ export function nginxSetting() {
 }
 
 function externalNginxPanel() {
+  if (isWebManager()) {
+    const exported = state.sslStatus?.config?.externalConfig
+    return `<div class="database-download-note"><span>Web 管理端运行在容器内，不能检测或重载宿主机 Nginx。保存后请将生成配置放入宿主机 Nginx 的 http 配置区，检查并重载；也可选择内置 Nginx 自动应用。</span>${exported ? '<button type="button" class="button" id="ssl-export">导出 Nginx 配置</button>' : ''}</div>`
+  }
   const info = state.sslStatus?.externalNginx
   const error = state.sslDetectionError || info?.error
   if (state.sslDetecting || (!state.sslLoaded && !error))

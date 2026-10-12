@@ -122,6 +122,12 @@ export class PortalConfig {
   }
 
   protocol(request: IncomingMessage): string {
+    // 对外协议由服主配置决定，容器内的 HTTP 传输不能把 HTTPS 会话降级。
+    if (this.publicURL) return this.publicURL.protocol.slice(0, -1)
+    return this.incomingProtocol(request)
+  }
+
+  private incomingProtocol(request: IncomingMessage): string {
     const forwarded = String(request.headers['x-forwarded-proto'] || '')
       .split(',')[0]
       .trim()
@@ -139,10 +145,9 @@ export class PortalConfig {
       : ''
     const host = forwarded || request.headers.host
     try {
-      return (
-        new URL(origin).origin ===
-        (host ? `${this.protocol(request)}://${host}` : this.publicURL?.origin)
-      )
+      const requestedOrigin = new URL(origin).origin
+      return requestedOrigin === this.publicURL?.origin ||
+        (Boolean(host) && requestedOrigin === `${this.incomingProtocol(request)}://${host}`)
     } catch {
       return false
     }

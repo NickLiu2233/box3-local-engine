@@ -526,10 +526,17 @@ pub fn runtime_environment(
         }
         ports.push(port);
         result.insert(key, port.to_string());
-        result.insert(
-            format!("BOX_{name}_PUBLIC_URL"),
-            format!("{public_scheme}://{host}:{port}"),
-        );
+        let mode_key = if matches!(name, "CREATOR" | "VOXA") {
+            "BOX_CREATOR_NETWORK_MODE"
+        } else {
+            "BOX_PLAY_NETWORK_MODE"
+        };
+        let scheme = if values.get(mode_key).map(String::as_str) == Some("public") {
+            public_scheme
+        } else {
+            "http"
+        };
+        result.insert(format!("BOX_{name}_PUBLIC_URL"), format!("{scheme}://{host}:{port}"));
     }
     let origins = format!(
         "{},{}",
@@ -597,6 +604,10 @@ pub fn runtime_environment(
         ),
     ] {
         if values.get(mode_key).map(String::as_str).unwrap_or("local") != "public" {
+            url_override_values.remove(&format!("{url_key}_OVERRIDE"));
+            if url_key == "BOX_AUTH_PORTAL_PUBLIC_URL" {
+                url_override_values.remove("BOX_PLAYER_LOGIN_URL_OVERRIDE");
+            }
             continue;
         }
         let legacy_address = values.get(legacy_host_key).map(|host| {
@@ -1287,5 +1298,58 @@ mod individual_validation_tests {
         assert!(!error.contains("共用"));
         let empty = serde_json::json!({"playPublicAddressOverride":"","authPortalPublicAddressOverride":""});
         assert_eq!(independent_public_base(empty.as_object().unwrap()).unwrap(), Some("127.0.0.1".into()));
+    }
+}
+
+#[cfg(test)]
+mod access_conflict_regressions {
+    use super::*;
+    fn runtime(pairs: &[(&str, &str)]) -> BTreeMap<String, String> {
+        let values = pairs.iter().map(|(key, value)| (key.to_string(), value.to_string())).collect();
+        runtime_environment(&values, &RuntimeInputs { lan_ip:Some("192.168.1.9"),image_tag:"test",platform:"linux/amd64",database_required:false,web_manager:true }).unwrap()
+    }
+    #[test]
+    fn all_access_mode_pairs_use_matching_urls_and_origins() {
+        for play in ["local", "lan", "public"] {
+            for creator in ["local", "lan", "public"] {
+                let result = runtime(&[
+                    ("BOX_PLAY_NETWORK_MODE", play),
+                    ("BOX_CREATOR_NETWORK_MODE", creator),
+                    ("BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE", "https://play.example.test/play"),
+                    ("BOX_CREATOR_PUBLIC_ADDRESS_OVERRIDE", "https://arena.example.test/arena"),
+                    ("BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE", "https://auth.example.test/accounts"),
+                    ("BOX_PLAYER_LOGIN_URL_OVERRIDE", "http://172.31.9.78:3125"),
+                ]);
+                for (mode, key, public, port) in [
+                    (play, "BOX_PLAY_PUBLIC_URL", "https://play.example.test/play", 3121),
+                    (creator, "BOX_CREATOR_PUBLIC_URL", "https://arena.example.test/arena", 3127),
+                    (play, "BOX_AUTH_PORTAL_PUBLIC_URL", "https://auth.example.test/accounts", 3125),
+                ] {
+                    let expected = match mode {
+                        "public" => public.to_string(),
+                        "lan" => format!("http://192.168.1.9:{port}"),
+                        _ => format!("http://127.0.0.1:{port}"),
+                    };
+                    assert_eq!(result[key], expected, "{play}/{creator}: {key}");
+                }
+                assert_eq!(result["BOX_PLAYER_LOGIN_URL"], result["BOX_AUTH_PORTAL_PUBLIC_URL"]);
+                assert!(!result["BOX_PLAYER_AUTH_ALLOWED_ORIGINS"].contains("/accounts"));
+                assert!(!result["BOX_PLAYER_AUTH_ALLOWED_ORIGINS"].contains("172.31.9.78"));
+            }
+        }
+    }
+
+    #[test]
+    fn public_https_play_does_not_turn_local_creator_into_https() {
+        let result = runtime(&[("BOX_PLAY_NETWORK_MODE","public"),("BOX_CREATOR_NETWORK_MODE","local"),("BOX_PLAY_PUBLIC_ADDRESS_OVERRIDE","https://play.example.test"),("BOX_AUTH_PORTAL_PUBLIC_ADDRESS_OVERRIDE","https://auth.example.test")]);
+        assert_eq!(result["BOX_CREATOR_PUBLIC_URL"], "http://127.0.0.1:3127");
+        assert_eq!(result["BOX_VOXA_PUBLIC_URL"], "http://127.0.0.1:3123");
+        assert!(!result["BOX_PLAYER_AUTH_ALLOWED_ORIGINS"].contains("https://127.0.0.1"));
+    }
+    #[test]
+    fn local_mode_ignores_old_public_url_and_login_overrides() {
+        let result = runtime(&[("BOX_PLAY_NETWORK_MODE","local"),("BOX_CREATOR_NETWORK_MODE","local"),("BOX_PLAY_PUBLIC_HOST","127.0.0.1"),("BOX_CREATOR_HOST","127.0.0.1"),("BOX_PLAY_PUBLIC_URL_OVERRIDE","https://old.example.test/play"),("BOX_PLAYER_LOGIN_URL_OVERRIDE","https://old.example.test/login")]);
+        assert_eq!(result["BOX_PLAY_PUBLIC_URL"], "http://127.0.0.1:3121");
+        assert_eq!(result["BOX_PLAYER_LOGIN_URL"], "http://127.0.0.1:3125");
     }
 }

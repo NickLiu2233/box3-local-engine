@@ -100,17 +100,29 @@
       "parameterKind": "flag",
       "longName": "--infra",
       "description": "Start the disposable development PostgreSQL and Redis services.",
-      "associatedCommands": ["dev", "dev-creator"]
+      "associatedCommands": [
+        "dev",
+        "dev-creator"
+      ]
     },
     {
       "parameterKind": "choice",
       "longName": "--architecture",
       "description": "Target Linux architecture.",
       "alternatives": [
-        { "name": "amd64", "description": "Linux AMD64" },
-        { "name": "arm64", "description": "Linux ARM64" }
+        {
+          "name": "amd64",
+          "description": "Linux AMD64"
+        },
+        {
+          "name": "arm64",
+          "description": "Linux ARM64"
+        }
       ],
-      "associatedCommands": ["package-images", "package-web"],
+      "associatedCommands": [
+        "package-images",
+        "package-web"
+      ],
       "required": true
     },
     {
@@ -118,21 +130,43 @@
       "longName": "--service",
       "argumentName": "SERVICE",
       "description": "Optional single image service name.",
-      "associatedCommands": ["package-images"]
+      "associatedCommands": [
+        "package-images"
+      ]
     },
     {
       "parameterKind": "choice",
       "longName": "--target",
       "description": "Desktop target platform and architecture.",
       "alternatives": [
-        { "name": "windows-amd64", "description": "Windows x64" },
-        { "name": "windows-arm64", "description": "Windows ARM64" },
-        { "name": "macos-amd64", "description": "macOS Intel" },
-        { "name": "macos-arm64", "description": "macOS Apple Silicon" },
-        { "name": "linux-amd64", "description": "Linux x64" },
-        { "name": "linux-arm64", "description": "Linux ARM64" }
+        {
+          "name": "windows-amd64",
+          "description": "Windows x64"
+        },
+        {
+          "name": "windows-arm64",
+          "description": "Windows ARM64"
+        },
+        {
+          "name": "macos-amd64",
+          "description": "macOS Intel"
+        },
+        {
+          "name": "macos-arm64",
+          "description": "macOS Apple Silicon"
+        },
+        {
+          "name": "linux-amd64",
+          "description": "Linux x64"
+        },
+        {
+          "name": "linux-arm64",
+          "description": "Linux ARM64"
+        }
       ],
-      "associatedCommands": ["package-desktop"],
+      "associatedCommands": [
+        "package-desktop"
+      ],
       "required": true
     },
     {
@@ -140,7 +174,30 @@
       "longName": "--archive",
       "argumentName": "ARCHIVE",
       "description": "Optional existing image archive path.",
-      "associatedCommands": ["package-desktop", "package-web"]
+      "associatedCommands": [
+        "package-desktop",
+        "package-web"
+      ]
+    },
+    {
+      "parameterKind": "choice",
+      "longName": "--mode",
+      "description": "slim: OSS 按需下载；local: 携带当前本地镜像用于开发测试。",
+      "alternatives": [
+        {
+          "name": "slim",
+          "description": "精简发行包"
+        },
+        {
+          "name": "local",
+          "description": "本地镜像开发测试包"
+        }
+      ],
+      "defaultValue": "slim",
+      "associatedCommands": [
+        "package-desktop",
+        "package-web"
+      ]
     }
   ]
 }

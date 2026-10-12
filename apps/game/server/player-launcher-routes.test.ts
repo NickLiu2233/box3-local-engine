@@ -56,6 +56,20 @@ describe('Player Launcher Play endpoints', () => {
     })
   })
 
+  test('bootstrap retains the publicly configured login portal prefix', async () => {
+    const original = process.env.BOX_PLAYER_LOGIN_URL
+    try {
+      process.env.BOX_PLAYER_LOGIN_URL = 'https://auth.example.test/accounts'
+      const handler = createPlayerLauncherBootstrapHandler(() => ({ keyId: 'key-1', publicKey: {} }))
+      const res = response()
+      await handler(request(), res)
+      expect(res.body.loginApiUrl).toBe('https://auth.example.test/accounts/api/auth/login')
+    } finally {
+      if (original === undefined) delete process.env.BOX_PLAYER_LOGIN_URL
+      else process.env.BOX_PLAYER_LOGIN_URL = original
+    }
+  })
+
   test('map discovery is available without a server-side access switch', async () => {
     let authenticationAttempted = false
     const handler = createPlayerLauncherMapsHandler({

@@ -91,3 +91,19 @@ test('lightweight packages reject accidentally embedded archives and invalid ima
     fs.rmSync(root, { recursive: true, force: true })
   }
 })
+
+test('local desktop packages require a matching bundled archive and no OSS manifest', () => {
+  const root=fixturePackage()
+  const payload=path.join(root,'BOX3 Engine.app/Contents/Resources/payload')
+  const metadata=path.join(payload,'metadata')
+  try {
+    fs.unlinkSync(path.join(metadata,'BOX-REMOTE-IMAGE.json'))
+    fs.writeFileSync(path.join(metadata,'BOX-PACKAGE-MODE.json'),JSON.stringify({mode:'local'}))
+    const archive='box-local-engine-images-test-linux-arm64.tar.gz'
+    fs.writeFileSync(path.join(payload,archive),'local Docker snapshot')
+    fs.writeFileSync(path.join(payload,'BOX-OFFLINE-IMAGE.json'),JSON.stringify({formatVersion:1,imageTag:'test',platform:'linux/arm64',archive,sha256:sha256(path.join(payload,archive))}))
+    assert.equal(verifyPackage(root).manifest.imageTag,'test')
+    fs.appendFileSync(path.join(payload,archive),'tampered')
+    assert.throws(()=>verifyPackage(root),/SHA-256/)
+  } finally {fs.rmSync(root,{recursive:true,force:true})}
+})

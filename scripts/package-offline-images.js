@@ -7,7 +7,8 @@ const { spawn, spawnSync } = require('node:child_process')
 const root = path.resolve(__dirname, '..')
 const architectureByNode = { x64: 'amd64', arm64: 'arm64' }
 const architecture = process.argv[2] || architectureByNode[process.arch]
-const selectedService = process.argv[3] || ''
+const local = process.argv.includes('--local')
+const selectedService = process.argv[3]?.startsWith('--') ? '' : process.argv[3] || ''
 const supportedArchitectures = new Set(['amd64', 'arm64'])
 const services = [
   'player-service',
@@ -32,7 +33,7 @@ if (selectedService && !services.includes(selectedService)) {
 
 const version = require(path.join(root, 'package.json')).version
 const tag = `v${version}-linux-${architecture}`
-const outputDirectory = path.join(root, 'apps/local-engine/dist/images')
+const outputDirectory = local && process.env.BOX_LOCAL_IMAGE_DIRECTORY ? path.resolve(process.env.BOX_LOCAL_IMAGE_DIRECTORY) : path.join(root, local ? 'apps/local-engine/dist/local-images' : 'apps/local-engine/dist/images')
 const packagedServices = selectedService ? [selectedService] : services
 const output = path.join(
   outputDirectory,
@@ -53,7 +54,7 @@ for (const service of packagedServices) {
   // architecture even when DOCKER_DEFAULT_PLATFORM is set. Bake receives an
   // explicit target platform and loads that single-platform image locally so
   // the exported archive always matches its filename.
-  const result = spawnSync(
+  const result = local ? { status: 0 } : spawnSync(
     'docker',
     ['buildx', 'bake', '--load', '--set', `${service}.platform=linux/${architecture}`, service],
     {

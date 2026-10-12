@@ -120,6 +120,19 @@ fn download_image_archive_from(
         app.image_download_complete(&image.image);
         return Ok(destination);
     }
+    let local = match fs::read_to_string(app.root.join("BOX3-PACKAGE-MODE.json")) {
+        Ok(text) => {
+            let value: Value = serde_json::from_str(&text).map_err(|_| "打包模式清单无效")?;
+            match value["mode"].as_str() {
+                Some("local") => true,
+                Some("slim") => false,
+                _ => return Err("打包模式清单无效".into()),
+            }
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => false,
+        Err(error) => return Err(format!("无法读取打包模式清单：{error}")),
+    };
+    if local { return Err(format!("{service} 的本地镜像归档缺失或损坏，请重新生成本地测试包")); }
     let partial = destination.with_extension("part");
     let mut offset = fs::metadata(&partial).map(|metadata| metadata.len()).unwrap_or(0);
     if offset >= image.size {

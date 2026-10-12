@@ -16,6 +16,7 @@ import { state } from '../../core/state.js'
 import { restoreDefaultAuthPortalImage } from '../../operations/auth-portal.js'
 import {
   applySsl,
+  exportSsl,
   captureSslDraft,
   refreshSsl,
   selectSslFile,
@@ -30,6 +31,7 @@ export function bindConfigurationEvents() {
   if (state.page !== 'setup' || state.setupSection !== 'network') state.sslFiles = {}
   for (const [id, handler] of [
     ['ssl-apply', applySsl],
+    ['ssl-export', exportSsl],
     ['ssl-stop', stopSsl],
     ['ssl-apply-network', applySsl],
     ['nginx-download', downloadNginx],

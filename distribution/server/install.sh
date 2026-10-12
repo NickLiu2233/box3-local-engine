@@ -98,6 +98,10 @@ if [ -f "$archive_path" ]; then
   fi
 fi
 if [ "$actual_sha" != "$expected_sha" ]; then
+  if [ -f BOX3-PACKAGE-MODE.json ] && grep -Eq '"mode"[[:space:]]*:[[:space:]]*"local"' BOX3-PACKAGE-MODE.json; then
+    echo '本地镜像归档缺失或损坏，请重新生成本地测试包。' >&2
+    exit 1
+  fi
   partial="$archive_path.part"
   if [ -f "$partial" ]; then
     if command -v sha256sum >/dev/null 2>&1; then

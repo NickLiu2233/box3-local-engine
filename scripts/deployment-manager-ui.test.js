@@ -1129,3 +1129,26 @@ test('saving an automatic domain sends certificate flags without fixing its raw 
   assert.equal(route.secure, true)
   assert.equal(route.port, 443)
 })
+
+test('Linux Web manager exports external Nginx configuration instead of controlling container-local Nginx', async () => {
+  const app = await createFixture({ webManager: true, token: 'test-manager-token' })
+  app.api.state.page = 'setup'
+  app.api.state.setupSection = 'network'
+  app.api.state.sslLoaded = true
+  app.api.state.sslDraft = { mode: 'external' }
+  app.results.apply_ssl_config = { provider: 'external', config: { externalConfig: 'fixture nginx configuration' } }
+  app.results.get_ssl_status = { provider: 'external', config: { externalConfig: 'fixture nginx configuration' } }
+  app.api.render()
+  await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} })
+  const applied = app.calls.find((call) => call.command === 'apply_ssl_config')
+  assert.equal(applied.payload.config.externalLocal, false)
+  assert.match(app.html, /导出 Nginx 配置/)
+})
+
+test('service links respect separate creator access mode', async () => {
+  const app = await createFixture()
+  app.api.state.config.playNetworkMode = 'public'
+  app.api.state.config.creatorNetworkMode = 'local'
+  app.api.state.config.creatorPublicAddressOverride = 'https://old-arena.example.test'
+  assert.equal(app.api.getServiceUrl('creator'), 'http://127.0.0.1:3127/')
+})

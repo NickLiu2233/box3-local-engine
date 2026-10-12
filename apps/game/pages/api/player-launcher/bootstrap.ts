@@ -6,7 +6,7 @@ function playerLoginApiUrl() {
   try {
     const configured = new URL(String(process.env.BOX_PLAYER_LOGIN_URL || '').trim())
     if (!['http:', 'https:'].includes(configured.protocol) || configured.username || configured.password) return ''
-    return new URL('/api/auth/login', configured.origin).toString()
+    return new URL(`${configured.pathname.replace(/\/$/, '')}/api/auth/login`, configured.origin).toString()
   } catch {
     return ''
   }

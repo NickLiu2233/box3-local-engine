@@ -149,12 +149,13 @@ export function validateDescriptor(
 
   const hashes = new Set()
   let totalBytes = 0
+  // 服务端允许空文件；0 字节仍需通过清单摘要与签名校验。
   for (const asset of [...descriptor.required, ...descriptor.optional]) {
     if (
       !asset ||
       !validHashShape(asset.hash) ||
       !Number.isSafeInteger(asset.size) ||
-      asset.size <= 0 ||
+      asset.size < 0 ||
       asset.size > MAX_ASSET_BYTES ||
       asset.kind !== 'static' ||
       !validContentType(asset.contentType)

@@ -179,3 +179,9 @@ test(
     }
   },
 )
+
+test('local image snapshots preserve a common Docker tag and reject mixed versions', () => {
+  const {localImageTag}=require('./build-image-downloads')
+  assert.equal(localImageTag({images:[{imageTag:'developer-snapshot'},{imageTag:'developer-snapshot'}]}),'developer-snapshot')
+  assert.throws(()=>localImageTag({images:[{imageTag:'one'},{imageTag:'two'}]}),/同一版本/)
+})

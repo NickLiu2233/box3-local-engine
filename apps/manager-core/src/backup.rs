@@ -2,7 +2,7 @@
 //! `tar = "0.4"` (tested 0.4.46), and `zip = { version = "2",
 //! default-features = false, features = ["deflate"] }` (tested 2.4.2).
 //! Export with `pub mod backup;` and call from each frontend's blocking worker.
-//! Creation needs a system GNU/BSD `tar`, and always writes portable PAX tar.gz.
+//! Creation writes portable tar.gz with controlled PAX path records.
 //!
 //! Readers accept raw/gzip TAR (USTAR, GNU/PAX ordinary long names) and legacy ZIP
 //! (stored/deflated), detected by content, with optional `./` path prefixes.
@@ -32,13 +32,12 @@
 //! Live creation is not a consistent DB
 //! snapshot: callers should quiesce writers if consistency is required.
 
-use flate2::read::MultiGzDecoder;
+use flate2::{read::MultiGzDecoder, write::GzEncoder, Compression};
 use std::cell::Cell;
 use std::collections::{HashMap, HashSet};
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 pub const DATA_DIRECTORIES: [&str; 4] = [
@@ -223,6 +222,57 @@ fn open_backup_file(source: &Path) -> Result<File> {
     }
 }
 
+/// Write only ordinary entries and explicit long-path metadata. System tar can
+/// add platform-specific PAX fields which our strict import validator rejects.
+fn append_backup_entry(
+    builder: &mut tar::Builder<GzEncoder<File>>,
+    source: &Path,
+    name: &Path,
+) -> Result<()> {
+    let metadata = fs::symlink_metadata(source).map_err(err)?;
+    if !metadata.is_file() && !metadata.is_dir() {
+        return Err(invalid("links and special files are forbidden"));
+    }
+    let mut header = tar::Header::new_ustar();
+    header.set_uid(0);
+    header.set_gid(0);
+    header.set_mtime(0);
+    header.set_mode(if metadata.is_dir() { 0o755 } else { 0o600 });
+    header.set_entry_type(if metadata.is_dir() {
+        tar::EntryType::Directory
+    } else {
+        tar::EntryType::Regular
+    });
+    header.set_size(if metadata.is_dir() { 0 } else { metadata.len() });
+    if header.set_path(name).is_err() {
+        let name = name
+            .to_str()
+            .ok_or("Backup path is not valid UTF-8")?
+            .replace('\\', "/");
+        builder
+            .append_pax_extensions([("path", name.as_bytes())])
+            .map_err(err)?;
+        header.set_path("PaxEntry").map_err(err)?;
+    }
+    header.set_cksum();
+    if metadata.is_dir() {
+        builder.append(&header, io::empty()).map_err(err)?;
+        let mut entries = fs::read_dir(source)
+            .map_err(err)?
+            .collect::<std::result::Result<Vec<_>, _>>()
+            .map_err(err)?;
+        entries.sort_by_key(|entry| entry.file_name());
+        for entry in entries {
+            append_backup_entry(builder, &entry.path(), &name.join(entry.file_name()))?;
+        }
+    } else {
+        builder
+            .append(&header, File::open(source).map_err(err)?)
+            .map_err(err)?;
+    }
+    Ok(())
+}
+
 /// Creates a new `.tar.gz`; never overwrites an existing destination. Its parent
 /// must already exist and must be outside the four data trees. Returns metadata
 /// only after validating the actual resulting gzip/PAX stream.
@@ -259,23 +309,12 @@ pub fn create_archive(root: &Path, destination: &Path, limits: Limits) -> Result
         }
     }
     let archive = scratch.path.join("archive.tar.gz");
-    let output = Command::new("tar")
-        .env_remove("TAR_OPTIONS")
-        .env("COPYFILE_DISABLE", "1")
-        .arg("--format=pax")
-        .arg("-czf")
-        .arg(&archive)
-        .arg("-C")
-        .arg(&tree)
-        .args(paths)
-        .output()
-        .map_err(|e| format!("Cannot run tar: {e}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "tar creation failed: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
+    let gzip = GzEncoder::new(File::create(&archive).map_err(err)?, Compression::default());
+    let mut builder = tar::Builder::new(gzip);
+    for relative in paths {
+        append_backup_entry(&mut builder, &tree.join(relative), Path::new(relative))?;
     }
+    builder.into_inner().map_err(err)?.finish().map_err(err)?;
     let info = validate_archive(&archive, limits)?;
     // Atomic no-clobber publication on the same filesystem, with no partial
     // archive visible to callers if creation/validation fails.
@@ -874,9 +913,9 @@ fn move_children(from: &Path, to: &Path, moves: &mut Vec<(PathBuf, PathBuf)>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
-    use flate2::{write::GzEncoder, Compression};
     use std::cell::Cell;
     use std::io::Write;
+    use std::process::Command;
 
     fn temp() -> Scratch {
         Scratch::new(&std::env::temp_dir()).unwrap()
@@ -1558,6 +1597,56 @@ mod tests {
         )
         .is_err());
     }
+    #[test]
+    #[cfg(unix)]
+    fn creation_is_independent_of_platform_tar_pax_metadata() {
+        use std::os::unix::fs::PermissionsExt;
+        let temp = temp();
+        let source = temp.path.join("source");
+        put(&source, "apps/voxa/data/file", b"actual source bytes");
+        let platform_archive = temp.path.join("platform.tar.gz");
+        pax_fixture(&platform_archive, "LIBARCHIVE.creationtime", b"1234.567");
+        let bin = temp.path.join("bin");
+        fs::create_dir(&bin).unwrap();
+        let tar = bin.join("tar");
+        fs::write(
+            &tar,
+            "#!/bin/sh\n/bin/cp \"$BOX_BACKUP_PLATFORM_ARCHIVE\" \"$3\"\n",
+        )
+        .unwrap();
+        fs::set_permissions(&tar, fs::Permissions::from_mode(0o755)).unwrap();
+        let output = Command::new(std::env::current_exe().unwrap())
+            .args([
+                "--exact",
+                "backup::tests::creation_without_platform_metadata_probe",
+                "--nocapture",
+            ])
+            .env("PATH", bin)
+            .env("BOX_BACKUP_PLATFORM_ARCHIVE", platform_archive)
+            .env("BOX_BACKUP_PROBE_ROOT", source)
+            .env("BOX_BACKUP_PROBE_ARCHIVE", temp.path.join("backup.tar.gz"))
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn creation_without_platform_metadata_probe() {
+        let Some(root) = std::env::var_os("BOX_BACKUP_PROBE_ROOT") else {
+            return;
+        };
+        let archive = PathBuf::from(std::env::var_os("BOX_BACKUP_PROBE_ARCHIVE").unwrap());
+        let info = create_archive(Path::new(&root), &archive, Limits::default()).unwrap();
+        assert_eq!(info.files, 1);
+        assert_eq!(info.data_bytes, 19);
+    }
+
     fn pax_fixture(path: &Path, key: &str, value: &[u8]) {
         let gzip = GzEncoder::new(File::create(path).unwrap(), Compression::default());
         let mut builder = tar::Builder::new(gzip);

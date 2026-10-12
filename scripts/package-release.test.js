@@ -43,3 +43,23 @@ test('desktop packaging without an archive still builds the matching image archi
   )
   assert.equal(plan.buildImages, true)
 })
+
+test('local desktop and Web packages export current images without rebuilding them', () => {
+  for (const [kind,target] of [['desktop','macos-arm64'],['web','arm64']]) {
+    const plan = createReleasePlan(kind,target,'','0.3.0','local')
+    assert.match(plan.archive,/local-images/)
+    const calls=[]
+    executeReleasePlan(kind,target,plan,(command,args)=>calls.push(args),()=>true)
+    assert.deepEqual(calls[0],['scripts/package-offline-images.js','arm64','--local'])
+    assert.equal(calls[1].at(-1),'--local')
+  }
+})
+
+test('an existing archive can be repackaged locally without exporting again', () => {
+  const plan = createReleasePlan('desktop','macos-arm64','fixture.tar.gz','0.3.0','local')
+  const calls=[]
+  executeReleasePlan('desktop','macos-arm64',plan,(_command,args)=>calls.push(args),()=>true)
+  assert.equal(calls.length,1)
+  assert.equal(calls[0].at(-1),'--local')
+  assert.throws(()=>createReleasePlan('web','arm64','','0.3.0','invalid'),/slim 或 local/)
+})

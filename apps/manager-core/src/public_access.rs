@@ -415,3 +415,43 @@ mod tests {
         assert_eq!(view(&values)["sharedPublicAddress"], "abc.example.test");
     }
 }
+
+
+#[cfg(test)]
+mod repeated_access_mode_tests {
+    use super::*;
+    #[test]
+    fn saving_switching_and_reloading_ip_domain_and_tls_drafts_does_not_conflict() {
+        for (address, secure) in [
+            ("203.0.113.10", false),
+            ("203.0.113.10", true),
+            ("http://203.0.113.10:4121", false),
+            ("https://203.0.113.10:8443", true),
+            ("play.example.test", false),
+            ("play.example.test", true),
+            ("http://play.example.test", false),
+            ("https://play.example.test", true),
+            ("[2001:db8::1]:8443", true),
+        ] {
+            let mut content = String::new();
+            for mode in ["public", "local", "lan", "public", "local", "public"] {
+                let config = json!({"publicAddressMode":"independent","playNetworkMode":mode,"creatorNetworkMode":"local","playPublicAddressOverride":address,"authPortalPublicAddressOverride":"https://auth.example.test/accounts","publicSslConfigured":{"play":secure}});
+                let prepared = prepare(config.as_object().unwrap()).unwrap();
+                content = save_document(&content, config.as_object().unwrap()).unwrap();
+                content = crate::access_settings::save(&content, "", mode, "local", Some("192.168.1.9")).unwrap();
+                let values = environment::parse_env(&content);
+                let runtime = configuration::runtime_environment(&values, &configuration::RuntimeInputs {lan_ip:Some("192.168.1.9"),image_tag:"test",platform:"linux/amd64",database_required:false,web_manager:true}).unwrap();
+                let expected = match mode {
+                    "public" => prepared["playPublicAddressOverride"].as_str().unwrap(),
+                    "lan" => "http://192.168.1.9:3121",
+                    _ => "http://127.0.0.1:3121",
+                };
+                assert_eq!(runtime["BOX_PLAY_PUBLIC_URL"],expected,"{address}, {mode}");
+                assert_eq!(runtime["BOX_CREATOR_PUBLIC_URL"],"http://127.0.0.1:3127");
+                assert_eq!(runtime["BOX_PLAYER_LOGIN_URL"],runtime["BOX_AUTH_PORTAL_PUBLIC_URL"]);
+                assert_eq!(view(&values)["playPublicAddressOverride"],address);
+                assert_eq!(runtime["BOX_BIND_IP"], if mode == "local" {"127.0.0.1"} else {"0.0.0.0"});
+            }
+        }
+    }
+}

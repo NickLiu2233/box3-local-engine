@@ -122,11 +122,25 @@ function verifyPackage(packageRoot) {
   ) {
     fail('BUILD-INFO.json 缺少正式构建版本、提交号或构建时间')
   }
-  rejectEmbeddedArchives(packageRoot)
-  const manifestPath = path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json')
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
-  const { validateCatalog } = require('./build-image-downloads')
-  validateCatalog(manifest, manifest.platform?.split('/')[1])
+  const modeFile = path.join(metadataRoot, 'BOX-PACKAGE-MODE.json')
+  const mode = fs.existsSync(modeFile) ? JSON.parse(fs.readFileSync(modeFile, 'utf8')).mode : 'slim'
+  let manifest
+  if (mode === 'local') {
+    const application = findApplication(packageRoot)
+    const payload = application ? path.join(packageRoot, application.name, 'Contents/Resources/payload') : packageRoot
+    manifest = JSON.parse(fs.readFileSync(path.join(payload, 'BOX-OFFLINE-IMAGE.json'), 'utf8'))
+    if (manifest.formatVersion !== 1 || !manifest.imageTag || !/^linux\/(arm64|amd64)$/.test(manifest.platform) || path.basename(manifest.archive || '') !== manifest.archive) fail('本地镜像清单无效')
+    const archive = path.join(payload, manifest.archive)
+    if (!fs.statSync(archive, {throwIfNoEntry:false})?.isFile() || sha256(archive) !== manifest.sha256) fail('本地镜像归档缺失或 SHA-256 不匹配')
+    if (fs.existsSync(path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json'))) fail('本地模式不能同时启用 OSS 镜像清单')
+  } else {
+    if (mode !== 'slim') fail('未知启动器打包模式')
+    rejectEmbeddedArchives(packageRoot)
+    const manifestPath = path.join(metadataRoot, 'BOX-REMOTE-IMAGE.json')
+    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'))
+    const { validateCatalog } = require('./build-image-downloads')
+    validateCatalog(manifest, manifest.platform?.split('/')[1])
+  }
   verifyChecksums(metadataRoot)
   verifyMacSignature(packageRoot)
   return { manifest }

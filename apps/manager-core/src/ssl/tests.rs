@@ -285,6 +285,9 @@ fn external_import_uses_openssl_and_preserves_saved_keys_without_nginx_image() {
     let settings = input.settings.clone();
     let value = apply(&root, &root, "unused", "", input, &mut unavailable).unwrap();
     assert!(value["config"]["certificateExpiries"]["creator"].is_string());
+    let exported = value["config"]["externalConfig"].as_str().unwrap();
+    assert!(exported.contains(root.join("https/revisions").to_str().unwrap()));
+    assert!(!exported.contains("/etc/box-https/"));
     assert!(!fs::read_to_string(root.join("https/settings.json"))
         .unwrap()
         .contains("PRIVATE KEY"));
@@ -359,7 +362,7 @@ fn managed_https_runtime_links_use_listener_ports_without_changing_engine_ports(
     std::fs::create_dir(root.join("https")).unwrap();
     let saved = Saved {settings:Settings {upstream_ports:Default::default(),mode:"managed".into(),https_port:443,routes:vec![Route {path:String::new(),secure:true,service:"play".into(),domain:"play.example.test".into(),port:Some(443)},Route {path:String::new(),secure:true,service:"player-auth-portal".into(),domain:"auth.example.test".into(),port:Some(443)}]},pending_local:false,external_local:false,expires_at:"2099-01-01T00:00:00Z".into(),revision:"fixture".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default()};
     std::fs::write(root.join("https/settings.json"), serde_json::to_string(&saved).unwrap()).unwrap();
-    let values = [("BOX_PLAY_NETWORK_MODE","public"),("BOX_CREATOR_NETWORK_MODE","local")].into_iter().map(|(key,value)|(key.to_string(),value.to_string())).collect();
+    let values = [("BOX_PLAY_NETWORK_MODE","public"),("BOX_CREATOR_NETWORK_MODE","local"),("BOX_PLAYER_LOGIN_URL_OVERRIDE","http://172.31.9.78:3125")].into_iter().map(|(key,value)|(key.to_string(),value.to_string())).collect();
     let mut derived: BTreeMap<String,String> = [("BOX_PLAY_PUBLIC_URL","https://play.example.test:3121"),("BOX_CREATOR_PUBLIC_URL","http://127.0.0.1:3127"),("BOX_VOXA_PUBLIC_URL","http://127.0.0.1:3123"),("BOX_PLAYER_SERVICE_PUBLIC_URL","https://shared.example.test:3124"),("BOX_AUTH_PORTAL_PUBLIC_URL","https://auth.example.test:3125"),("BOX_PLAY_PORT","3121")].into_iter().map(|(key,value)|(key.to_string(),value.to_string())).collect();
     apply_runtime_urls(&root, &values, &mut derived).unwrap();
     assert_eq!(derived["BOX_PLAY_PUBLIC_URL"], "https://play.example.test");
@@ -444,4 +447,80 @@ fn shared_certificate_deletion_clears_tls_flags_and_keeps_http_and_other_certifi
     assert!(!root.join("https/revisions/old/creator-key.pem").exists());
     assert!(root.join("https/revisions/old/voxa-key.pem").exists());
     std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn saved_public_routes_do_not_remove_local_http_bindings() {
+    let root = fixture_root();
+    std::fs::write(root.join(".env"), "BOX_PLAY_NETWORK_MODE=local\nBOX_CREATOR_NETWORK_MODE=local\n").unwrap();
+    std::fs::create_dir_all(root.join("https")).unwrap();
+    std::fs::write(root.join("https/routing.pending.json"), serde_json::to_string(&input().settings).unwrap()).unwrap();
+    let source = "services:\n  play:\n    ports:\n      - \"127.0.0.1:3121:3000\"\n";
+    assert_eq!(compose_source(&root, source).unwrap(), source);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn endpoint_verification_distinguishes_ip_domain_and_plain_http() {
+    let root = fixture_root();
+    std::fs::create_dir_all(root.join("https")).unwrap();
+    let mut settings = input().settings;
+    settings.routes = vec![
+        Route { service:"play".into(),domain:"203.0.113.10".into(),port:Some(443),path:String::new(),secure:true },
+        Route { service:"creator".into(),domain:"2001:db8::1".into(),port:Some(8443),path:String::new(),secure:true },
+        Route { service:"player-auth-portal".into(),domain:"auth.example.test".into(),port:Some(443),path:String::new(),secure:true },
+        Route { service:"voxa".into(),domain:"assets.example.test".into(),port:Some(80),path:String::new(),secure:false },
+    ];
+    let saved = Saved { settings,external_local:false,pending_local:false,expires_at:String::new(),revision:"test".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default() };
+    std::fs::write(root.join("https/settings.json"),serde_json::to_string(&saved).unwrap()).unwrap();
+    let mut calls = Vec::new();
+    let result = verify_endpoint(&root, &mut |args| {calls.push(args.to_vec());Ok(String::new())}).unwrap();
+    assert_eq!(result["checks"].as_array().unwrap().len(),3);
+    assert!(calls[0].windows(2).any(|pair| pair == ["-verify_ip","203.0.113.10"]));
+    assert!(calls[1].windows(2).any(|pair| pair == ["-connect","[2001:db8::1]:8443"]));
+    assert!(calls[1].windows(2).any(|pair| pair == ["-verify_ip","2001:db8::1"]));
+    assert!(calls[2].windows(2).any(|pair| pair == ["-verify_hostname","auth.example.test"]));
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn same_public_port_with_a_changed_internal_listener_recreates_the_proxy() {
+    let root = fixture_root();
+    std::fs::create_dir_all(root.join("https/revisions/old")).unwrap();
+    let mut desired = input();
+    desired.settings.https_port = 8443;
+    let saved = Saved { settings: desired.settings.clone(),external_local:false,pending_local:false,expires_at:"2099-01-01T00:00:00Z".into(),revision:"old".into(),external_config:String::new(),certificate_sources:Default::default(),certificate_expiries:Default::default() };
+    std::fs::write(root.join("https/settings.json"),serde_json::to_string(&saved).unwrap()).unwrap();
+    std::fs::write(root.join("https/nginx.conf"),"old configuration").unwrap();
+    std::fs::write(root.join("https/revisions/old/cert.pem"), &desired.certificate).unwrap();
+    std::fs::write(root.join("https/revisions/old/key.pem"), &desired.private_key).unwrap();
+    desired.settings.routes[0].secure = false;
+    desired.settings.routes[0].port = Some(8443);
+    desired.certificate.clear();
+    desired.private_key.clear();
+    let owner = runtime::identity(&root);
+    let mut calls = Vec::new();
+    apply(&root,&root,"fixture","",desired,&mut |args| {
+        calls.push(args.to_vec());
+        if args.starts_with(&["container".into(),"ls".into()]) { return Ok("owned".into()); }
+        if args.iter().any(|arg| arg.contains("box.https.owner")) { return Ok(owner.clone()); }
+        if args.iter().any(|arg| arg.contains("State.Running")) { return Ok("true".into()); }
+        Ok(String::new())
+    }).unwrap();
+    assert!(calls.iter().any(|args| args.starts_with(&["rm".into(),"-f".into()])));
+    assert!(calls.iter().any(|args| args.starts_with(&["run".into(),"-d".into()]) && args.windows(2).any(|pair| pair == ["-p","8443:8443"])));
+    assert!(!calls.iter().any(|args| args.iter().any(|arg| arg == "reload")));
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn an_explicit_path_capable_image_does_not_require_a_default_image_tag() {
+    let mut settings = input().settings;
+    settings.routes[0].service = "player-auth-portal".into();
+    settings.routes[0].path = "/sjixs".into();
+    let environment = [("BOX_AUTH_PORTAL_IMAGE".into(),"box-local-engine-player-auth-portal:0.3.0".into())].into_iter().collect();
+    validate_path_images(&settings,&environment,&mut |args| {
+        assert_eq!(args.last().unwrap(),"box-local-engine-player-auth-portal:0.3.0");
+        Ok(r#"{"box.routing.base-path":"runtime-v1"}"#.into())
+    }).unwrap();
 }

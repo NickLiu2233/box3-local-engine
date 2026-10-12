@@ -172,6 +172,9 @@ pub fn apply_runtime_urls(
             format!("{key}_PUBLIC_URL_OVERRIDE"),
             format!("{origin}{}", route.path),
         );
+        if route.service == "player-auth-portal" {
+            overrides.insert("BOX_PLAYER_LOGIN_URL_OVERRIDE".into(), format!("{origin}{}", route.path));
+        }
         derived.insert(format!("{key}_BASE_PATH"), route.path.clone());
         if !route.path.is_empty() {
             peers.entry(origin).or_default().push(route.path.clone());
@@ -439,10 +442,11 @@ pub fn stop(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
 pub fn verify_endpoint(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
     let saved = saved(root)?.ok_or("请先导入并校验证书")?;
     let mut checks = Vec::new();
-    for route in saved.settings.routes {
+    for route in saved.settings.routes.into_iter().filter(|route| route.secure) {
+        let is_ip = route.domain.parse::<std::net::IpAddr>().is_ok();
         let target = format!(
             "{}:{}",
-            route.domain,
+            crate::configuration::origin_host(&route.domain)?,
             route.port.unwrap_or(saved.settings.https_port)
         );
         let result = call(
@@ -460,7 +464,7 @@ pub fn verify_endpoint(root: &Path, docker: &mut Docker<'_>) -> Result<Value, St
                 &target,
                 "-servername",
                 &route.domain,
-                "-verify_hostname",
+                if is_ip { "-verify_ip" } else { "-verify_hostname" },
                 &route.domain,
                 "-verify_return_error",
                 "-brief",
