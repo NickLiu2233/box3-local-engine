@@ -17,6 +17,7 @@ function validatePublicImageUrl(endpointUrl: URL, rawUrl: string): URL {
     /^\/runtime\/play\/[a-z0-9][a-z0-9-]{0,62}\/block\/[A-Za-z0-9._~-]{1,160}$/.test(path)
   if (
     url.origin !== endpointUrl.origin ||
+    !url.pathname.startsWith(`${basePath}/`) ||
     (!isTemplateCover && !isMapBlockCover) ||
     url.username ||
     url.password ||

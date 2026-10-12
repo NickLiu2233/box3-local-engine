@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createPublicImageTransport } from './public-image-transport'
+import { createPublicImageTransport, validatePublicImageUrl } from './public-image-transport'
 
 test('loads only public cover paths and converts image bytes for the file-based launcher', async () => {
   let requestedUrl = ''
@@ -74,4 +74,12 @@ test('rejects non-image responses instead of embedding server error pages', asyn
       ),
     /格式不受支持/,
   )
+})
+
+test('cover requests stay within the exact configured service prefix', () => {
+  const endpoint = new URL('http://engine.test/abc')
+  assert.equal(validatePublicImageUrl(endpoint, 'http://engine.test/abc/map-templates/blank-template.png').pathname, '/abc/map-templates/blank-template.png')
+  for (const prefix of ['/xyz', '/abcdef', '']) {
+    assert.throws(() => validatePublicImageUrl(endpoint, `http://engine.test${prefix}/map-templates/blank-template.png`), /不在允许范围内/)
+  }
 })

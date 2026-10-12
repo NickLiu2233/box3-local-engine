@@ -12,7 +12,14 @@ const BOOTSTRAP_NOT_FOUND_RETRY_DELAY_MS = 250
 
 export function resolveMapCoverUrl(endpoint: string, value: unknown, publicMapId: string): string {
   const base = new URL(endpoint)
-  const fallback = new URL('/map-templates/blank-template.png', base).toString()
+  const prefix = base.pathname.replace(/\/$/, '')
+  const serverCoverUrl = (value: string) => {
+    const url = new URL(value, base)
+    if (prefix && url.origin === base.origin && /^\/(?:map-templates\/|runtime\/play\/)/.test(url.pathname))
+      url.pathname = prefix + url.pathname
+    return url.toString()
+  }
+  const fallback = serverCoverUrl('/map-templates/blank-template.png')
   const cover = typeof value === 'string' ? value.trim() : ''
   if (!cover) return fallback
   try {
@@ -22,18 +29,17 @@ export function resolveMapCoverUrl(endpoint: string, value: unknown, publicMapId
       if (url.username || url.password) return fallback
       if (url.protocol === 'http:' && base.protocol === 'https:' && url.origin !== base.origin)
         return fallback
-      return url.toString()
+      return serverCoverUrl(url.toString())
     }
-    if (cover.startsWith('/') && !cover.startsWith('//')) return new URL(cover, base).toString()
+    if (cover.startsWith('/') && !cover.startsWith('//')) return serverCoverUrl(cover)
 
     // Play manifests store covers as content hashes, not server-root paths.
     // Match the website's hashToUrl convention so files resolve through the
     // map-scoped Play block endpoint.
     if (!publicMapId) return fallback
-    return new URL(
+    return serverCoverUrl(
       `/runtime/play/${encodeURIComponent(publicMapId)}/block/${encodeURIComponent(cover)}`,
-      base,
-    ).toString()
+    )
   } catch {
     return fallback
   }
