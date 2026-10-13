@@ -33,6 +33,7 @@ test('editor and formatter resolve the same owned source and documentation inden
             assert.equal(editor.tabWidth, resolved.tabWidth, file);
             assert.equal(resolved.semi, true, file);
             assert.equal(resolved.singleQuote, true, file);
+            assert.equal(resolved.trailingComma, 'all', file);
         }
     } finally {
         fs.rmSync(temporary, { recursive: true, force: true });

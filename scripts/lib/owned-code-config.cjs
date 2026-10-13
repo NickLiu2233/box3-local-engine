@@ -18,7 +18,7 @@ const directories = [
     'packages/realtime-client',
     'scripts',
     'tools/repo-tooling',
-    'docs/examples',
+    'services/game-server/scripts/fixtures/anticheat',
 ];
 const configurationFiles = ['.prettierrc.cjs', '.eslintrc.cjs'];
 const documentationFiles = ['README.md', 'CONTRIBUTING.md'];
@@ -56,6 +56,7 @@ const options = {
     tabWidth: 4,
     semi: true,
     singleQuote: true,
+    trailingComma: 'all',
     printWidth: 100,
     plugins: [path.join(__dirname, 'client-format-plugin.cjs')],
 };

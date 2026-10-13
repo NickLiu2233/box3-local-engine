@@ -5,8 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
-// Deliberately scoped to reviewed modules. Legacy large files are tracked in
-// docs/engineering-refactor.md, not silently declared compliant here.
+// Deliberately scoped to reviewed modules; this is not a whole-repository size check.
 const modules = [
     'services/game-server/src/net/net-server-controller.ts',
     'services/game-server/src/net/net-state-operations.ts',

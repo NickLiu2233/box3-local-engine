@@ -67,7 +67,7 @@ async function main() {
     assert.deepEqual(JSON.parse(helperResult as string), {
       immutable: true, initiallyExempt: true, expired: true, score: 2, historyTick: 1, reset: true,
     });
-    await context.eval(fs.readFileSync(path.resolve(__dirname, '../../../docs/examples/script-anticheat.js'), 'utf8'));
+    await context.eval(fs.readFileSync(path.resolve(__dirname, './fixtures/anticheat/script-anticheat.js'), 'utf8'));
     const templateResult = await context.eval(`{
       handlers.movement({handle:50,playerId:1,payload:JSON.stringify({playerId:1,
         from:{x:0,y:0,z:0},to:{x:1000,y:0,z:0},elapsedMs:16,
@@ -81,7 +81,7 @@ async function main() {
     }`);
     assert.deepEqual(JSON.parse(templateResult as string), { movementAllowed: true, actionAllowed: true, samples: 2, score: 0 });
     await context.eval('api.initialize();');
-    await context.eval(fs.readFileSync(path.resolve(__dirname, '../../../docs/examples/anticheat-observe.js'), 'utf8'));
+    await context.eval(fs.readFileSync(path.resolve(__dirname, './fixtures/anticheat/anticheat-observe.js'), 'utf8'));
     const observerResult = await context.eval(`{
       handlers.movement({handle:60,playerId:1,payload:JSON.stringify({playerId:1,
         from:{x:0,y:0,z:0},to:{x:1000,y:0,z:0},elapsedMs:16,
@@ -104,7 +104,7 @@ async function main() {
       const remoteChannel={onServerEvent:fn=>reportCallback=fn,
         sendClientEvent:(entity,value)=>remoteReply=value};
     `);
-    await context.eval('(() => {' + fs.readFileSync(path.resolve(__dirname, '../../../docs/examples/anticheat-policy.js'), 'utf8') + fs.readFileSync(path.resolve(__dirname, './fixtures/anticheat-policy-isolate.js'), 'utf8') + '})();');
+    await context.eval('(() => {' + fs.readFileSync(path.resolve(__dirname, './fixtures/anticheat/anticheat-policy.js'), 'utf8') + fs.readFileSync(path.resolve(__dirname, './fixtures/anticheat-policy-isolate.js'), 'utf8') + '})();');
     const demoResult = await context.eval(`{
       for(const join of joins)join({entity:demoEntity});
       scriptTick=60;

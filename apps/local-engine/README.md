@@ -74,8 +74,5 @@ apps/local-engine/data/blobs/
 ## 延伸阅读
 
 - [项目 README](../../README.md)
-- [地图作品、地图组与发布包](../../docs/projects.md)
-- [创作端部署](../../docs/creator-deployment.md)
-- [游玩端部署](../../docs/play-deployment.md)
-- [安装、部署与运维](../../docs/installation-and-operations.md)
-- [配置参考](../../docs/configuration-reference.md)
+- [开发入门](../../docs/developer-guide.md)
+- [代码规范](../../docs/code-style.md)

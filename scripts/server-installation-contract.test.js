@@ -155,11 +155,6 @@ test('bootstrap installer supports Ubuntu 26.04 through an Aliyun Docker mirror'
         /https:\/\/get\.docker\.com.*--retry 3|--retry 3.*https:\/\/get\.docker\.com/s,
         'the Docker official fallback must retry transient network failures',
     );
-    assert.match(
-        fs.readFileSync(path.join(root, 'docs/cloud-server-quickstart.md'), 'utf8'),
-        /Ubuntu 22\.04\/24\.04\/26\.04/,
-        'the supported-server guide must document Ubuntu 26.04',
-    );
 });
 
 test('bootstrap installer detects a public IPv4 address from the configured endpoints', () => {

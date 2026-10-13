@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import { test } from 'node:test';
 import { AnticheatScript } from '../src/anticheat/anticheat-script';
 
-const source = fs.readFileSync(path.resolve(__dirname, '../../../docs/examples/anticheat-policy.js'), 'utf8');
+const source = fs.readFileSync(path.resolve(__dirname, './fixtures/anticheat/anticheat-policy.js'), 'utf8');
 class Vector { constructor(public x: number, public y: number, public z: number) {} }
 // Keep the rule and real tracker in the same realm, as in the script isolate.
 const helpers = vm.runInThisContext('(function(GameVector3){' + source + '\nreturn {installMapAnticheat,validateAnticheatRay};})')(Vector);

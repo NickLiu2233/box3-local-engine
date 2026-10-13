@@ -81,12 +81,8 @@ const requiredFiles = [
     '.dockerignore',
     '.env.docker.example',
     'docker-compose.yml',
-    'docs/creator-deployment.md',
-    'docs/deployment.md',
-    'docs/installation-and-operations.md',
-    'docs/local-infrastructure.md',
-    'docs/play-deployment.md',
-    'docs/voxa-deployment.md',
+    'docs/README.md',
+    'docs/developer-guide.md',
     'apps/local-engine/Dockerfile',
     'apps/local-engine/config/local.config.json',
     'apps/local-engine/src/build.js',
@@ -123,7 +119,7 @@ const publicConfigurationFiles = [
     'docker-compose.yml',
     'distribution/play/.env.example',
     'apps/local-engine/src/project-manager.js',
-    'docs/deployment.md',
+    'docs/developer-guide.md',
 ];
 for (const file of publicConfigurationFiles) {
     const source = readRequired(file);
@@ -147,8 +143,8 @@ forbidPattern(
     /^BOX_WORLD_NAME=/m,
 );
 forbidPattern(
-    readRequired('docs/deployment.md'),
-    'docs/deployment.md',
+    readRequired('docs/developer-guide.md'),
+    'docs/developer-guide.md',
     'retired single-map BOX_WORLD_NAME parameter',
     /^BOX_WORLD_NAME=/m,
 );

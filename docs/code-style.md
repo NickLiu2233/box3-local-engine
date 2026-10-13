@@ -1,55 +1,51 @@
-# 自有代码风格与维护范围
+# 代码规范
 
-更新日期：2026-10-13。
+## 命名
 
-本规则用于本仓库维护的启动器、玩家后台、玩家启动器、登录门户、运行适配和工程脚本。范围与选项的唯一来源为 `scripts/lib/owned-code-config.cjs`，`.prettierrc.cjs` 和 `scripts/format-owned-code.js` 共用它。`.editorconfig` 将相同缩进的目录合并为分组，不逐项复制检查清单；上游源码和生成物保留现有约定。新增文件和已有文件遵循同一规则，不依靠个人设置。
+- 文件与目录使用英文 `kebab-case`；变量和函数使用 `camelCase`，类型和类使用 `PascalCase`，语义常量使用 `UPPER_SNAKE_CASE`。
+- 除文档外，文件与目录不使用中文。缩写按单词处理，如 `xmlHttpRequest`、`XmlHttpRequest`。
+- 名称表达职责；DOM 事件处理函数以事件名开头，布尔值表达状态，如 `isOpen`。不要用关键字或浏览器内置对象名声明业务变量。
+- 局部变量只在对应映射成员需要区分时使用下划线前缀。难以表达的名称补充简短说明，可使用 Code Spell Checker 检查拼写。
 
-## 目录范围
+## 排版与代码块
 
-| 目录                                                 | 范围                                       |
-| ---------------------------------------------------- | ------------------------------------------ |
-| `apps/deployment-manager`                            | 部署管理器前端与开发配置                   |
-| `apps/player-admin`                                  | 玩家后台页面、业务模块和开发配置           |
-| `apps/player-launcher`                               | Electron 主进程、渲染进程、共享逻辑与测试  |
-| `apps/player-auth-portal/src`、`server`、`scripts`   | 登录门户源代码                             |
-| `apps/local-engine/src`、`scripts`                   | 引擎启动与打包适配                         |
-| `packages/deployment-routing`                        | 页面、资源、请求、图片优化与运行时前缀适配 |
-| `packages/player-policy`、`packages/realtime-client` | 共享权限、实时协议与独立测试               |
-| `scripts`                                            | 部署、打包、结构检查、测试与夹具           |
+- 自有 JS/TS、CSS/Less 的代码块和续行统一四空格，不使用两空格或 Tab。JS/TS 使用分号、单引号和多行末尾逗号；JSON 使用两空格和双引号。
+- 二元运算符两侧留空格，一元运算符不加空格。行宽以 100 字符为准；不可拆分的字符串或协议值不为行宽截断。
+- TypeScript 注解使用 `value:Type`、`field?:Type`、`function read(value:Type):Result`；对象赋值使用 `field: value`。参数之间用逗号和空格分隔。
+- `if/else` 和所有循环保留花括号；优先提前返回，减少嵌套。值不变时使用 `const`，否则使用 `let`，不使用 `var`。
+- 长参数列表换行；参数较多时考虑按职责拆分函数，或用具名 options 对象，便于调用方理解。
 
-依赖、运行数据、构建产物、`.umi`、`.umi-production` 不参与整理。上游同步的 `apps/game`、`apps/voxa`、`services/game-server`、其他 `packages` 与 `internals` 保持各自风格；本轮三个公共包明确纳入自有规则，包含 `.cts` 声明，不通过全仓替换格式。Rust 使用 `cargo fmt`，遵循 Rust 的命名和可见性规则，不套用 JavaScript 的驼峰规则。
+范围和选项由 `scripts/lib/owned-code-config.cjs` 统一维护，编辑器与格式工具共用约定。上游同步代码、第三方与生成物保留原有规则；Rust 使用 rustfmt。
 
-## 命名与排版
+## 导入与模块
 
-检查也覆盖登录门户 `test/`、`tools/repo-tooling`、根格式/Lint 配置、`docs/examples`，以及全部 docs、自有应用说明和根 README/CONTRIBUTING。
-
-- 文件和目录使用英文 `kebab-case`；文档允许中文文件名。变量、方法使用 `camelCase`，类型、接口、类使用 `PascalCase`，语义常量使用 `UPPER_SNAKE_CASE`。
-- 不用浏览器内置对象名声明业务变量。外部 API、协议字段、框架类型和生成契约保留原名，不为了风格修改兼容接口。
-- JS/TS 和 CSS/Less 采用四空格缩进，文档中的 JS/TS 示例也使用同一规则。JS/TS 使用分号与单引号；JSON 使用双引号和两空格缩进，JSX 属性按语法使用双引号。
-- 换行宽度为 100 字符；不可拆分的标识符、字符串、模板与正则保持值不变，不通过截断内容满足宽度。
-- `if/else` 和循环保留花括号，允许 `else if` 链；优先使用提前返回减少嵌套。不使用 `var`。
-- TypeScript 类型注解采用 `value:Type`、`field?:Type`、`function read(value:Type):Result`；对象赋值采用 `field: value`。类型规则由本地 Prettier 扩展实现。
-- 导入按第三方、项目模块、类型导入分组，组间空行；有副作用的导入保留原顺序。使用具名导出；Umi 路由入口和 Electron 打包钩子等框架必需的默认导出保留。
-- TypeScript 类成员明确声明可见性；原生私有字段和框架装饰器保持其语义。业务内部状态通过操作函数维护，不增加带隐藏副作用的 getter/setter；浏览器适配与测试夹具需要模拟原生属性时保留原生协议。
-- 功能接口使用简短 JSDoc 说明职责、信任来源或副作用。删除无效注释代码；TODO 使用 `// TODO: ...`，不把未处理的 FIXME 当作已完成工作。
-
-格式扩展使用 TypeScript 语法节点补充分支块和成员可见性，不在字符串、注释或 JSX 文本里做全局替换。格式检查验证幂等性；功能回归验证行为。
+- 顺序为引用声明、第三方模块、项目模块、类型声明、业务代码，组间空行。保留副作用导入的执行顺序。
+- 优先具名导出，避免 `export default`；框架必需的默认导出保留。协议字段、外部接口和生成代码保留兼容命名。
+- 不引入循环依赖；必要时将共同依赖提取为独立模块。
+- 限制内部状态的可见性，通过明确的操作方法维护，不直接暴露可变内部成员。不新增隐藏业务副作用的 getter/setter；原生协议适配保留必要例外。
+- TypeScript 类成员明确标注 `public`、`protected` 或 `private`，尽量收紧可见性；原生 `#private` 字段保持原语义。
 
 ## package.json
 
-根清单及本轮维护项目的 `package.json` 按约定字段顺序排列。完整顺序的唯一实现为 `scripts/lib/package-manifest-order.cjs`，起始字段依次为 `$schema`、`name`、`displayName`、`version`、`private`、`description`；入口字段在脚本前，依赖字段在脚本和工具配置后。
+字段严格按 `scripts/lib/package-manifest-order.cjs` 中的完整顺序排列：从 `$schema`、`name`、`displayName`、`version` 开始，入口在脚本前，依赖在工具配置后，最后为 `pnpm`。不在文档复制另一份排序清单。
 
-`build` 等未列出的自定义字段放在已列字段后，并保留它们之间的相对顺序。排序不修改字段值，也不重排 `scripts`、依赖映射或打包配置的内部顺序。JSON 的缩进与引号由 Prettier 管理。
+排序不修改字段值、脚本或依赖映射的内部顺序；未列出的自定义字段放最后，保持相对顺序。仓库格式工具已处理排序，无需增加依赖；也可使用 sort-package-json 或 VS Code 的 Sort package.json，最终以仓库检查为准。
 
-## 执行与验证
+## 注释
 
-```sh
-npm run format:owned
-npm run format:owned:check
-node --test scripts/client-format.test.js scripts/package-manifest-order.test.js
-node --test scripts/documentation-links.test.js
-```
+- 公共功能接口使用简短 JSDoc，说明职责、信任来源和副作用；仅在行为真实且工具支持时使用副作用标记，不把 `@nosideeffects` 当作纯函数保证。
+- 单行注释在 `//` 后空一格。解释原因和兼容性，不逐行复述代码；删除无效注释代码，历史交给 Git。
+- 待办统一使用 `// TODO: 简述任务`。`FIXME` 表示合入主分支前必须解决的问题，提交前搜索并处理。
 
-根目录 `format` / `format:check` 工作流也会先调用自有代码检查。范围内的路由适配即使被全仓 Prettier 忽略，仍由自有代码检查覆盖。
+## 模块与测试
 
-整理模块后，另执行对应项目的类型、构建和业务回归。格式通过不表示服务端授权、窗口安全、打包或真实网络已验收。三个界面的模块入口和检查方式见[应用代码维护](./application-code-maintenance.md)。
+- 先读现有实现，优先复用已有组件、公共包与接口；避免无关重构和重复封装。
+- 按职责拆分模块，手写文件尽量少于 500 行，不为行数机械拆文件。
+- 新接口统一维护 `@box/apis` 契约和生成产物；修改权限、数据格式或运行时协议时保留兼容性并添加回归测试。
+- 自有模块不跨应用读取源码，可复用能力通过包入口暴露。新增包必须登记 Rush。
+
+## 安全与提交
+
+不得提交真实凭据、用户数据、地图、数据库备份、日志或本机构建产物。授权、权威状态与秘密保留在服务端，客户端输入始终需要验证；不要通过删除数据库卷排障。
+
+提交前运行 `npm run format:check`、相关模块测试及 `npm run verify`，如实说明失败或未执行项。仅修改文档时，至少检查文档链接与 `git diff --check`。

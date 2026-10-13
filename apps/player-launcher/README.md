@@ -1,6 +1,6 @@
 # BOX3 玩家启动器
 
-仓库统一原生开发入口为 `rush dev-player-launcher`（或根目录 `npm run dev:player-launcher`），会先准备 API 编译依赖，再复用本应用的 Electron/Vite 流程。安装包通过 `rush package-player-launcher --target macos-arm64` 等目标生成；完整入口见[Rush 工作区](../../docs/rush-workspace.md)。
+仓库统一原生开发入口为 `rush dev-player-launcher`（或根目录 `npm run dev:player-launcher`），会先准备 API 编译依赖，再复用本应用的 Electron/Vite 流程。安装包通过 `rush package-player-launcher --target macos-arm64` 等目标生成；基础流程见[开发入门](../../docs/developer-guide.md)。
 
 独立的 Electron + Chromium 玩家客户端；不包含 Docker、服主密钥、后台管理或服务器配置能力。
 
@@ -62,7 +62,7 @@ npm run package:player-launcher:linux-amd64
 npm run package:player-launcher:linux-arm64
 ```
 
-资源缓存与安全边界见 [玩家启动器 Service Worker 资源缓存](../../docs/launcher-service-worker-cache.md)。Electron 是发行入口，使用 `bundle:electron`。
+Electron 是发行入口，使用 `bundle:electron`。资源缓存只存可再生成的公开资源，不存用户凭据或私有数据。
 
 ## 独立发布
 
