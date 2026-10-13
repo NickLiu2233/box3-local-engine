@@ -96,6 +96,20 @@ test('dependency build failure stops before runtime regressions', () => {
     );
 });
 
+test('typecheck builds shared APIs before checking the admin and portal', () => {
+    const app = runTask('typecheck');
+    app.execute();
+    const apiBuild = app.calls.findIndex(
+        (call) => call.cwd.endsWith('internals/apis') && call.args.includes('build'),
+    );
+    const checks = app.calls.filter((call) => call.args.includes('typecheck'));
+    assert.deepEqual(
+        checks.map((call) => path.relative(path.resolve(__dirname, '..'), call.cwd)),
+        ['apps/player-admin', 'apps/player-auth-portal'],
+    );
+    assert.ok(apiBuild >= 0 && apiBuild < app.calls.indexOf(checks[0]));
+});
+
 test('dependency ordering shares prerequisites, ignores external packages and detects cycles', () => {
     const { orderDependencyBuilds } = require('./test-dependency-build');
     const projects = [

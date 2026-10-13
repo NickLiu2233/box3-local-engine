@@ -5,8 +5,9 @@
 # BOX3 本地引擎
 
 [![Node.js](https://img.shields.io/badge/Node.js-22.17-339933.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6.svg)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-61DAFB.svg)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.6.3-3178C6.svg)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-19.2.1-61DAFB.svg)](https://react.dev/)
+[![Rush](https://img.shields.io/badge/Rush-5.156.0-2B4F81.svg)](https://rushjs.io/)
 [![Rust](https://img.shields.io/badge/Rust-000000.svg)](https://www.rust-lang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D.svg)](https://redis.io/)
@@ -43,7 +44,7 @@ BOX3 是基于网页的多人 3D 创作与游玩工具。创作者使用 Creator
 | 在无桌面的 Linux 服务器上开服 | Linux 服务器包 | Docker Engine、Compose、访问地址与防火墙        |
 | 修改引擎、编辑器或管理工具    | 本仓库源码     | Node.js、Rush 工作区、开发栈与验证流程          |
 
-安装包从 [GitHub Releases](https://github.com/ifishcool/box-local-engine/releases) 获取。部署步骤分别见[部署管理器说明](apps/deployment-manager/README.md)和[Linux 服务器说明](distribution/server/README.md)，玩家操作见[玩家启动器说明](apps/player-launcher/README.md)。安装包的操作系统与服务器镜像的架构是两个概念：桌面应用运行在用户电脑上，服务镜像运行在 Docker 的 Linux 环境中。
+安装包从 [GitHub Releases](https://github.com/box3lab/box-local-engine/releases) 获取。部署步骤分别见[部署管理器说明](apps/deployment-manager/README.md)和[Linux 服务器说明](distribution/server/README.md)，玩家操作见[玩家启动器说明](apps/player-launcher/README.md)。安装包的操作系统与服务器镜像的架构是两个概念：桌面应用运行在用户电脑上，服务镜像运行在 Docker 的 Linux 环境中。
 
 ## 服务如何配合
 
@@ -56,7 +57,7 @@ Creator 负责编辑与预览，VOXA 负责模型、皮肤和动画，Play 负�
 需要 Node.js `22.17.x`、Docker Compose v2。仓库脚本自动准备锁定版本的 Rush 和 pnpm；原生管理器构建和完整验证还需要 Rust stable 与对应平台工具链。
 
 ```sh
-git clone https://github.com/ifishcool/box-local-engine.git
+git clone https://github.com/box3lab/box-local-engine.git
 cd box-local-engine
 npm run install:all
 cp .env.docker.example .env
@@ -101,10 +102,10 @@ npm run dev:infra
 
 入门命令见[开发入门](docs/developer-guide.md)，编码约定见[代码规范](docs/code-style.md)，Fork 与提交流程见[贡献指南](CONTRIBUTING.md)。API 文档可通过 `npm run api:docs` 启动。
 
-提交前运行 `npm run verify`。源码开发不会自动更新已有容器或安装包；部署使用 [GitHub Releases](https://github.com/ifishcool/box-local-engine/releases) 中的产物。
+提交前运行 `npm run verify`。源码开发不会自动更新已有容器或安装包；部署使用 [GitHub Releases](https://github.com/box3lab/box-local-engine/releases) 中的产物。
 
 开发 PR 运行质量检查，staging 用于测试打包，release 的已合并 PR 用于正式发布。同版本 staging 默认复用已有镜像，修改源码后需要升级版本或显式强制重建才能验证新镜像。分支、OSS 路径和版本约定见 [Release & Version](docs/release-and-version.md)。
 
 不要公开数据库、Docker Socket 或管理端，不要提交密钥、用户数据、地图与备份。权限判定和权威数据必须留在服务端，不能依赖客户端隐藏按钮。
 
-问题反馈与讨论见 [Issues](https://github.com/ifishcool/box-local-engine/issues)。第三方组件保留各自许可，项目品牌与商标不由 MIT 授权。
+问题反馈与讨论见 [Issues](https://github.com/box3lab/box-local-engine/issues)。第三方组件保留各自许可，项目品牌与商标不由 MIT 授权。

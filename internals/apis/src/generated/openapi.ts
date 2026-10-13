@@ -6067,7 +6067,16 @@ export interface operations {
     };
     getApiPlayAdminActivity: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description 分页页码，从 1 开始。 */
+                page?: string;
+                /** @description 每页返回的记录数。 */
+                pageSize?: string;
+                /** @description 资源类型筛选条件。 */
+                kind?: string;
+                /** @description 名称或标识的搜索关键词。 */
+                search?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -7095,6 +7104,12 @@ export interface operations {
             query?: {
                 /** @description 地图库内容分区。 */
                 section?: string;
+                /** @description 运行或查询模式。 */
+                mode?: string;
+                /** @description 审核记录 ID。 */
+                reviewId?: string;
+                /** @description 工程资源 ID。 */
+                resourceId?: string;
             };
             header?: never;
             path?: never;
@@ -7129,6 +7144,12 @@ export interface operations {
             query?: {
                 /** @description 地图库内容分区。 */
                 section?: string;
+                /** @description 运行或查询模式。 */
+                mode?: string;
+                /** @description 审核记录 ID。 */
+                reviewId?: string;
+                /** @description 工程资源 ID。 */
+                resourceId?: string;
             };
             header?: never;
             path?: never;
@@ -7168,6 +7189,12 @@ export interface operations {
             query?: {
                 /** @description 地图库内容分区。 */
                 section?: string;
+                /** @description 运行或查询模式。 */
+                mode?: string;
+                /** @description 审核记录 ID。 */
+                reviewId?: string;
+                /** @description 工程资源 ID。 */
+                resourceId?: string;
             };
             header?: never;
             path?: never;
@@ -7516,6 +7543,14 @@ export interface operations {
                 identity?: string;
                 /** @description 是否仅查询当前在线记录。 */
                 online?: string;
+                /** @description 名称或标识的搜索关键词。 */
+                search?: string;
+                /** @description 分页页码，从 1 开始。 */
+                page?: string;
+                /** @description 每页返回的记录数。 */
+                pageSize?: string;
+                /** @description 接口参数：sort。 */
+                sort?: string;
             };
             header?: never;
             path?: never;
@@ -7553,6 +7588,14 @@ export interface operations {
                 identity?: string;
                 /** @description 是否仅查询当前在线记录。 */
                 online?: string;
+                /** @description 名称或标识的搜索关键词。 */
+                search?: string;
+                /** @description 分页页码，从 1 开始。 */
+                page?: string;
+                /** @description 每页返回的记录数。 */
+                pageSize?: string;
+                /** @description 接口参数：sort。 */
+                sort?: string;
             };
             header?: never;
             path?: never;
@@ -7786,7 +7829,18 @@ export interface operations {
     };
     getApiPlayAdminPlayersExport: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description 名称或标识的搜索关键词。 */
+                search?: string;
+                /** @description 需要查询或封禁的身份标识。 */
+                identity?: string;
+                /** @description 是否仅查询当前在线记录。 */
+                online?: string;
+                /** @description 接口参数：sort。 */
+                sort?: string;
+                /** @description 接口参数：role。 */
+                role?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;

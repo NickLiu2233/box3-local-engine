@@ -29,6 +29,7 @@ const source = `/**
 import createClient, {
   type Client,
   type ClientOptions,
+  type FetchResponse,
   type PathBasedClient,
   wrapAsPathBasedClient,
 } from 'openapi-fetch';
@@ -115,7 +116,21 @@ export class ApiClient {
 
 ${methods
   .map(
-    ({ apiPath, method, operationId }) => `  ${operationId}Raw(
+    ({ apiPath, method, operationId }) => {
+      if (method === 'GET' && ['/api/play-admin/library/import', '/api/play-admin/players/export'].includes(apiPath)) {
+        const parameters = `Parameters<PathBasedClient<paths>[${JSON.stringify(apiPath)}]["GET"]>`
+        const response = `FetchResponse<paths[${JSON.stringify(apiPath)}]["get"], Init[0], \`\${string}/\${string}\`>`
+        return `  ${operationId}Raw<const Init extends ${parameters}>(...init: Init): Promise<${response}> {
+    // Preserve parseAs when callers download text or binary resources.
+    return this.paths[${JSON.stringify(apiPath)}].GET(...(init as ${parameters})) as Promise<${response}>;
+  }
+
+  ${operationId}<const Init extends ${parameters}>(...init: Init): Promise<NonNullable<${response}["data"]>> {
+    return this.unwrap(this.${operationId}Raw(...init)) as Promise<NonNullable<${response}["data"]>>;
+  }
+`
+      }
+      return `  ${operationId}Raw(
     ...init: Parameters<PathBasedClient<paths>[${JSON.stringify(apiPath)}][${JSON.stringify(method)}]>
   ) {
     return this.paths[${JSON.stringify(apiPath)}].${method}(...init);
@@ -126,7 +141,8 @@ ${methods
   ) {
     return this.unwrap(this.${operationId}Raw(...init));
   }
-`,
+`
+    },
   )
   .join('\n')}
 }

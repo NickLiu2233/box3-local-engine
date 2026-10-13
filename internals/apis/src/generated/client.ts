@@ -7,6 +7,7 @@
 import createClient, {
   type Client,
   type ClientOptions,
+  type FetchResponse,
   type PathBasedClient,
   wrapAsPathBasedClient,
 } from 'openapi-fetch';
@@ -1526,16 +1527,13 @@ export class ApiClient {
     return this.unwrap(this.getApiPlayAdminImportResourceRaw(...init));
   }
 
-  getApiPlayAdminLibraryImportRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/library/import"]["GET"]>
-  ) {
-    return this.paths["/api/play-admin/library/import"].GET(...init);
+  getApiPlayAdminLibraryImportRaw<const Init extends Parameters<PathBasedClient<paths>["/api/play-admin/library/import"]["GET"]>>(...init: Init): Promise<FetchResponse<paths["/api/play-admin/library/import"]["get"], Init[0], `${string}/${string}`>> {
+    // Preserve parseAs when callers download text or binary resources.
+    return this.paths["/api/play-admin/library/import"].GET(...(init as Parameters<PathBasedClient<paths>["/api/play-admin/library/import"]["GET"]>)) as Promise<FetchResponse<paths["/api/play-admin/library/import"]["get"], Init[0], `${string}/${string}`>>;
   }
 
-  getApiPlayAdminLibraryImport(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/library/import"]["GET"]>
-  ) {
-    return this.unwrap(this.getApiPlayAdminLibraryImportRaw(...init));
+  getApiPlayAdminLibraryImport<const Init extends Parameters<PathBasedClient<paths>["/api/play-admin/library/import"]["GET"]>>(...init: Init): Promise<NonNullable<FetchResponse<paths["/api/play-admin/library/import"]["get"], Init[0], `${string}/${string}`>["data"]>> {
+    return this.unwrap(this.getApiPlayAdminLibraryImportRaw(...init)) as Promise<NonNullable<FetchResponse<paths["/api/play-admin/library/import"]["get"], Init[0], `${string}/${string}`>["data"]>>;
   }
 
   getApiPlayAdminLibrarySectionRaw(
@@ -1586,16 +1584,13 @@ export class ApiClient {
     return this.unwrap(this.getApiPlayAdminPlayersRaw(...init));
   }
 
-  getApiPlayAdminPlayersExportRaw(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/export"]["GET"]>
-  ) {
-    return this.paths["/api/play-admin/players/export"].GET(...init);
+  getApiPlayAdminPlayersExportRaw<const Init extends Parameters<PathBasedClient<paths>["/api/play-admin/players/export"]["GET"]>>(...init: Init): Promise<FetchResponse<paths["/api/play-admin/players/export"]["get"], Init[0], `${string}/${string}`>> {
+    // Preserve parseAs when callers download text or binary resources.
+    return this.paths["/api/play-admin/players/export"].GET(...(init as Parameters<PathBasedClient<paths>["/api/play-admin/players/export"]["GET"]>)) as Promise<FetchResponse<paths["/api/play-admin/players/export"]["get"], Init[0], `${string}/${string}`>>;
   }
 
-  getApiPlayAdminPlayersExport(
-    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/players/export"]["GET"]>
-  ) {
-    return this.unwrap(this.getApiPlayAdminPlayersExportRaw(...init));
+  getApiPlayAdminPlayersExport<const Init extends Parameters<PathBasedClient<paths>["/api/play-admin/players/export"]["GET"]>>(...init: Init): Promise<NonNullable<FetchResponse<paths["/api/play-admin/players/export"]["get"], Init[0], `${string}/${string}`>["data"]>> {
+    return this.unwrap(this.getApiPlayAdminPlayersExportRaw(...init)) as Promise<NonNullable<FetchResponse<paths["/api/play-admin/players/export"]["get"], Init[0], `${string}/${string}`>["data"]>>;
   }
 
   getApiPlayAdminPlayersOverviewRaw(

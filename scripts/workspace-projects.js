@@ -8,6 +8,10 @@ const { orderDependencyBuilds } = require('./test-dependency-build');
 /** Validate the main workspace only; vendored modules and nested examples are not Rush products. */
 function workspaceProjects(root) {
     const config = JSON.parse(fs.readFileSync(path.join(root, 'rush.json'), 'utf8'));
+    const versionsFile = path.join(root, 'common/config/rush/common-versions.json');
+    const preferredVersions = fs.existsSync(versionsFile)
+        ? JSON.parse(fs.readFileSync(versionsFile, 'utf8')).preferredVersions || {}
+        : {};
     const names = new Set();
     const folders = new Set();
     const projects = config.projects.map(({ packageName, projectFolder }) => {
@@ -24,6 +28,18 @@ function workspaceProjects(root) {
             packageName,
             `Rush name differs from ${projectFolder}/package.json`,
         );
+        // Peer ranges describe library compatibility, not the installed toolchain.
+        for (const section of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+            for (const [name, version] of Object.entries(manifest[section] || {})) {
+                if (preferredVersions[name]) {
+                    assert.equal(
+                        version,
+                        preferredVersions[name],
+                        `${packageName} must pin ${name} to ${preferredVersions[name]} (${section})`,
+                    );
+                }
+            }
+        }
         return {
             name: packageName,
             folder: projectFolder,

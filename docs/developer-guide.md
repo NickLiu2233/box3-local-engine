@@ -21,6 +21,14 @@ docker compose version
 
 确认 Node 版本匹配、Docker 已启动。无需另行安装任意版本的 Rush/pnpm，仓库启动脚本会准备 `rush.json` 锁定的工具版本。
 
+### 统一的工作区版本
+
+Rush 登记的受维护项目使用 TypeScript `5.6.3`、React/React DOM `19.2.1`、`@types/react` `19.2.4` 与 `@types/react-dom` `19.2.3`。Rush `5.156.0` 与 pnpm `10.12.1` 固定在 `rush.json`；库的 React peer 范围用于声明兼容性，可以宽于实际开发依赖。
+
+共享依赖基线维护在 `common/config/rush/common-versions.json` 的 `preferredVersions`，各项目直接依赖使用相同的精确版本。`npm run check:workspace` 和完整验证会拒绝这些依赖的版本漂移。升级时同步修改基线、受影响项目清单与锁文件，再完成兼容性检查；不要只修改 README 徽章。
+
+未登记到 Rush 的嵌套示例和第三方模块保留原版本，不参与主工程安装与版本统一。玩家后台使用 Ant Design 5，并在应用入口加载 React 19 兼容补丁，确保静态弹窗、消息和通知使用新的渲染 API。
+
 ## 2. 安装依赖与配置
 
 获取源码后，在仓库根目录执行：
@@ -48,7 +56,7 @@ Player Service 必须使用 PostgreSQL；Redis 可选。地图脚本 storage 的
 
 ```dotenv
 # 替换为自己的开发库与凭据，不使用生产数据库。
-BOX_DATABASE_URL=postgresql://<user>:<password>@127.0.0.1:5432/<database>
+BOX_DATABASE_URL=postgresql://<example-user>:<example-password>@127.0.0.1:5432/<example-database>
 BOX_DATABASE_SCHEMA=box_engine
 BOX_IDENTITY_DATABASE_SCHEMA=box_identity
 ```

@@ -23,7 +23,7 @@
     "@figma-export/output-components-as-svgstore": "4.7.0",
     "dotenv": "16.0.1",
     "typescript": "5.6.3",
-    "@types/react": "17.0.43",
+    "@types/react": "19.2.4",
     "react": "19.2.1",
     "@figma-export/utils": "4.7.0",
     "@figma-export/transform-svg-with-svgo": "4.7.0",

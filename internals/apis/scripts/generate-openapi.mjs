@@ -84,6 +84,11 @@ const METHOD_OVERRIDES = new Map([
   ['/api/player-auth/password', ['POST']],
 ])
 const QUERY_PARAMETER_OVERRIDES = new Map([
+  // These handlers delegate validation/proxying, so req.query.field scanning misses their inputs.
+  ['/api/play-admin/players', ['search', 'page', 'pageSize', 'identity', 'online', 'sort']],
+  ['/api/play-admin/players/export', ['search', 'identity', 'online', 'sort', 'role']],
+  ['/api/play-admin/activity', ['page', 'pageSize', 'kind', 'search']],
+  ['/api/play-admin/library/import', ['mode', 'reviewId', 'resourceId']],
   ['/api/creator-models', ['modelType', 'mapId', 'creativeMode', 'modelName']],
 ])
 

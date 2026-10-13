@@ -67,6 +67,30 @@ test('unregistered main projects and missing workspace dependencies fail before 
     });
 });
 
+test('preferred toolchain versions reject drift but allow peer ranges and nested examples', () => {
+    fixture((root, write) => {
+        write('common/config/rush/common-versions.json', {
+            preferredVersions: { react: '19.2.1', typescript: '5.6.3' },
+        });
+        write('packages/library/package.json', {
+            name: '@box/library',
+            peerDependencies: { react: '>=18.2.0 <20' },
+            devDependencies: { react: '19.2.1', typescript: '5.6.3' },
+        });
+        write('packages/library/example/package.json', {
+            dependencies: { react: '16.8.3' },
+        });
+        assert.equal(workspaceProjects(root).length, 2);
+        for (const section of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+            write('apps/app/package.json', {
+                name: '@box/app',
+                [section]: { typescript: '^5.6.3' },
+            });
+            assert.throws(() => workspaceProjects(root), /must pin typescript to 5\.6\.3/);
+        }
+    });
+});
+
 test('vendored examples stay outside the main graph while duplicate names and cycles are rejected', () => {
     fixture((root, write, projects) => {
         write('packages/library/example/package.json', { name: 'example' });

@@ -36,6 +36,8 @@ function lint() {
 }
 
 function typecheck() {
+    prepareTestDependencies();
+    npmScript('apps/player-admin', 'typecheck');
     npmScript('apps/player-auth-portal', 'typecheck');
 }
 

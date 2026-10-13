@@ -7,7 +7,7 @@
   "projectFolderMinDepth": 2,
   "projectFolderMaxDepth": 2,
   "repository": {
-    "url": "https://github.com/ifishcool/box-local-engine.git",
+    "url": "https://github.com/box3lab/box-local-engine.git",
     "defaultBranch": "main"
   },
   "projects": [

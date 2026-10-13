@@ -12,12 +12,12 @@ Bug 报告应包括复现步骤、预期结果、实际结果、系统与架构�
 
 ## 2. Fork、克隆与创建分支
 
-先 Fork [官方仓库](https://github.com/ifishcool/box-local-engine)，再克隆自己的副本。下方 `<your-account>` 和 `<short-description>` 需要替换为自己的 GitHub 账号与简短分支名：
+先 Fork [官方仓库](https://github.com/box3lab/box-local-engine)，再克隆自己的副本。下方 `<your-account>` 和 `<short-description>` 需要替换为自己的 GitHub 账号与简短分支名：
 
 ```sh
 git clone https://github.com/<your-account>/box-local-engine.git
 cd box-local-engine
-git remote add upstream https://github.com/ifishcool/box-local-engine.git
+git remote add upstream https://github.com/box3lab/box-local-engine.git
 git fetch upstream
 git switch -c codex/<short-description> upstream/dev
 ```
@@ -113,4 +113,4 @@ staging 允许直接提交与手动测试打包，同版本默认复用已有镜
 
 具体分支、OSS 目录、版本更新和失败重跑规则见 [Release & Version](docs/release-and-version.md)。普通贡献者提交源码与验证结果即可，不需要自行上传官方发行产物。
 
-问题与讨论通过 [Issues](https://github.com/ifishcool/box-local-engine/issues)进行；附件和截图应先移除 Cookie、Token、数据库凭据与用户信息。
+问题与讨论通过 [Issues](https://github.com/box3lab/box-local-engine/issues)进行；附件和截图应先移除 Cookie、Token、数据库凭据与用户信息。
