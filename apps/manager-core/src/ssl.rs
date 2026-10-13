@@ -1,24 +1,29 @@
 //! Certificate import and Nginx configuration shared by both manager transports.
-mod runtime;
-mod local;
-mod plan;
 mod apply;
+mod certificate_checks;
 mod certificates;
+mod local;
 mod path_certificates;
-pub use path_certificates::{reload,refresh_certificate_paths};
+mod plan;
+mod runtime;
+mod transition;
+pub use path_certificates::{refresh_certificate_paths, reload};
 mod raw;
-pub use raw::{read_raw_nginx_config,save_raw_nginx_config};
+pub use raw::{read_raw_nginx_config, save_raw_nginx_config};
 mod proxy;
-pub use runtime::{apply, install_image, install_image_with_progress, set_provider, status, stop, verify_endpoint};
-pub use runtime::{apply_runtime_urls,apply_with_transition,apply_with_transition_progress};
 pub use certificates::delete_certificate;
-pub use plan::{compose_source, routing_settings, transition_services, UpstreamTransition, validate_path_images};
+pub use plan::{
+    compose_source, routing_settings, transition_services, validate_path_images, UpstreamTransition,
+};
+pub use runtime::{
+    apply, install_image, install_image_with_progress, set_provider, status, stop, verify_endpoint,
+};
+pub use runtime::{apply_runtime_urls, apply_with_transition, apply_with_transition_progress};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub const IMAGE: &str = "docker.m.daocloud.io/library/nginx:stable-bookworm";
-pub type ImagePull<'a> =
-    dyn FnMut(&str, &mut dyn FnMut(u8, String)) -> Result<(), String> + 'a;
+pub type ImagePull<'a> = dyn FnMut(&str, &mut dyn FnMut(u8, String)) -> Result<(), String> + 'a;
 pub const SERVICES: [(&str, &str, u16, &str, u16); 6] = [
     ("play", "play", 3000, "BOX_PLAY_PORT", 3121),
     ("creator", "creator", 3000, "BOX_CREATOR_PORT", 3127),
@@ -58,7 +63,9 @@ pub struct Route {
     #[serde(default = "secure_route")]
     pub secure: bool,
 }
-fn secure_route() -> bool { true }
+fn secure_route() -> bool {
+    true
+}
 
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
@@ -67,7 +74,7 @@ pub struct Settings {
     pub https_port: u16,
     pub routes: Vec<Route>,
     #[serde(default)]
-    pub upstream_ports: BTreeMap<String,u16>,
+    pub upstream_ports: BTreeMap<String, u16>,
 }
 
 #[derive(Deserialize)]
@@ -129,8 +136,10 @@ pub struct Saved {
 
 pub fn domain(value: &str) -> Result<String, String> {
     let value = value.trim().to_ascii_lowercase();
-    let value = value.trim_matches(['[',']']).to_string();
-    if let Ok(ip) = value.parse::<std::net::IpAddr>() { return Ok(ip.to_string()); }
+    let value = value.trim_matches(['[', ']']).to_string();
+    if let Ok(ip) = value.parse::<std::net::IpAddr>() {
+        return Ok(ip.to_string());
+    }
     if value.len() > 253
         || !value.contains('.')
         || value.parse::<std::net::IpAddr>().is_ok()
@@ -162,14 +171,27 @@ pub fn validate(input: &mut Import) -> Result<(), String> {
     for route in &mut input.settings.routes {
         route.domain = domain(&route.domain)?;
         route.path = crate::public_access::prefix(&route.path)?;
-        let port = route.port.unwrap_or(if route.secure {input.settings.https_port}else{80});
-        if protocols.insert(port,route.secure).is_some_and(|secure|secure!=route.secure) {return Err("同一个公网端口不能同时使用 HTTP 和 HTTPS".into());}
+        let port = route.port.unwrap_or(if route.secure {
+            input.settings.https_port
+        } else {
+            80
+        });
+        if protocols
+            .insert(port, route.secure)
+            .is_some_and(|secure| secure != route.secure)
+        {
+            return Err("同一个公网端口不能同时使用 HTTP 和 HTTPS".into());
+        }
         if route.port == Some(0)
             || !SERVICES.iter().any(|s| s.0 == route.service)
             || !services.insert(route.service.clone())
             || !domains.insert((
                 route.domain.clone(),
-                route.port.unwrap_or(if route.secure { input.settings.https_port } else { 80 }),
+                route.port.unwrap_or(if route.secure {
+                    input.settings.https_port
+                } else {
+                    80
+                }),
                 route.path.clone(),
             ))
         {
@@ -177,12 +199,24 @@ pub fn validate(input: &mut Import) -> Result<(), String> {
         }
     }
     if input.certificates.len() > SERVICES.len()
-        || input.certificates.keys().any(|key| !SERVICES.iter().any(|service|service.0==key))
+        || input
+            .certificates
+            .keys()
+            .any(|key| !SERVICES.iter().any(|service| service.0 == key))
     {
         return Err("证书服务配置无效".into());
     }
     for service in &input.delete_services {
-        if !SERVICES.iter().any(|entry|entry.0==service) || input.certificates.contains_key(service) || input.settings.routes.iter().any(|route|route.service==*service && route.secure) {return Err("证书删除参数与当前 HTTPS 路由冲突".into());}
+        if !SERVICES.iter().any(|entry| entry.0 == service)
+            || input.certificates.contains_key(service)
+            || input
+                .settings
+                .routes
+                .iter()
+                .any(|route| route.service == *service && route.secure)
+        {
+            return Err("证书删除参数与当前 HTTPS 路由冲突".into());
+        }
     }
     if !input.certificate.is_empty() || !input.private_key.is_empty() {
         validate_pem(&input.certificate, &input.private_key)?;

@@ -5,8 +5,40 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
+const { spawnSync } = require('node:child_process');
 
 const { markdownFiles, assertLocalLinks } = require('./lib/documentation-links.cjs');
+
+test('README version is optional but an explicitly displayed version must be current', () => {
+    const root = path.resolve(__dirname, '..');
+    const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
+    const readme = fs
+        .readFileSync(path.join(root, 'README.md'), 'utf8')
+        .replace(/当前源码版本：`[^`]+`/g, '');
+    for (const [displayed, success] of [
+        [null, true],
+        [version, true],
+        ['0.0.0', false],
+    ]) {
+        const source = readme + (displayed === null ? '' : `\n当前源码版本：\`${displayed}\``);
+        const script = `const fs = require('node:fs');
+const original = fs.readFileSync;
+fs.readFileSync = (file, ...args) => file === ${JSON.stringify(path.join(root, 'README.md'))} ? ${JSON.stringify(source)} : original(file, ...args);
+require(${JSON.stringify(path.join(root, 'scripts/check-documentation.js'))});`;
+        const result = spawnSync(process.execPath, ['-e', script], {
+            cwd: root,
+            encoding: 'utf8',
+            timeout: 10_000,
+        });
+        assert.ifError(result.error);
+        if (success) {
+            assert.equal(result.status, 0, result.stderr);
+        } else {
+            assert.notEqual(result.status, 0);
+            assert.match(result.stderr, /README source version is outdated/);
+        }
+    }
+});
 
 async function withDocument(source, action) {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-document-links-'));

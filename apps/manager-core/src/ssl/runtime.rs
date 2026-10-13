@@ -1,8 +1,11 @@
+#[cfg(test)]
+pub(super) use super::certificate_checks::openssl_command;
+pub(super) use super::certificate_checks::{check_cert, check_local_key};
 use super::*;
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
-type Docker<'a> = dyn FnMut(&[String]) -> Result<String, String> + 'a;
+pub(super) type Docker<'a> = dyn FnMut(&[String]) -> Result<String, String> + 'a;
 
 pub(super) fn call(docker: &mut Docker<'_>, args: &[&str]) -> Result<String, String> {
     docker(&args.iter().map(|s| s.to_string()).collect::<Vec<_>>())
@@ -130,23 +133,49 @@ pub fn apply_runtime_urls(
         );
     }
     derived.insert("BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(), "{}".into());
-    if fs::read_to_string(root.join("https/provider")).is_ok_and(|value|value.trim()=="external-manual") {
+    if fs::read_to_string(root.join("https/provider"))
+        .is_ok_and(|value| value.trim() == "external-manual")
+    {
         let mut peers: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for (service, _, _, _, _) in SERVICES {
-            let prefix = SERVICES.iter().find(|entry|entry.0==service).unwrap().3.trim_end_matches("_PORT");
-            let Some(url) = derived.get(&format!("{prefix}_PUBLIC_URL")) else {continue};
-            let (host,port,secure,path) = crate::configuration_migration::public_url_parts(url,"公开地址")?;
+            let prefix = SERVICES
+                .iter()
+                .find(|entry| entry.0 == service)
+                .unwrap()
+                .3
+                .trim_end_matches("_PORT");
+            let Some(url) = derived.get(&format!("{prefix}_PUBLIC_URL")) else {
+                continue;
+            };
+            let (host, port, secure, path) =
+                crate::configuration_migration::public_url_parts(url, "公开地址")?;
             let path = crate::public_access::prefix(&path)?;
-            let origin = format!("{}://{}{}",if secure {"https"} else {"http"},crate::configuration::origin_host(&host)?,if port == if secure {443} else {80} {String::new()} else {format!(":{port}")});
-            derived.insert(format!("{prefix}_BASE_PATH"),path.clone());
-            if !path.is_empty() {peers.entry(origin).or_default().push(path);}
+            let origin = format!(
+                "{}://{}{}",
+                if secure { "https" } else { "http" },
+                crate::configuration::origin_host(&host)?,
+                if port == if secure { 443 } else { 80 } {
+                    String::new()
+                } else {
+                    format!(":{port}")
+                }
+            );
+            derived.insert(format!("{prefix}_BASE_PATH"), path.clone());
+            if !path.is_empty() {
+                peers.entry(origin).or_default().push(path);
+            }
         }
-        for key in ["BOX_BIND_IP","BOX_CREATOR_BIND_IP","BOX_VOXA_BIND_IP"] {
+        for key in ["BOX_BIND_IP", "BOX_CREATOR_BIND_IP", "BOX_VOXA_BIND_IP"] {
             let address = values.get(key).map(String::as_str).unwrap_or("127.0.0.1");
-            address.parse::<std::net::IpAddr>().map_err(|_|format!("{key} 必须是监听 IP"))?;
-            derived.insert(key.into(),address.into());
+            address
+                .parse::<std::net::IpAddr>()
+                .map_err(|_| format!("{key} 必须是监听 IP"))?;
+            derived.insert(key.into(), address.into());
         }
-        derived.insert("BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(),serde_json::to_string(&peers).map_err(|error|error.to_string())?);
+        derived.insert(
+            "BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN".into(),
+            serde_json::to_string(&peers).map_err(|error| error.to_string())?,
+        );
         return Ok(());
     }
     let Some(settings) = super::plan::routing_settings(root)? else {
@@ -192,7 +221,10 @@ pub fn apply_runtime_urls(
             format!("{origin}{}", route.path),
         );
         if route.service == "player-auth-portal" {
-            overrides.insert("BOX_PLAYER_LOGIN_URL_OVERRIDE".into(), format!("{origin}{}", route.path));
+            overrides.insert(
+                "BOX_PLAYER_LOGIN_URL_OVERRIDE".into(),
+                format!("{origin}{}", route.path),
+            );
         }
         derived.insert(format!("{key}_BASE_PATH"), route.path.clone());
         if !route.path.is_empty() {
@@ -207,7 +239,10 @@ pub fn apply_runtime_urls(
     Ok(())
 }
 pub fn set_provider(root: &Path, mode: &str) -> Result<(), String> {
-    if !matches!(mode, "managed" | "external" | "external-manual" | "disabled") {
+    if !matches!(
+        mode,
+        "managed" | "external" | "external-manual" | "disabled"
+    ) {
         return Err("Nginx 来源无效".into());
     }
     fs::create_dir_all(root.join("https")).map_err(|e| e.to_string())?;
@@ -250,117 +285,12 @@ pub fn status(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
         json!({"config":config,"running":running,"daysRemaining":days,"provider":provider,"nginxConfigAvailable":nginx_config_available,"imageAvailable":image_available,"imageVersion":image_version,"certificatePaths":super::path_certificates::status(root)["paths"],"certificatePathError":super::path_certificates::status(root)["error"],"externalNginx":super::local::status(),"externalManual":fs::read_to_string(root.join("https/provider")).is_ok_and(|value|value.trim()=="external-manual")}),
     )
 }
-pub(super) fn openssl_command() -> std::process::Command {
-    #[cfg(target_os = "macos")]
-    for path in [
-        "/opt/homebrew/opt/openssl@3/bin/openssl",
-        "/usr/local/opt/openssl@3/bin/openssl",
-    ] {
-        if Path::new(path).is_file() {
-            return std::process::Command::new(path);
-        }
-    }
-    std::process::Command::new("openssl")
-}
-pub(super) fn check_local_key(staging: &Path, certificate: &str, key: &str) -> Result<(), String> {
-    let public = |args: &[&str], file: &str| -> Result<Vec<u8>, String> {
-        let output = openssl_command()
-            .args(args)
-            .arg(staging.join(file))
-            .output()
-            .map_err(|e| e.to_string())?;
-        if !output.status.success() {
-            return Err("证书或私钥无法读取".into());
-        }
-        Ok(output.stdout)
-    };
-    if public(&["x509", "-pubkey", "-noout", "-in"], certificate)?
-        != public(&["pkey", "-pubout", "-in"], key)?
-    {
-        return Err("证书与私钥不匹配".into());
-    }
-    Ok(())
-}
 pub(super) fn mount(host_root: &Path) -> Result<String, String> {
     let value = host_root.join("https").to_string_lossy().to_string();
     if value.contains(',') || value.contains('\n') {
         return Err("数据目录不能包含逗号或换行".into());
     }
     Ok(format!("type=bind,src={value},dst=/etc/box-https,readonly"))
-}
-pub(super) fn check_cert(
-    docker: &mut Docker<'_>,
-    bind: &str,
-    revision: &str,
-    settings: &Settings,
-    certificate_file: &str,
-    staging: &Path,
-    require_valid: bool,
-) -> Result<String, String> {
-    let cert = format!("/etc/box-https/revisions/{revision}/{certificate_file}");
-    let mut check = |args: &[&str]| {
-        if settings.mode == "external" {
-            let output = openssl_command()
-                .args(["x509", "-in"])
-                .arg(staging.join(certificate_file))
-                .args(args)
-                .output()
-                .map_err(|_| {
-                    "外部 Nginx 模式需在管理端安装支持 -checkhost 的 OpenSSL".to_string()
-                })?;
-            if !output.status.success() {
-                return Err("OpenSSL 证书校验失败".into());
-            }
-            return Ok(String::from_utf8_lossy(&output.stdout).into());
-        }
-        let mut command = vec![
-            "run",
-            "--rm",
-            "--network",
-            "none",
-            "--mount",
-            bind,
-            IMAGE,
-            "openssl",
-            "x509",
-            "-in",
-            &cert,
-        ];
-        command.extend(args);
-        call(docker, &command)
-    };
-    if require_valid {
-        check(&["-noout", "-checkend", "0"]).map_err(|_| "证书已过期或无法读取".to_string())?;
-        for route in &settings.routes {
-            let output = check(&[
-                "-noout",
-                if route.domain.parse::<std::net::IpAddr>().is_ok() {
-                    "-checkip"
-                } else {
-                    "-checkhost"
-                },
-                &route.domain,
-            ])
-            .map_err(|_| format!("证书未覆盖域名 {}", route.domain))?;
-            if !output.contains("does match certificate") {
-                return Err(format!("证书未覆盖域名 {}", route.domain));
-            }
-        }
-    }
-    let dates = check(&["-noout", "-startdate", "-enddate"])?;
-    let parse = |prefix: &str| -> Result<chrono::DateTime<chrono::Utc>, String> {
-        let value = dates
-            .lines()
-            .find_map(|l| l.strip_prefix(prefix))
-            .ok_or("无法读取证书有效期")?;
-        let date = chrono::NaiveDateTime::parse_from_str(value.trim(), "%b %e %H:%M:%S %Y GMT")
-            .map_err(|_| "证书有效期格式无效")?;
-        Ok(date.and_utc())
-    };
-    if require_valid && parse("notBefore=")? > chrono::Utc::now() {
-        return Err("证书尚未生效".into());
-    }
-    Ok(parse("notAfter=")?.to_rfc3339())
 }
 pub fn apply(
     root: &Path,
@@ -462,7 +392,12 @@ pub fn stop(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
 pub fn verify_endpoint(root: &Path, docker: &mut Docker<'_>) -> Result<Value, String> {
     let saved = saved(root)?.ok_or("请先导入并校验证书")?;
     let mut checks = Vec::new();
-    for route in saved.settings.routes.into_iter().filter(|route| route.secure) {
+    for route in saved
+        .settings
+        .routes
+        .into_iter()
+        .filter(|route| route.secure)
+    {
         let is_ip = route.domain.parse::<std::net::IpAddr>().is_ok();
         let target = format!(
             "{}:{}",
@@ -484,7 +419,11 @@ pub fn verify_endpoint(root: &Path, docker: &mut Docker<'_>) -> Result<Value, St
                 &target,
                 "-servername",
                 &route.domain,
-                if is_ip { "-verify_ip" } else { "-verify_hostname" },
+                if is_ip {
+                    "-verify_ip"
+                } else {
+                    "-verify_hostname"
+                },
                 &route.domain,
                 "-verify_return_error",
                 "-brief",

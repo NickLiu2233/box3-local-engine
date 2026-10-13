@@ -220,16 +220,38 @@ fn raw_nginx_save_validates_then_reloads_and_rolls_back_rejections() {
 }
 
 fn fixture_root() -> std::path::PathBuf {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    fixture_root_with_stamp(stamp)
+}
+
+fn fixture_root_with_stamp(stamp: u128) -> std::path::PathBuf {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT_FIXTURE: AtomicU64 = AtomicU64::new(0);
     let root = std::env::temp_dir().join(format!(
-        "box-ssl-test-{}-{}",
+        "box-ssl-test-{}-{}-{}",
         std::process::id(),
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
+        stamp,
+        NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
     ));
-    std::fs::create_dir_all(&root).unwrap();
+    std::fs::create_dir(&root).unwrap();
     root
+}
+
+#[test]
+fn fixtures_stay_unique_when_system_clock_returns_same_timestamp() {
+    let stamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let roots: std::collections::BTreeSet<_> =
+        (0..16).map(|_| fixture_root_with_stamp(stamp)).collect();
+    for root in &roots {
+        std::fs::remove_dir_all(root).unwrap();
+    }
+    assert_eq!(roots.len(), 16);
 }
 #[test]
 fn mismatched_domain_never_activates_or_persists_the_private_key() {

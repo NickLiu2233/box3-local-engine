@@ -80,12 +80,31 @@ pub(super) fn run_proxy(
     )?;
     // Container creation can race the master's initial config read on a bind
     // mount. Confirm actual listeners, retrying graceful reload while it starts.
-    let listeners = bindings(settings).into_iter().map(|(_, internal)| internal.to_string()).collect::<Vec<_>>().join(" ");
-    let probe = format!("for port in {listeners}; do (echo > /dev/tcp/127.0.0.1/$port) 2>/dev/null || exit 1; done");
+    let listeners = bindings(settings)
+        .into_iter()
+        .map(|(_, internal)| internal.to_string())
+        .collect::<Vec<_>>()
+        .join(" ");
+    let probe = format!(
+        "for port in {listeners}; do (echo > /dev/tcp/127.0.0.1/$port) 2>/dev/null || exit 1; done"
+    );
     for _ in 0..30 {
-        let _ = call(docker, &["exec", &name(root), "nginx", "-s", "reload", "-c", "/etc/box-https/nginx.conf"]);
+        let _ = call(
+            docker,
+            &[
+                "exec",
+                &name(root),
+                "nginx",
+                "-s",
+                "reload",
+                "-c",
+                "/etc/box-https/nginx.conf",
+            ],
+        );
         std::thread::sleep(std::time::Duration::from_millis(100));
-        if call(docker, &["exec", &name(root), "bash", "-c", &probe]).is_ok() {return Ok(());}
+        if call(docker, &["exec", &name(root), "bash", "-c", &probe]).is_ok() {
+            return Ok(());
+        }
     }
     Err("Nginx 配置已校验，但新入口监听未就绪".into())
 }

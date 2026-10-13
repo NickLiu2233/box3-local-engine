@@ -8,9 +8,17 @@ const { spawnSync } = require('node:child_process');
 const root = path.resolve(__dirname, '..');
 const modules = [
     'apps/manager-core/src/public_access.rs',
-    ...['apply', 'certificates', 'plan', 'proxy', 'runtime'].map(
-        (name) => `apps/manager-core/src/ssl/${name}.rs`,
-    ),
+    'apps/manager-core/src/public_access/tests.rs',
+    'apps/manager-core/src/ssl.rs',
+    ...[
+        'apply',
+        'certificate_checks',
+        'certificates',
+        'plan',
+        'proxy',
+        'runtime',
+        'transition',
+    ].map((name) => `apps/manager-core/src/ssl/${name}.rs`),
 ];
 
 for (const file of modules) {

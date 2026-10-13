@@ -33,7 +33,10 @@ for (const file of markdownFiles(docsRoot)) {
 
 const readme = fs.readFileSync(path.join(root, 'README.md'), 'utf8');
 const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
-assert.ok(readme.includes(`当前源码版本：\`${version}\``), 'README source version is outdated');
+const displayedVersion = /当前源码版本：`([^`]+)`/.exec(readme)?.[1];
+if (displayedVersion !== undefined) {
+    assert.equal(displayedVersion, version, 'README source version is outdated');
+}
 for (const required of ['MIT', 'npm run install:all', 'npm run verify', 'CONTRIBUTING.md']) {
     assert.ok(readme.includes(required), `README is missing ${required}`);
 }

@@ -34,8 +34,6 @@ BOX3 是基于网页的多人 3D 创作与游玩工具。创作者使用 Creator
   </tr>
 </table>
 
-当前源码版本：`0.3.0`。项目采用 [MIT](LICENSE.md) 许可，公开仓库为 [ifishcool/box-local-engine](https://github.com/ifishcool/box-local-engine)。任何人都可以克隆、Fork 并提交 Pull Request。
-
 ## 快速开始
 
 需要 Node.js `22.17.x`、Docker Compose v2。仓库脚本自动准备锁定版本的 Rush 和 pnpm；原生管理器构建和完整验证还需要 Rust stable 与对应平台工具链。
