@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 const http = require('node:http');
-const { imageRequest } = require('../internals/deployment-routing/server.cjs');
+const { imageRequest } = require('@box/deployment-routing/server');
 
 test('image optimizer fetches its own prefixed source through an internal path', () => {
     const request =
@@ -16,7 +16,7 @@ test('image optimizer fetches its own prefixed source through an internal path',
 test('normalizes optimizer sources before the HTTP request handler runs', async () => {
     const previous = process.env.BOX_APP_BASE_PATH;
     process.env.BOX_APP_BASE_PATH = '/woooow';
-    require('../internals/deployment-routing/server.cjs').install();
+    require('@box/deployment-routing/server').install();
     const server = http.createServer((request, response) => response.end(request.url));
     await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
     try {

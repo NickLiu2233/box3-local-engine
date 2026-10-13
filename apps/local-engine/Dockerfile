@@ -191,7 +191,7 @@ RUN node -e "const fs=require('node:fs');fs.mkdirSync('/etc/ssl/certs',{recursiv
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --chown=node:node internals/deployment-routing /app/internals/deployment-routing
+COPY --chown=node:node packages/deployment-routing /app/packages/deployment-routing
 LABEL box.routing.base-path="runtime-v1"
 COPY --chown=node:node distribution/LICENSE.txt /app/LICENSE
 ENTRYPOINT ["tini", "--"]
@@ -232,7 +232,7 @@ RUN if ! command -v tar >/dev/null || ! command -v gzip >/dev/null; then \
     && command -v tar && command -v gzip
 
 COPY --from=creator-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
-RUN node /app/internals/deployment-routing/standalone.cjs /app/apps/game/.next/standalone/apps/game/server.js creator
+RUN node /app/packages/deployment-routing/src/standalone.cjs /app/apps/game/.next/standalone/apps/game/server.js creator
 COPY --from=creator-build --chown=node:node /opt/game-server /app/services/game-server
 COPY --from=creator-build --chown=node:node /opt/apis-runtime /app/node_modules/@box/apis
 COPY --from=creator-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
@@ -311,7 +311,7 @@ ENV BOX_DEPLOYMENT_MODE=play \
     PORT=3000
 
 COPY --from=play-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
-RUN node /app/internals/deployment-routing/standalone.cjs /app/apps/game/.next/standalone/apps/game/server.js play
+RUN node /app/packages/deployment-routing/src/standalone.cjs /app/apps/game/.next/standalone/apps/game/server.js play
 COPY --from=play-build --chown=node:node /opt/game-server /app/services/game-server
 COPY --from=play-build --chown=node:node /opt/apis-runtime /app/node_modules/@box/apis
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/launcher.js /app/apps/local-engine/src/launcher.js
@@ -368,7 +368,7 @@ ENV BOX_DEPLOYMENT_MODE=player-service \
     PORT=3213
 
 COPY --from=player-service-build --chown=node:node /app/apps/game/.next/standalone /app/apps/game/.next/standalone
-RUN node /app/internals/deployment-routing/standalone.cjs /app/apps/game/.next/standalone/apps/game/server.js player-service
+RUN node /app/packages/deployment-routing/src/standalone.cjs /app/apps/game/.next/standalone/apps/game/server.js player-service
 COPY --from=player-service-build --chown=node:node /app/apps/game/.next/static /app/apps/game/.next/standalone/apps/game/.next/static
 COPY --from=player-service-build --chown=node:node /app/apps/game/public /app/apps/game/.next/standalone/apps/game/public
 
@@ -404,7 +404,7 @@ ENV BOX_BUILD_VERSION=${BOX_BUILD_VERSION} \
     PORT=3001
 
 COPY --from=voxa-build --chown=node:node /app/apps/voxa/.next/standalone /app/apps/voxa/.next/standalone
-RUN node /app/internals/deployment-routing/standalone.cjs /app/apps/voxa/.next/standalone/apps/voxa/server.js voxa
+RUN node /app/packages/deployment-routing/src/standalone.cjs /app/apps/voxa/.next/standalone/apps/voxa/server.js voxa
 COPY --from=voxa-build --chown=node:node /app/apps/voxa/.next/static /app/apps/voxa/.next/standalone/apps/voxa/.next/static
 COPY --from=voxa-build --chown=node:node /app/apps/voxa/public /app/apps/voxa/.next/standalone/apps/voxa/public
 

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { describePlayerAdminAuditAction } from '../shared/player-admin-audit-catalog';
+import { describePlayerAdminAuditAction } from '@box/player-policy';
 
 const playerIdentitySource = fs.readFileSync(
   path.resolve(__dirname, 'local-player-identity.ts'),

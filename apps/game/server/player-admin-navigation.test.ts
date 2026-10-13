@@ -3,7 +3,7 @@ import {
   canOpenPlayerAdminView,
   playerAdminFallbackView,
   PLAYER_ADMIN_VIEWS,
-} from '../shared/player-admin-navigation';
+} from '@box/player-policy/navigation';
 
 describe('player-admin navigation permissions', () => {
   const moderator = {

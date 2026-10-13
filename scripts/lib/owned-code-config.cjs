@@ -2,7 +2,7 @@
 
 const path = require('node:path');
 
-const extensions = 'js,cjs,ts,tsx,mts,css,less';
+const extensions = 'js,cjs,ts,tsx,mts,cts,css,less';
 const directories = [
     'apps/deployment-manager',
     'apps/player-admin',
@@ -13,7 +13,9 @@ const directories = [
     'apps/player-auth-portal/test',
     'apps/local-engine/src',
     'apps/local-engine/scripts',
-    'internals/deployment-routing',
+    'packages/deployment-routing',
+    'packages/player-policy',
+    'packages/realtime-client',
     'scripts',
     'tools/repo-tooling',
     'docs/examples',
@@ -27,6 +29,9 @@ const documentationDirectories = [
     'apps/player-launcher',
     'apps/player-auth-portal',
     'apps/local-engine',
+    'packages/deployment-routing',
+    'packages/player-policy',
+    'packages/realtime-client',
 ];
 const patterns = [
     ...directories.map((directory) => `${directory}/**/*.{${extensions}}`),
@@ -43,6 +48,9 @@ const manifests = [
     'apps/player-auth-portal/package.json',
     'apps/local-engine/package.json',
     'tools/repo-tooling/package.json',
+    'packages/deployment-routing/package.json',
+    'packages/player-policy/package.json',
+    'packages/realtime-client/package.json',
 ];
 const options = {
     tabWidth: 4,

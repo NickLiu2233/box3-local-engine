@@ -3,7 +3,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const targets = ['@box/build-system', '@box/apis', '@box/env'];
+const targets = [
+    '@box/build-system',
+    '@box/apis',
+    '@box/env',
+    '@box/player-policy',
+    '@box/realtime-client',
+    '@box/deployment-routing',
+];
 
 function orderDependencyBuilds(projects, selected = targets) {
     const byName = new Map(projects.map((project) => [project.name, project]));

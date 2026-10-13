@@ -1,10 +1,10 @@
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import { Button, Card, Space, Table, Tag, Tooltip } from 'antd';
+import { PLAYER_ADMIN_CAPABILITY_META } from '@box/player-policy';
 
 import { adminPaginationDefaults } from '../../components/admin-pagination';
 import { confirmAdminAction } from '../../components/confirm-admin-action';
 import { PageToolbar } from '../../components/page-toolbar';
-import { PLAYER_ADMIN_CAPABILITY_META } from '../../../../game/shared/player-admin-policy';
 import { dateTime } from '../../player-admin-format';
 
 import type { Group } from '../../player-admin-types';

@@ -16,7 +16,7 @@ Rust 配置、证书、Compose 投影和回滚仍由 `apps/manager-core` 维护�
 
 `pages/shell/player-admin-page.tsx` 管理会话、权限、导航、请求和跨页面弹窗。`pages/shell/admin-content.tsx` 根据 view 选择业务页面，只接收协调器提供的数据与回调，不新增请求客户端或另一份授权判断。业务工作流继续由 players、access、creator、maps、security、containers 各目录维护。
 
-后台能力与导航规则仍来自 `apps/game/shared/player-admin-*.ts`，服务端最终授权不变。页面复用位置见[后台复用索引](./player-admin-code.md)。
+后台能力、审计与导航规则来自 `@box/player-policy`，实时通知来自 `@box/realtime-client`；不再跨应用引用 game/shared 源码，服务端最终授权不变。页面复用位置见[后台复用索引](./player-admin-code.md)。公共包入口见[复用说明](./reusable-packages.md)。
 `src/global.less` 只按原顺序导入 `src/styles/` 的布局、地图/容器、目录表格、登录、表单、详情、创作权限和响应式样式。图标相对路径随文件位置调整，实际资源目标不变。
 
 ## 玩家启动器

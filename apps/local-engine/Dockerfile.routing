@@ -3,6 +3,6 @@ ARG BOX_RUNTIME_IMAGE
 FROM ${BOX_RUNTIME_IMAGE}
 
 ARG BOX_BUILD_DATE
-COPY --chown=node:node internals/deployment-routing /app/internals/deployment-routing
+COPY --chown=node:node packages/deployment-routing /app/packages/deployment-routing
 ENV BOX_BUILD_DATE=${BOX_BUILD_DATE}
 LABEL org.opencontainers.image.created="${BOX_BUILD_DATE}"

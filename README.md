@@ -8,19 +8,20 @@ BOX3 Local Engine 把地图创作、模型制作、多人游玩和玩家管理�
 
 ## 选择使用方式
 
-| 目标                             | 从这里开始                                               |
-| -------------------------------- | -------------------------------------------------------- |
-| Windows、macOS 或 Linux 桌面部署 | [图形化部署管理器](docs/graphical-deployment-manager.md) |
-| 无桌面的 Linux 服务器            | [Linux Web 管理端](docs/linux-web-manager.md)            |
-| 云服务器一键安装                 | [云服务器快速部署](docs/cloud-server-quickstart.md)      |
-| 创建、导入和发布地图             | [地图、地图组与发布包](docs/projects.md)                 |
-| 玩家账号、权限组和后台管理       | [玩家身份与后台管理](docs/player-identity.md)            |
-| 授权地图脚本封禁或查询处罚       | [地图授权与脚本处罚 API](docs/script-moderation.md)      |
-| 配置端口、数据库和资源限制       | [配置参考](docs/configuration-reference.md)              |
-| 开发、测试或提交代码             | [贡献者指南](CONTRIBUTING.md)                            |
-| 查看或开发 HTTP API              | [Local Engine API 与 Swagger](docs/local-engine-api.md)  |
-| 构建镜像与发行包                 | [构建与分发](docs/release-and-distribution.md)           |
-| 查看全部专题                     | [文档中心](docs/README.md)                               |
+| 目标                                   | 从这里开始                                               |
+| -------------------------------------- | -------------------------------------------------------- |
+| Windows、macOS 或 Linux 桌面部署       | [图形化部署管理器](docs/graphical-deployment-manager.md) |
+| 无桌面的 Linux 服务器                  | [Linux Web 管理端](docs/linux-web-manager.md)            |
+| 云服务器一键安装                       | [云服务器快速部署](docs/cloud-server-quickstart.md)      |
+| 创建、导入和发布地图                   | [地图、地图组与发布包](docs/projects.md)                 |
+| 玩家账号、权限组和后台管理             | [玩家身份与后台管理](docs/player-identity.md)            |
+| 授权地图脚本封禁或查询处罚             | [地图授权与脚本处罚 API](docs/script-moderation.md)      |
+| 配置端口、数据库和资源限制             | [配置参考](docs/configuration-reference.md)              |
+| 开发、测试或提交代码                   | [贡献者指南](CONTRIBUTING.md)                            |
+| 查看或开发 HTTP API                    | [Local Engine API 与 Swagger](docs/local-engine-api.md)  |
+| 构建镜像与发行包                       | [构建与分发](docs/release-and-distribution.md)           |
+| 在其他项目复用权限、实时连接或部署路径 | [可复用公共包](docs/reusable-packages.md)                |
+| 查看全部专题                           | [文档中心](docs/README.md)                               |
 
 只想部署使用，不需要安装源码开发环境。已发布安装包见 [GitHub Releases](https://github.com/ifishcool/box-local-engine/releases)，部署步骤按上表选择；源码版本不代表某个已下载安装包已更新。公网部署前请先阅读[网络与防火墙要求](docs/linux-web-manager.md#8-网络与防火墙)。
 

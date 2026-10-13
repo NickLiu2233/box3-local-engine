@@ -12,7 +12,7 @@ import { isInternalIdentityRequest, listPlayerRevocations } from '../../../serve
 import { ensurePlayerChangeFeed, playerChangeFeed } from '../../../server/player-change-feed';
 import { allowPlayerAdminRequestOrigin, sendPlayerAdminApiError } from '../../../server/player-admin-authorization';
 import { resolvePlayerAdminSession } from '../../../server/player-admin-identity';
-import { roleHasPlayerAdminPermission } from '../../../shared/player-admin-policy';
+import { roleHasPlayerAdminPermission } from '@box/player-policy';
 
 export const config = { api: { bodyParser: { sizeLimit: '8kb' } } };
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

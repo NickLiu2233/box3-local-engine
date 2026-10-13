@@ -21,6 +21,7 @@
     "update-i18n": "formatjs extract 'src/**/*.ts*' --ignore='**.*.d.ts' --out-file lang/src/en.json && node lang/update-locales.mjs"
   },
   "dependencies": {
+    "@box/deployment-routing": "workspace:0.1.0",
     "@babel/plugin-transform-typescript": "7.18.8",
     "@babel/runtime": "7.28.4",
     "@box/ao-mesher": "workspace:0.2.10",

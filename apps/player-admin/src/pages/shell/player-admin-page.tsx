@@ -2,21 +2,18 @@
 import { KeyOutlined, LogoutOutlined } from '@ant-design/icons';
 import { Button, Card, Form, Layout as AntLayout, message, Space, Tooltip } from 'antd';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-
-import { useAdminEvents } from '../../hooks/use-admin-events';
-import { useAdminRequest } from '../../hooks/use-admin-request';
-import {
-    roleHasPlayerAdminPermission,
-    type PlayerAdminRequirement,
-} from '../../../../game/shared/player-admin-policy';
-import { confirmAdminAction } from '../../components/confirm-admin-action';
-import { reportAdminError } from '../../player-admin-errors';
+import { roleHasPlayerAdminPermission, type PlayerAdminRequirement } from '@box/player-policy';
 import {
     allowedPlayerAdminViews,
     canOpenPlayerAdminView,
     PLAYER_ADMIN_VIEWS,
     playerAdminFallbackView,
-} from '../../../../game/shared/player-admin-navigation';
+} from '@box/player-policy/navigation';
+
+import { useAdminEvents } from '../../hooks/use-admin-events';
+import { useAdminRequest } from '../../hooks/use-admin-request';
+import { confirmAdminAction } from '../../components/confirm-admin-action';
+import { reportAdminError } from '../../player-admin-errors';
 import { playerAdminApi as api } from '../../player-admin-api';
 import {
     CreatorDialog,

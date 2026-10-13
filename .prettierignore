@@ -59,5 +59,8 @@ apps/game/
 apps/voxa/
 services/game-server/
 internals/
-packages/
+packages/*
+!packages/deployment-routing/
+!packages/player-policy/
+!packages/realtime-client/
 types/

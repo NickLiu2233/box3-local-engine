@@ -15,16 +15,16 @@ trim_trailing_whitespace = false
 indent_style = tab
 
 # Owned source; upstream and generated files retain their existing conventions.
-[{apps/deployment-manager,apps/player-admin,apps/player-launcher,internals/deployment-routing,scripts,tools/repo-tooling,docs/examples}/**/*.{js,cjs,ts,tsx,mts,css,less}]
+[{apps/deployment-manager,apps/player-admin,apps/player-launcher,packages/deployment-routing,packages/player-policy,packages/realtime-client,scripts,tools/repo-tooling,docs/examples}/**/*.{js,cjs,ts,tsx,mts,cts,css,less}]
 indent_size = 4
 
-[apps/player-auth-portal/{src,server,scripts,test}/**/*.{js,cjs,ts,tsx,mts,css,less}]
+[apps/player-auth-portal/{src,server,scripts,test}/**/*.{js,cjs,ts,tsx,mts,cts,css,less}]
 indent_size = 4
 
-[apps/local-engine/{src,scripts}/**/*.{js,cjs,ts,tsx,mts,css,less}]
+[apps/local-engine/{src,scripts}/**/*.{js,cjs,ts,tsx,mts,cts,css,less}]
 indent_size = 4
 
-[{docs,apps/deployment-manager,apps/player-admin,apps/player-launcher,apps/player-auth-portal,apps/local-engine}/**/*.md]
+[{docs,apps/deployment-manager,apps/player-admin,apps/player-launcher,apps/player-auth-portal,apps/local-engine,packages/deployment-routing,packages/player-policy,packages/realtime-client}/**/*.md]
 indent_size = 4
 
 [{.prettierrc.cjs,.eslintrc.cjs,README.md,CONTRIBUTING.md}]

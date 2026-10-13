@@ -35,7 +35,7 @@ async function main() {
         .filter(
             (file) =>
                 file.endsWith('.md') ||
-                (/\.(?:js|cjs|ts|tsx|mts|css|less)$/.test(file) &&
+                (/\.(?:js|cjs|ts|tsx|mts|cts|css|less)$/.test(file) &&
                     directories.some((directory) => file.startsWith(`${directory}/`))),
         )
         .filter((file) => fs.existsSync(path.join(root, file)));

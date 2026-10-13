@@ -15,7 +15,7 @@
 - `components/confirm-admin-action.ts`：所有操作确认的入口，统一按钮默认文案与未捕获异常提示。
 - `pages/players/confirm-text.tsx`：密码重置和批量标签共用文本输入确认框，等待异步操作结束。
 - `components/player-identity.tsx`：玩家目录和创作管理共用头像、昵称与用户名展示。
-- `apps/game/shared/player-admin-policy.ts` 与 `player-admin-navigation.ts`：前后端共用角色能力判断和页面准入规则，页面不要再次手写 owner/admin 判断。
+- `packages/player-policy/src/policy.ts` 与 `packages/player-policy/src/navigation.ts`：前后端共用角色能力判断和页面准入规则，页面不要再次手写 owner/admin 判断。
 - `hooks/use-admin-request.ts`：异步请求的加载状态与错误提示；重叠请求全部结束后才解除加载状态。调用方负责更新数据，请求失败返回 `undefined`。
 - `player-admin-errors.ts`：统一错误提示，表单校验错误由表单显示。
 - `pages/access/map-authorization-fields.tsx`：创建和编辑授权共用的权限、封禁上限与有效期字段。
@@ -57,4 +57,4 @@
 
 地图授权通过不可修改的地图组 ID 唯一绑定，选择框直接读取创作端项目和游玩端已导入地图，并跨运行模式去重，未启动地图也可授权；目录名称优先于两端历史运行记录中的名称；模式仅保留在运行元数据和实例凭证中。旧模式绑定在事务中合并为最近更新的一条，并建立地图 ID 唯一索引。
 
-安全记录操作名称由 `apps/game/shared/player-admin-audit-catalog.ts` 统一维护；列表与详情共用 `pages/security/security-activity-details.tsx` 的对象和结果展示，权限说明复用地图授权字段的权限目录。地图授权与脚本调用共用 `apps/game/server/script-moderation-audit.ts` 的审计格式。
+安全记录操作名称由 `packages/player-policy/src/audit.ts` 统一维护；列表与详情共用 `pages/security/security-activity-details.tsx` 的对象和结果展示，权限说明复用地图授权字段的权限目录。地图授权与脚本调用共用 `apps/game/server/script-moderation-audit.ts` 的审计格式。

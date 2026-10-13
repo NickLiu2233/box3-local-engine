@@ -31,12 +31,7 @@ function inject(file, role) {
     if (!source.includes(marker)) {
         throw new Error('Unsupported Next standalone entry');
     }
-    const root = path.dirname(file);
-    const common = path.resolve(root, '../../../../../../internals/deployment-routing');
-    // Runtime images use /app; the source checkout uses its own actual root.
-    const helper = fs.existsSync('/app/internals/deployment-routing/server.cjs')
-        ? '/app/internals/deployment-routing'
-        : common;
+    const helper = __dirname;
     const insertion = `require(${JSON.stringify(path.join(helper, 'standalone.cjs'))}).environment(${JSON.stringify(role)});require(${JSON.stringify(path.join(helper, 'server.cjs'))}).install();if(process.env.BOX_APP_BASE_PATH)nextConfig.assetPrefix=process.env.BOX_APP_BASE_PATH;\n`;
     fs.writeFileSync(file, source.replace(marker, insertion + marker));
 }

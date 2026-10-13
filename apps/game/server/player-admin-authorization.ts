@@ -9,7 +9,7 @@ import {
   type PlayerAdminCapability,
   type PlayerAdminRequirement,
   type PlayerAdminRole,
-} from '../shared/player-admin-policy';
+} from '@box/player-policy';
 
 export type PlayerAdminActor = AdminActionContext & {
   actor: string;
@@ -22,7 +22,7 @@ export type PlayerAdminActor = AdminActionContext & {
   credential: 'account' | 'owner-session';
 };
 
-export { roleHasPlayerAdminPermission } from '../shared/player-admin-policy';
+export { roleHasPlayerAdminPermission } from '@box/player-policy';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 

@@ -1,4 +1,4 @@
-import bootstrap from '../../../internals/deployment-routing/browser.cjs';
+import bootstrap from '@box/deployment-routing/browser';
 const script = document.currentScript as HTMLScriptElement | null;
 const source =
     script?.src ||

@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const test = require('node:test');
-const bootstrap = require('../internals/deployment-routing/browser.cjs');
+const bootstrap = require('@box/deployment-routing/browser');
 
 function environment() {
     const requests = [];
@@ -113,7 +113,7 @@ test('inline background images are prefixed before loading', () => {
 });
 
 test('server-rendered inline background images receive the service prefix', () => {
-    const { html } = require('../internals/deployment-routing/server.cjs');
+    const { html } = require('@box/deployment-routing/server');
     const source =
         '<html><head></head><body><div style="background-image:url(/_next/static/media/banner.jpg)"></div></body></html>';
     assert.ok(

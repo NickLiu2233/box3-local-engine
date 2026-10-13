@@ -8,6 +8,9 @@
     "build": "max build"
   },
   "dependencies": {
+    "@box/deployment-routing": "workspace:0.1.0",
+    "@box/player-policy": "workspace:0.1.0",
+    "@box/realtime-client": "workspace:0.1.0",
     "@box/apis": "workspace:0.2.0",
     "@ant-design/icons": "^4.7.0",
     "@umijs/max": "^4.0.20",

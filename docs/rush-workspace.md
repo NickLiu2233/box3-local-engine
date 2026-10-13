@@ -1,6 +1,6 @@
 # Rush 工作区与统一入口
 
-更新日期：2026-10-13。`rush.json` 当前登记 31 个主 npm 项目：8 个应用、5 个内部包、16 个公共包、1 个游戏服务和1 个工具项目。
+更新日期：2026-10-13。`rush.json` 当前登记 34 个主 npm 项目：8 个应用、5 个内部包、19 个公共包、1 个游戏服务和1 个工具项目。
 
 ## 检查与安装
 
@@ -13,7 +13,7 @@ npm run install:all
 
 嵌套的 5 个 `ao-mesher/modules` 第三方模块，以及各包 example、`mudb/tool/mudo` 等 7 个示例/工具清单，不是主 Rush 产品，不能因存在 package.json 就全部登记。它们由所属包或原示例维护，不并入主项目清单。
 
-`internals/deployment-routing` 是随应用加载的源码适配器，没有独立 npm 清单。Rust 的 manager-core、Tauri 和 Web 管理端由现有应用、构建和验证流程调用 Cargo，不创建空 npm 包。内部迁移器不进入公共工作区。
+公共包新增 `@box/player-policy`、`@box/realtime-client` 和 `@box/deployment-routing`；原路径适配器已从 internals 提取为正式 Rush 包。入口和复用说明见[可复用包](./reusable-packages.md)。Rust 的 manager-core、Tauri 和 Web 管理端仍由现有应用、构建和验证流程调用 Cargo，不创建空 npm 包。内部迁移器不进入公共工作区。
 
 旧 `box-api-client` / `box-api-types` 已被统一 `@box/apis` 替代，无引用的占位 README 已移除；本地剩余 dist/node_modules 缓存不是源码项目，不重新登记到 Rush。
 
@@ -71,6 +71,8 @@ rush deploy-service --service play --dry-run
 计划通过不代表运行环境已验收。Rush 全局命令持有仓库锁，不并行运行多个全局任务；已有长驻开发栈时，在项目目录使用 `rushx`/npm 脚本，或先退出当前任务。完整验证仍为 `rush verify`。
 
 ## 本轮验证
+
+以下为公共包提取前的工作区统一记录；提取后的 34 项目及独立包验证见[可复用包](./reusable-packages.md)。
 
 Rush 实际列出 31 个项目，`rush workspace-check`、`rush install --check-only` 和通过 Rush 执行的 API 契约检查通过。18 个开发依赖包已在当前平台实际构建成功；后台、原生玩家启动器、Windows ARM64 玩家安装包和 Play 部署计划通过真实 Rush 的 `--dry-run` 检查。源码启动测试验证依赖先于服务准备、门户使用真实 TS 入口、后台默认启动及 `--no-admin` 行为。
 

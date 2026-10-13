@@ -64,6 +64,7 @@ Player Admin 源码开发时独立运行，发行时并入 Player Service。完�
 
 - [开发者与协作手册](./developer-guide.md)
 - [Rush 工作区与统一入口](./rush-workspace.md)
+- [可复用公共包](./reusable-packages.md)
 - [系统架构](./architecture.md)
 - [BOX Local Engine](./domain-model.md)
 - [Local Engine API 与 Swagger](./local-engine-api.md)

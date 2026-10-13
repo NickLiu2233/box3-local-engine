@@ -36,7 +36,12 @@ const dependencies = {
         'internals/apis/',
         'distribution/server/bootstrap.sh',
     ],
-    'player-auth-portal': ['apps/player-auth-portal/', 'internals/apis/', 'internals/env/'],
+    'player-auth-portal': [
+        'apps/player-auth-portal/',
+        'internals/apis/',
+        'internals/env/',
+        'packages/deployment-routing/',
+    ],
 };
 const engineDependencies = [
     'apps/local-engine/',
@@ -45,6 +50,7 @@ const engineDependencies = [
     'services/',
     'packages/',
     'internals/',
+    'scripts/build-reusable-package.js',
 ];
 
 function sourceFingerprint(root, service, files) {

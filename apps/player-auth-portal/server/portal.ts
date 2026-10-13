@@ -1,9 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
+import prefixServer from '@box/deployment-routing/server';
 
 import { PortalConfig } from './config';
 import { AuthProxy } from './auth';
 import { Http, HttpError, StaticFiles } from './http';
-import prefixServer from '../../../internals/deployment-routing/server.cjs';
 prefixServer.install();
 
 /** 对外只需 new PortalServer(config).listen()，也可把 handle 接入现有 Node 服务。 */

@@ -15,7 +15,7 @@ import type {
     Player,
     RuntimeStatus,
 } from '@box/apis';
-import type { PlayerAdminView } from '../../game/shared/player-admin-navigation';
+import type { PlayerAdminView } from '@box/player-policy/navigation';
 
 export type {
     Activity,

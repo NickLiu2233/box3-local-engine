@@ -1,8 +1,8 @@
 import { Collapse, Descriptions, Modal, Tag } from 'antd';
+import { describePlayerAdminAuditAction } from '@box/player-policy';
 
 import { dateTime } from '../../player-admin-format';
 import { permissionOptions } from '../access/map-authorization-fields';
-import { describePlayerAdminAuditAction } from '../../../../game/shared/player-admin-audit-catalog';
 
 import type { Activity } from '../../player-admin-types';
 

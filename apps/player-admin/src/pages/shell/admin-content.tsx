@@ -1,4 +1,5 @@
-import { canOpenPlayerAdminView } from '../../../../game/shared/player-admin-navigation';
+import { canOpenPlayerAdminView } from '@box/player-policy/navigation';
+
 import { CreatorManagementPage, type CreatorPageController } from '../creator/creator-management';
 import { ContainerResourceGroupsPage } from '../containers/container-resource-groups-page';
 import { ContainerManagementPage } from '../containers/container-management-page';
@@ -13,7 +14,7 @@ import { PermissionGroupsPage } from '../access/permission-groups-page';
 import { PlayerDirectoryPage } from '../players/player-directory-page';
 
 import type { ReactElement } from 'react';
-import type { PlayerAdminRequirement } from '../../../../game/shared/player-admin-policy';
+import type { PlayerAdminRequirement } from '@box/player-policy';
 import type { Actor, View } from '../../player-admin-types';
 import type { useOwnerManagement } from '../access/use-owner-management';
 import type { useSecurityManagement } from '../security/use-security-management';

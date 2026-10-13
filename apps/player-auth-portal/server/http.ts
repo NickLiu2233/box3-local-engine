@@ -1,8 +1,7 @@
 import { readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
-
-import bootstrap from '../../../internals/deployment-routing/browser.cjs';
+import bootstrap from '@box/deployment-routing/browser';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 

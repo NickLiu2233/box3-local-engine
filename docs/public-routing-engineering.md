@@ -13,7 +13,7 @@
 `https/provider` 是来源选择的持久状态：`managed` 表示内置 Nginx；当前界面的外部来源保存为 `external-manual`，由部署者手动配置代理。旧 `external` 调用作为兼容入口保留。状态展示把两种 external 值归为外部；缺少记录和旧 `disabled` 值按 managed 展示。运行时还需识别 `external-manual`，避免旧自动应用逻辑改写手动网络配置。
 
 地址草稿与应用地址分开保存。`*_INDEPENDENT_PUBLIC_ADDRESS`、`BOX_SHARED_PUBLIC_ADDRESS` 和 `*_PUBLIC_PATH` 保留用户输入；`*_PUBLIC_ADDRESS_OVERRIDE` 是当前模式的完整地址。裸地址由证书状态推导协议，显式协议和端口优先。服务端和前端都执行路径字符、长度和保留段校验。
-前端的纯地址解析与前缀校验位于 `configuration/public-service-address.js`，由 `public-access.js` 传入命名参数；它不读取界面状态。运行时适配在 `internals/deployment-routing`：浏览器同步补齐资源地址，Worker 使用自身地址恢复前缀，图片优化入口把本服务公开源路径转换为内部路径。
+前端的纯地址解析与前缀校验位于 `configuration/public-service-address.js`，由 `public-access.js` 传入命名参数；它不读取界面状态。运行时适配在 `packages/deployment-routing`（`@box/deployment-routing`）：浏览器同步补齐资源地址，Worker 使用自身地址恢复前缀，图片优化入口把本服务公开源路径转换为内部路径。浏览器、Node 和 Next 插件使用独立导出入口。
 
 内置模式让 Nginx 接管公网监听端口，并移除相关上游容器的公网映射。当前外部手动模式保留部署者填写的完整公开 URL 和服务绑定，不由启动器重载外部 Nginx；界面显示 `.env` 与代理配置示例。同机可使用 loopback 上游，远程代理使用实际内网地址。旧 `external` 自动应用逻辑只为兼容保留，不能当作当前界面操作步骤。内置服务切换只作用于当前项目已运行的目标服务，失败时使用运行快照恢复。
 

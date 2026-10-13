@@ -1,11 +1,10 @@
 import { Menu as AntMenu } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
-
 import {
     canOpenPlayerAdminView,
     type PlayerAdminNavigationActor,
     type PlayerAdminView,
-} from '../../../../game/shared/player-admin-navigation';
+} from '@box/player-policy/navigation';
 
 import type { ComponentProps } from 'react';
 

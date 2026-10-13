@@ -30,7 +30,10 @@ describe('Creator scene WebSocket', () => {
     expect(action).toMatchObject({ type: 'capture', view: '3d' });
     const content = Buffer.alloc(2 * 1024 * 1024, 1);
     ws.send(JSON.stringify({ type: 'capture-result', id: action.id, contentBase64: content.toString('base64') }));
-    await expect(pending).resolves.toEqual({ content, contentType: 'image/png' });
+    const capture = await pending;
+    expect(Object.keys(capture).sort()).toEqual(['content', 'contentType']);
+    expect(capture.contentType).toBe('image/png');
+    expect(capture.content.equals(content)).toBe(true);
     const closed = once(ws, 'close'); ws.close(); await closed;
     // The peer's close callback may run after the client's close event.
     for (let i = 0; i < 100 && creatorSceneSessionStatus(project, session.sessionId, 'owner'); i++) {

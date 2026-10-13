@@ -94,7 +94,7 @@ const nextConfig = {
       layers: true,
     };
 
-    return require('../../internals/deployment-routing/next-webpack.cjs')(config,{...options,dir:__dirname});
+    return require('@box/deployment-routing/next-webpack')(config,{...options,dir:__dirname});
   },
   // https://nextjs.org/docs/messages/next-image-unconfigured-host
   // TODO 新版本的Next.js支持remotePatterns方式设置

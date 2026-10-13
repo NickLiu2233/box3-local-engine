@@ -60,6 +60,13 @@ function prepareTestDependencies() {
 function check() {
     node('scripts/rush-project-command.js', ['workspace-check']);
     prepareTestDependencies();
+    for (const folder of [
+        'packages/player-policy',
+        'packages/realtime-client',
+        'packages/deployment-routing',
+    ]) {
+        npmScript(folder, 'test');
+    }
     npmScript('internals/apis', 'test');
     run(process.execPath, [
         '--test',

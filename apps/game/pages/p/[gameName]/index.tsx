@@ -1,4 +1,4 @@
-import { subscribeRealtime } from '../../../shared/realtime-client';
+import { subscribeRealtime } from '@box/realtime-client';
 import { GetServerSideProps } from 'next';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';

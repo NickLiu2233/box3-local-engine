@@ -6,7 +6,7 @@
 
 ## 快速开始
 
-Node.js 22.17 或更新版本：
+Node.js 22.17 或更新版本。以下命令用于导出的独立模板；在本引擎仓库中使用 `rush install` / `npm run install:all`。模板导出会将 workspace 路由依赖转换为带源码和许可的 vendor 本地依赖，仍可独立 `npm ci`，不要求先发布 npm 包。
 
 ```sh
 npm ci

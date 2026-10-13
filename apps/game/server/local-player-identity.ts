@@ -20,7 +20,7 @@ import {
 import {
   normalizePlayerAdminCapabilities,
   type PlayerAdminCapability,
-} from '../shared/player-admin-policy';
+} from '@box/player-policy';
 import {
   normalizeCreatorCapabilities,
   type CreatorCapability,

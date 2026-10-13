@@ -21,6 +21,7 @@ import { pipeline } from 'node:stream/promises';
 
 import { PortalConfig, PortalServer } from '../server/index';
 import { MockPlayerService } from './mock';
+import { prepareStandalone } from './standalone-manifest.cjs';
 
 interface ImageOptions {
     image:string;
@@ -36,6 +37,9 @@ export class Project {
         readFileSync(path.join(this.root, 'package.json'), 'utf8'),
     ).version;
     private readonly require = createRequire(import.meta.url);
+    public resolve(module:string):string {
+        return this.require.resolve(module);
+    }
     public run(command:string, args:string[]):void {
         const result = spawnSync(command, args, { cwd: this.root, stdio: 'inherit' });
         if (result.error || result.status !== 0) {
@@ -62,11 +66,11 @@ export class PortalBuilder {
                 alias: {
                     'react': path.resolve(
                         this.project.root,
-                        '../../internals/deployment-routing/react.cjs',
+                        this.project.resolve('@box/deployment-routing/react'),
                     ),
                     'react/jsx-runtime': path.resolve(
                         this.project.root,
-                        '../../internals/deployment-routing/jsx-runtime.cjs',
+                        this.project.resolve('@box/deployment-routing/jsx-runtime'),
                     ),
                     '__box_original_react__': path.join(
                         this.project.root,
@@ -379,6 +383,10 @@ export class TemplateExporter {
         const temporary = mkdtempSync(path.join(os.tmpdir(), 'box-login-template-'));
         try {
             this.copy(path.join(temporary, name));
+            prepareStandalone(
+                path.join(temporary, name),
+                path.dirname(this.project.resolve('@box/deployment-routing/package.json')),
+            );
             mkdirSync(path.dirname(output), { recursive: true });
             this.project.run('tar', ['-czf', output, '-C', temporary, name]);
             console.log(`独立模板：${output}`);

@@ -6,17 +6,18 @@
 
 ## 目录范围
 
-| 目录                                               | 范围                                       |
-| -------------------------------------------------- | ------------------------------------------ |
-| `apps/deployment-manager`                          | 部署管理器前端与开发配置                   |
-| `apps/player-admin`                                | 玩家后台页面、业务模块和开发配置           |
-| `apps/player-launcher`                             | Electron 主进程、渲染进程、共享逻辑与测试  |
-| `apps/player-auth-portal/src`、`server`、`scripts` | 登录门户源代码                             |
-| `apps/local-engine/src`、`scripts`                 | 引擎启动与打包适配                         |
-| `internals/deployment-routing`                     | 页面、资源、请求、图片优化与运行时前缀适配 |
-| `scripts`                                          | 部署、打包、结构检查、测试与夹具           |
+| 目录                                                 | 范围                                       |
+| ---------------------------------------------------- | ------------------------------------------ |
+| `apps/deployment-manager`                            | 部署管理器前端与开发配置                   |
+| `apps/player-admin`                                  | 玩家后台页面、业务模块和开发配置           |
+| `apps/player-launcher`                               | Electron 主进程、渲染进程、共享逻辑与测试  |
+| `apps/player-auth-portal/src`、`server`、`scripts`   | 登录门户源代码                             |
+| `apps/local-engine/src`、`scripts`                   | 引擎启动与打包适配                         |
+| `packages/deployment-routing`                        | 页面、资源、请求、图片优化与运行时前缀适配 |
+| `packages/player-policy`、`packages/realtime-client` | 共享权限、实时协议与独立测试               |
+| `scripts`                                            | 部署、打包、结构检查、测试与夹具           |
 
-依赖、运行数据、构建产物、`.umi`、`.umi-production` 不参与整理。上游同步的 `apps/game`、`apps/voxa`、`services/game-server`、`packages`、其他 `internals` 保持各自风格，修改时按模块处理。Rust 使用 `cargo fmt`，遵循 Rust 的命名和可见性规则，不套用 JavaScript 的驼峰规则。
+依赖、运行数据、构建产物、`.umi`、`.umi-production` 不参与整理。上游同步的 `apps/game`、`apps/voxa`、`services/game-server`、其他 `packages` 与 `internals` 保持各自风格；本轮三个公共包明确纳入自有规则，包含 `.cts` 声明，不通过全仓替换格式。Rust 使用 `cargo fmt`，遵循 Rust 的命名和可见性规则，不套用 JavaScript 的驼峰规则。
 
 ## 命名与排版
 

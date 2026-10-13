@@ -3,7 +3,7 @@ import { z } from 'zod';
 import {
   PLAYER_ADMIN_GRANTABLE_CAPABILITIES,
   type PlayerAdminRequirement,
-} from '../shared/player-admin-policy';
+} from '@box/player-policy';
 import { CREATOR_CLI_CAPABILITIES } from '../shared/creator-cli-policy';
 import { CREATOR_CAPABILITIES } from '../shared/creator-policy';
 import { PlayerAdminRequestError } from './player-admin-errors';

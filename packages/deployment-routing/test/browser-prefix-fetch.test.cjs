@@ -2,7 +2,7 @@
 const assert = require('node:assert/strict');
 const vm = require('node:vm');
 const test = require('node:test');
-const bootstrap = require('../internals/deployment-routing/browser.cjs');
+const bootstrap = require('@box/deployment-routing/browser');
 
 function adaptedFetch() {
     const calls = [];

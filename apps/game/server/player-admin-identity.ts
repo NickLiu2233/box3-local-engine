@@ -14,7 +14,7 @@ import {
   normalizePlayerAdminCapabilities,
   type PlayerAdminCapability,
   type PlayerAdminRole,
-} from '../shared/player-admin-policy';
+} from '@box/player-policy';
 import { requestClientAddress } from './client-address';
 import { publicPath } from './public-path';
 import {

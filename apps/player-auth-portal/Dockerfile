@@ -2,13 +2,15 @@ ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
 
 FROM ${NODE_IMAGE} AS build
 WORKDIR /build
-COPY internals/deployment-routing /internals/deployment-routing
+COPY packages/deployment-routing ./vendor/deployment-routing
 COPY apps/player-auth-portal/package.json apps/player-auth-portal/package-lock.json ./
+COPY apps/player-auth-portal/scripts/standalone-manifest.cjs ./scripts/standalone-manifest.cjs
+RUN node scripts/standalone-manifest.cjs /build /build/vendor/deployment-routing
 RUN npm ci --include=dev --ignore-scripts
 COPY apps/player-auth-portal/src ./src
 COPY apps/player-auth-portal/server ./server
 COPY apps/player-auth-portal/public ./public
-COPY apps/player-auth-portal/scripts/tasks.ts apps/player-auth-portal/scripts/mock.ts ./scripts/
+COPY apps/player-auth-portal/scripts/tasks.ts apps/player-auth-portal/scripts/mock.ts apps/player-auth-portal/scripts/standalone-manifest.d.cts ./scripts/
 COPY apps/player-auth-portal/tsconfig.json apps/player-auth-portal/tsconfig.library.json ./
 RUN npm run build
 

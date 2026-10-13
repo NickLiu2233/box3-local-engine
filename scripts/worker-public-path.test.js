@@ -9,7 +9,11 @@ const test = require('node:test');
 const webpack = require(
     require.resolve('webpack', { paths: [path.join(__dirname, '../apps/game')] }),
 );
-const configure = require('../internals/deployment-routing/next-webpack.cjs');
+const configure = require(
+    require.resolve('@box/deployment-routing/next-webpack', {
+        paths: [path.join(__dirname, '../apps/game')],
+    }),
+);
 
 test('worker chunks use the prefix of the worker script, including nested prefixes', async () => {
     const directory = await fs.mkdtemp(path.join(os.tmpdir(), 'box-worker-path-'));

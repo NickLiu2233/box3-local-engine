@@ -7,7 +7,7 @@ import {
   mapIdSchema,
   canonicalModerationIP,
 } from './script-moderation-store'
-import { normalizePlayerAdminCapabilities } from '../shared/player-admin-policy'
+import { normalizePlayerAdminCapabilities } from '@box/player-policy'
 import { PlayerAdminRequestError } from './player-admin-errors'
 import { ScriptModerationRequestError } from './script-moderation-error'
 import { writeScriptModerationAudit } from './script-moderation-audit'

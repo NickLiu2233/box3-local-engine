@@ -7,7 +7,7 @@ import {
 } from './player-admin-authorization';
 import type {
   PlayerAdminRequirement,
-} from '../shared/player-admin-policy';
+} from '@box/player-policy';
 
 type PlayerAdminMethod = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 type PlayerAdminRouteResult = void | NextApiResponse | Promise<void | NextApiResponse>;

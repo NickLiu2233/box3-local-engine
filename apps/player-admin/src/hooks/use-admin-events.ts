@@ -1,6 +1,5 @@
 import { useEffect, useRef } from 'react';
-
-import { subscribeRealtime } from '../../../game/shared/realtime-client';
+import { subscribeRealtime } from '@box/realtime-client';
 /** Notifications carry no player details; the normal API rechecks live read permissions. */
 export function useAdminEvents(enabled:boolean, onChange:(topic:string) => void) {
     const latest = useRef(onChange);

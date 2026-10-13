@@ -4,7 +4,48 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { planImages, planManagerImage, mergeImages, services } = require('./server-image-plan');
+const {
+    sourceFingerprint,
+    planImages,
+    planManagerImage,
+    mergeImages,
+    services,
+} = require('./server-image-plan');
+
+test('image cache follows reusable package and build dependencies', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-package-plan-'));
+    const files = [
+        'packages/deployment-routing/src/browser.cjs',
+        'packages/player-policy/src/policy.ts',
+        'scripts/build-reusable-package.js',
+    ];
+    try {
+        for (const file of files) {
+            fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+            fs.writeFileSync(path.join(root, file), 'original');
+        }
+        const fingerprints = () =>
+            services.map((service) => sourceFingerprint(root, service, files));
+        const baseline = fingerprints();
+        const changedServices = () =>
+            fingerprints().flatMap((value, index) =>
+                value === baseline[index] ? [] : [services[index]],
+            );
+        fs.writeFileSync(path.join(root, files[0]), 'updated routing');
+        assert.deepEqual(
+            changedServices(),
+            services.filter((service) => service !== 'server-manager'),
+        );
+        fs.writeFileSync(path.join(root, files[0]), 'original');
+        for (const file of files.slice(1)) {
+            fs.writeFileSync(path.join(root, file), 'updated');
+            assert.deepEqual(changedServices(), ['player-service', 'creator', 'play', 'voxa']);
+            fs.writeFileSync(path.join(root, file), 'original');
+        }
+    } finally {
+        fs.rmSync(root, { recursive: true, force: true });
+    }
+});
 
 test('same version/source skips images; a Web manager change rebuilds only that image', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-server-plan-'));

@@ -1,4 +1,4 @@
-import { subscribeRealtime } from '../shared/realtime-client';
+import { subscribeRealtime } from '@box/realtime-client';
 import type { GetServerSideProps } from 'next';
 import { ApiClientError } from '@box/apis';
 import Head from 'next/head';
