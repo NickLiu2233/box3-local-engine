@@ -50,12 +50,12 @@ Creator、Play、Player Service 和 VOXA 均不再提供 `/api/docs` 或 `/api/o
 优先使用生成客户端：
 
 ```ts
-import { createApiClient } from '@box/apis'
+import { createApiClient } from '@box/apis';
 
-const api = createApiClient({ baseUrl: 'http://127.0.0.1:3124' })
+const api = createApiClient({ baseUrl: 'http://127.0.0.1:3124' });
 const players = await api.getApiPlayAdminPlayers({
-  params: { query: { page: 1, pageSize: 20 } },
-})
+    params: { query: { page: 1, pageSize: 20 } },
+});
 ```
 
 方法名、返回值、请求参数和路径都由 OpenAPI 推导。普通方法在请求失败时抛出 `ApiClientError`；需要读取响应头、状态码或流时，使用对应的 `Raw` 方法，例如 `getApiPlayAdminPlayersRaw`。调用端不应复制接口类型，也不应自行维护另一份 URL 清单。
@@ -70,13 +70,13 @@ const players = await api.getApiPlayAdminPlayers({
 4. 在 `openapi-operation-contracts.mjs` 将 operation 绑定到请求和响应 schema。
 5. 重新生成并校验：
 
-   ```bash
-   npm run api:generate
-   npm run api:check
-   npm run api:build
-   ```
+    ```bash
+    npm run api:generate
+    npm run api:check
+    npm run api:build
+    ```
 
-   `api:generate` 负责生成 OpenAPI JSON 和 TypeScript 类型，`api:check` 检查生成结果是否为最新，`api:build` 重新构建 `@box/apis`。
+    `api:generate` 负责生成 OpenAPI JSON 和 TypeScript 类型，`api:check` 检查生成结果是否为最新，`api:build` 重新构建 `@box/apis`。
 
 6. 调用端改用 `@box/apis` 的 `ApiClient`、`createApiClient` 和生成类型。
 7. 验证 Swagger Try it out、未登录响应、权限不足响应、非法参数和正常结果。

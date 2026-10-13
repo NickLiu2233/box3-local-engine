@@ -1,9 +1,9 @@
 {
   "name": "@box/deployment-manager",
   "version": "0.3.0",
-  "license": "MIT",
   "private": true,
   "description": "Native installer and operations console for BOX3 Engine",
+  "license": "MIT",
   "scripts": {
     "dev": "node ../../scripts/sync-root-version.js && vite",
     "build": "node ../../scripts/sync-root-version.js && node ../../scripts/check-deployment-manager-structure.js && npm --prefix ../../internals/apis run build && vite build",

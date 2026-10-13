@@ -1,12 +1,13 @@
 # BOX3 Local Engine 文档中心
 
-整理日期：2026-10-09。当前源码 `0.3.0`，先通过邀请参与开发；不是声明安装包或 CDN 已同步。
+整理日期：2026-10-13。当前源码 `0.3.0`，先通过邀请参与开发；不是声明安装包或 CDN 已同步。
 
 ## 推荐阅读顺序
 
 - 第一次拿到源码：[邀请与访问](./source-access.md) → [贡献指南](../CONTRIBUTING.md) → [开发手册](./developer-guide.md)。
 - 部署试用包：[桌面启动器](./graphical-deployment-manager.md)或 [Linux 管理端](./linux-web-manager.md) → [配置](./configuration-reference.md) → [备份边界](./local-infrastructure.md)。
 - 创作与运营：[地图与发布包](./projects.md) → [玩家管理](./player-identity.md) → [地图授权](./script-moderation.md)与[反作弊规则](./anticheat-toolkit.md)。
+- 玩家连接与游玩：[玩家启动器](./player-launcher.md) → [资源缓存](./launcher-service-worker-cache.md) → [HTTP 兼容](./http-compatibility.md)。
 - 修改和再分发：[MIT 与品牌边界](./open-source-licensing.md) → [发布检查](./public-repository-audit.md) → [构建与分发](./release-and-distribution.md)。
 
 ## 当前发行与安全边界
@@ -30,6 +31,7 @@ Player Admin 源码开发时独立运行，发行时并入 Player Service。完�
 
 - [安装与运维](./installation-and-operations.md)
 - [图形化部署管理器](./graphical-deployment-manager.md)
+- [启动器打包模式](./launcher-package-modes.md)
 - [从纯 Linux 系统部署 BOX3 Engine](./linux-web-manager.md)
 - [BOX3 Engine 云服务器快速部署](./cloud-server-quickstart.md)
 - [配置参考](./configuration-reference.md)
@@ -43,6 +45,7 @@ Player Admin 源码开发时独立运行，发行时并入 Player Service。完�
 - [PostgreSQL 数据空间](./postgresql-data-storage.md)
 - [HTTP 访问兼容](./http-compatibility.md)
 - [玩家启动器 Service Worker 资源缓存](./launcher-service-worker-cache.md)
+- [玩家启动器使用与维护](./player-launcher.md)
 
 ### 账号、管理与地图脚本
 
@@ -65,6 +68,9 @@ Player Admin 源码开发时独立运行，发行时并入 Player Service。完�
 - [Local Engine API 与 Swagger](./local-engine-api.md)
 - [Creator CLI 与 HTTP API（当前实现）](./creator-cli-http-api.md)
 - [工程规范](./engineering.md)
+- [自有代码风格与维护范围](./code-style.md)
+- [启动器与玩家应用代码维护](./application-code-maintenance.md)
+- [文档维护与有效范围](./documentation-maintenance.md)
 - [公网路由工程说明](./public-routing-engineering.md)
 - [与 boxes 的核心对齐基线](./boxes-parity.md)
 - [构建与分发](./release-and-distribution.md)
@@ -74,6 +80,7 @@ Player Admin 源码开发时独立运行，发行时并入 Player Service。完�
 
 ### 技术记录与历史验收
 
+- [访问配置冲突审查](./access-configuration-audit.md)
 - [本地引擎反作弊发行说明](./anticheat-release.md)
 - [反作弊验证记录](./anticheat-test-report.md)
 - [本地引擎反作弊 API 详细设计书](./anticheat-api-design.md)
@@ -110,5 +117,7 @@ Player Admin 源码开发时独立运行，发行时并入 Player Service。完�
 - [BOX3 Engine 私服方案对比](./business-comparison.md)
 
 ## 维护规则
+
+主题职责、文档类型和检查清单见[文档维护](./documentation-maintenance.md)。
 
 服务、端口、配置、接口、权限、数据目录和发行入口变化时，同一提交更新对应指南与示例。历史记录不改写为新测试结果；原始数据不应带玩家身份或本机路径进入源码。命令和版本以脚本与清单为准。

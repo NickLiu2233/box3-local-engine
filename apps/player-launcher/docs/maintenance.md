@@ -4,7 +4,7 @@
 
 渲染入口 `src/main.ts` 组装 application、api、features、views 和 platform。功能目录负责用户事件及自己的页面片段；application 协调服务器会话与状态。业务请求集中在 `src/api/player-api.ts`，页面不直接拼接 API URL。
 
-Electron 入口 `electron/main.ts` 负责 app/window 生命周期与 IPC 分发；network、runtime、storage、security 实现具体操作。这些模块不依赖页面 DOM。`shared/` 只放两个进程共用的纯逻辑。跨进程的公开业务数据类型来自 `@box/apis` 的 `components`，本机 UI 状态放在 `src/types.ts`。
+Electron 入口 `electron/main.ts` 负责 app/window 生命周期、Cookie 同步与 IPC 来源校验；`electron/application/commands.ts` 通过注入的存储、网络和游戏窗口依赖完成命令分发。network、runtime、storage、security 实现具体操作。这些模块不依赖页面 DOM。`shared/` 只放两个进程共用的纯逻辑。跨进程的公开业务数据类型来自 `@box/apis` 的 `components`，本机 UI 状态放在 `src/types.ts`。
 
 ## 修改功能的位置
 
@@ -12,12 +12,12 @@ Electron 入口 `electron/main.ts` 负责 app/window 生命周期与 IPC 分发�
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | 新增或调整 HTTP 接口 | `internals/apis/openapi/openapi.json` 的生成源和 `internals/apis/scripts/`，重新生成 `@box/apis`；然后调整 `src/api/player-api.ts` |
 | 玩家允许调用的接口   | `shared/api-policy.ts`；路径和 HTTP 方法从生成的 `apiOperations` 引用                                                              |
-| 新增桌面本地能力     | 对应 Electron 模块，然后在 `electron/main.ts` 注册 IPC 命令；HTTP 接口与本机操作分开                                               |
+| 新增桌面本地能力     | 对应 Electron 模块，然后在 `electron/application/commands.ts` 接入命令；入口只校验来源，HTTP 接口与本机操作分开                    |
 | 服务器列表和输入     | `src/features/servers/` 与 `electron/storage/server-store.ts`                                                                      |
 | 登录、退出和账号设置 | `src/features/player/`；每个服务器会话独立，不保存密码                                                                             |
 | 地图搜索和启动       | `src/features/maps/`；游戏窗口在 `electron/runtime/game-window-manager.ts`                                                         |
 | 缓存显示和清理       | `src/features/storage/` 与 `electron/runtime/resource-cache.ts`                                                                    |
-| 整体排版与通用组件   | `src/views/`、`src/styles.css`                                                                                                     |
+| 整体排版与通用组件   | `src/views/`、`src/styles/`；`src/styles.css` 保留样式导入顺序                                                                     |
 
 ## 检查与打包
 

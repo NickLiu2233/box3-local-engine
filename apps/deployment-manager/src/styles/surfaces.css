@@ -16,7 +16,7 @@
 .access-choice button,
 .field input,
 .toast button {
-  border-radius: var(--radius-control);
+    border-radius: var(--radius-control);
 }
 
 .theme-trigger,
@@ -39,7 +39,7 @@
 .diagnostic-list > div,
 .runtime-submap,
 .toast {
-  border-radius: var(--radius-surface);
+    border-radius: var(--radius-surface);
 }
 
 .start-dialog,
@@ -52,31 +52,44 @@
 .metric-grid article,
 .performance-panel,
 .runtime-project {
-  border-radius: var(--radius-panel);
+    border-radius: var(--radius-panel);
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .nav-item:hover,
-  .theme-trigger:hover,
-  .theme-menu button:hover {
-    background: var(--panel-soft);
-    color: var(--text);
-  }
+    .nav-item:hover,
+    .theme-trigger:hover,
+    .theme-menu button:hover {
+        background: var(--panel-soft);
+        color: var(--text);
+    }
 
-  .button:hover,
-  .icon-button:hover,
-  .open-button:hover,
-  .service-commands button:hover {
-    background: var(--panel-soft);
-  }
+    .button:hover,
+    .icon-button:hover,
+    .open-button:hover,
+    .service-commands button:hover {
+        background: var(--panel-soft);
+    }
 
-  .button.primary:hover {
-    background: var(--accent-hover);
-  }
+    .button.primary:hover {
+        background: var(--accent-hover);
+    }
 }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']):not([data-theme='dark']) {
+    :root:not([data-theme='light']):not([data-theme='dark']) {
+        color-scheme: dark;
+        --bg: #0d0d0d;
+        --panel: #171717;
+        --panel-soft: #242424;
+        --text: #f5f5f5;
+        --muted: #a3a3a3;
+        --border: #333333;
+        --accent: #ffdb00;
+        --accent-hover: #ffe34d;
+    }
+}
+
+:root[data-theme='dark'] {
     color-scheme: dark;
     --bg: #0d0d0d;
     --panel: #171717;
@@ -86,17 +99,4 @@
     --border: #333333;
     --accent: #ffdb00;
     --accent-hover: #ffe34d;
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: #0d0d0d;
-  --panel: #171717;
-  --panel-soft: #242424;
-  --text: #f5f5f5;
-  --muted: #a3a3a3;
-  --border: #333333;
-  --accent: #ffdb00;
-  --accent-hover: #ffe34d;
 }

@@ -8,6 +8,7 @@
 | ------------------------------------------------ | --------------------------------------------- | ------------------------------------------ |
 | `src/pages/index.tsx`                            | Umi 路由入口，只导出后台 Shell                | 页面状态、数据请求或业务流程               |
 | `src/pages/shell/player-admin-page.tsx`          | 会话启动、URL 视图切换、顶层布局与跨页面编排  | 具体列表列定义、重复传输类型和底层请求实现 |
+| `src/pages/shell/admin-content.tsx`              | 根据 view 选择业务页面，接收协调器数据与回调  | 数据请求、另一份会话或授权规则             |
 | `src/pages/<domain>/`                            | 按 access、players、security 等领域组织工作流 | 直接读取 Cookie、绕过统一请求客户端        |
 | `src/player-admin-api.ts`                        | 创建统一的 `@box/apis` 客户端并配置 CSRF      | React 页面状态、路由字符串或授权决定       |
 | `src/player-admin-types.ts`                      | 从 `@box/apis` 契约派生后台需要的传输类型     | 手工复制服务端 DTO、服务端持久化实现       |

@@ -124,9 +124,9 @@ boxplay://<launch-session-id>/engine/m/<hash>
 
 ```json
 {
-  "assetMode": "launcher-local",
-  "assetBaseUrl": "boxplay://<launch-session-id>",
-  "manifestDigest": "sha256-base64url"
+    "assetMode": "launcher-local",
+    "assetBaseUrl": "boxplay://<launch-session-id>",
+    "manifestDigest": "sha256-base64url"
 }
 ```
 
@@ -155,25 +155,25 @@ createLaunchTicket(permanentMapId, manifestDigest): LaunchTicket
 
 ```json
 {
-  "formatVersion": 1,
-  "permanentMapId": "4dffa49240b57b50ad2c",
-  "accessId": "hahafarm",
-  "releaseVersion": "2026.09.27-3",
-  "manifestDigest": "sha256-base64url",
-  "required": [
-    {
-      "hash": "Qm...",
-      "kind": "terrain|model|texture|image|audio|ui-data|client-script",
-      "size": 123456,
-      "contentType": "model/gltf-binary"
+    "formatVersion": 1,
+    "permanentMapId": "4dffa49240b57b50ad2c",
+    "accessId": "hahafarm",
+    "releaseVersion": "2026.09.27-3",
+    "manifestDigest": "sha256-base64url",
+    "required": [
+        {
+            "hash": "Qm...",
+            "kind": "terrain|model|texture|image|audio|ui-data|client-script",
+            "size": 123456,
+            "contentType": "model/gltf-binary"
+        }
+    ],
+    "optional": [],
+    "signature": {
+        "algorithm": "ES256",
+        "publicKey": { "kty": "EC" },
+        "value": "base64url-signature"
     }
-  ],
-  "optional": [],
-  "signature": {
-    "algorithm": "ES256",
-    "publicKey": { "kty": "EC" },
-    "value": "base64url-signature"
-  }
 }
 ```
 
@@ -255,10 +255,10 @@ createLaunchTicket(permanentMapId, manifestDigest): LaunchTicket
 
 ```json
 {
-  "permanentMapId": "...",
-  "releaseVersion": "...",
-  "manifestDigest": "...",
-  "launchTicket": "..."
+    "permanentMapId": "...",
+    "releaseVersion": "...",
+    "manifestDigest": "...",
+    "launchTicket": "..."
 }
 ```
 

@@ -1,5 +1,7 @@
 # 后台管理复用索引
 
+页面协调与内容选择分别维护在 `pages/shell/player-admin-page.tsx` 和 `pages/shell/admin-content.tsx`；后者不拥有请求或弹窗状态。统一风格和清单排序见[代码风格](./code-style.md)。
+
 模块边界、开发启动和验证流程见[后台管理开发说明](./player-admin-development.md)。本文维护公共模块和各页面的唯一实现位置。
 
 后台页面位于 `apps/player-admin/src/pages`，按业务划分；页面继续负责权限判断、确认操作和业务流程。

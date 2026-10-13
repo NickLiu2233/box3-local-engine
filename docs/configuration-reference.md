@@ -76,6 +76,6 @@ Creator 公网模式会同时开放 Creator 与 VOXA 的监听范围。该模式
 
 `BOX_PUBLIC_ADDRESS_MODE` 保存 independent/shared，`BOX_SHARED_PUBLIC_ADDRESS` 保存共用地址草稿；各服务 `*_INDEPENDENT_PUBLIC_ADDRESS` 保存独立草稿，`*_PUBLIC_PATH` 保存共用路径，`*_PUBLIC_ADDRESS_OVERRIDE` 是当前模式生成的完整地址。Nginx 来源保存在数据目录 `https/provider`，默认内置，已保存的外部选择保留。
 
-`*_BASE_PATH` 与 `BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN` 是运行时派生项。内置入口接管公网端口，上游容器取消对应端口映射；外部本机入口使用独立 loopback 上游端口，避免争用公网端口。
+`*_BASE_PATH` 与 `BOX_PUBLIC_SERVICE_PREFIXES_BY_ORIGIN` 是运行时派生项。内置入口接管公网端口，上游容器取消对应端口映射。当前外部手动模式保留原始 `.env` 的完整公开地址与服务绑定，由部署者选择实际 loopback 或内网代理上游，不由启动器自动分配并重载。旧 external 自动应用入口只为兼容保留，见[Nginx 指南](./https-certificate-management.md)。
 
 登录镜像使用 `BOX_AUTH_PORTAL_IMAGE`。默认官方镜像跟随引擎版本，自定义镜像名/版本保持服主设置；只读取本机已有 Docker 镜像，不为自定义配置自动拉取仓库镜像。制作与导入见[自建登录门户](./self-hosted-login.md)。

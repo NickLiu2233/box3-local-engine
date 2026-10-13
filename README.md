@@ -51,6 +51,8 @@ Player Admin 在发行镜像中构建进 Player Service，不是第七个业务�
 
 ## 技术栈
 
+独立[玩家启动器](docs/player-launcher.md)使用 Electron，负责连接服务器和启动地图；Tauri 桌面启动器负责部署运维，两者不是同一个应用。
+
 主工程使用 Rush 管理 TypeScript/Node.js 项目和依赖。创作与游玩界面使用 Next.js、React 和 WebGL，后台使用 Umi 与 Ant Design；桌面启动器使用 Tauri，桌面端与 Linux Web 管理端共用 Rust 业务核心。玩家数据保存在 PostgreSQL，Redis 用作可选缓存，部署使用 Docker Compose。HTTP API 通过 OpenAPI 维护契约和文档。
 
 3D 画面由浏览器 WebGL 渲染，服务器负责业务服务、权威游戏逻辑和地图运行容器，正常部署不要求 GPU。

@@ -100,10 +100,7 @@
       "parameterKind": "flag",
       "longName": "--infra",
       "description": "Start the disposable development PostgreSQL and Redis services.",
-      "associatedCommands": [
-        "dev",
-        "dev-creator"
-      ]
+      "associatedCommands": ["dev", "dev-creator"]
     },
     {
       "parameterKind": "choice",
@@ -119,10 +116,7 @@
           "description": "Linux ARM64"
         }
       ],
-      "associatedCommands": [
-        "package-images",
-        "package-web"
-      ],
+      "associatedCommands": ["package-images", "package-web"],
       "required": true
     },
     {
@@ -130,9 +124,7 @@
       "longName": "--service",
       "argumentName": "SERVICE",
       "description": "Optional single image service name.",
-      "associatedCommands": [
-        "package-images"
-      ]
+      "associatedCommands": ["package-images"]
     },
     {
       "parameterKind": "choice",
@@ -164,9 +156,7 @@
           "description": "Linux ARM64"
         }
       ],
-      "associatedCommands": [
-        "package-desktop"
-      ],
+      "associatedCommands": ["package-desktop"],
       "required": true
     },
     {
@@ -174,10 +164,7 @@
       "longName": "--archive",
       "argumentName": "ARCHIVE",
       "description": "Optional existing image archive path.",
-      "associatedCommands": [
-        "package-desktop",
-        "package-web"
-      ]
+      "associatedCommands": ["package-desktop", "package-web"]
     },
     {
       "parameterKind": "choice",
@@ -194,10 +181,7 @@
         }
       ],
       "defaultValue": "slim",
-      "associatedCommands": [
-        "package-desktop",
-        "package-web"
-      ]
+      "associatedCommands": ["package-desktop", "package-web"]
     }
   ]
 }

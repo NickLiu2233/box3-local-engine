@@ -1,6 +1,6 @@
 # Nginx 与公网证书配置
 
-当前源码 v0.3.0，更新日期 2026-10-12。Nginx 来源位于“数据配置 → 数据服务”，公网地址和证书位于“访问设置”。源码更新不代表已安装 App 或运行容器已更新。
+当前源码 v0.3.0，更新日期 2026-10-13。Nginx 来源位于“数据配置 → 数据服务”，公网地址和证书位于“访问设置”。源码更新不代表已安装 App 或运行容器已更新。
 
 ## Nginx 来源
 
@@ -63,15 +63,15 @@
 
 桌面使用 Tauri，Web 使用认证后的 `POST /api/commands/{name}`。
 
-| 命令                       | 用途                                           |
-| -------------------------- | ---------------------------------------------- |
-| `get_ssl_status`           | 来源、镜像、运行状态、证书公开元数据及导出配置 |
-| `set_nginx_provider`       | 保存 managed/external-manual；兼容旧 external 调用     |
-| `install_nginx_image`      | 下载或复用官方稳定版镜像                       |
-| `apply_ssl_config`         | 应用 HTTP/HTTPS 路由与证书，兼容旧单证书格式   |
-| `reload_ssl_proxy`         | 读取已保存证书路径、校验并重载运行中的内置入口 |
-| `stop_ssl_proxy`           | 停止本实例内置入口，保留配置与证书             |
-| `export_ssl_configuration` | 导出配置，不能视为已部署                       |
-| `verify_ssl_endpoint`      | TLS 探测，不等同于真实登录和 WSS 会话验收      |
+| 命令                       | 用途                                               |
+| -------------------------- | -------------------------------------------------- |
+| `get_ssl_status`           | 来源、镜像、运行状态、证书公开元数据及导出配置     |
+| `set_nginx_provider`       | 保存 managed/external-manual；兼容旧 external 调用 |
+| `install_nginx_image`      | 下载或复用官方稳定版镜像                           |
+| `apply_ssl_config`         | 应用 HTTP/HTTPS 路由与证书，兼容旧单证书格式       |
+| `reload_ssl_proxy`         | 读取已保存证书路径、校验并重载运行中的内置入口     |
+| `stop_ssl_proxy`           | 停止本实例内置入口，保留配置与证书                 |
+| `export_ssl_configuration` | 导出配置，不能视为已部署                           |
+| `verify_ssl_endpoint`      | TLS 探测，不等同于真实登录和 WSS 会话验收          |
 
 工程入口及检查见[公网路由工程说明](./public-routing-engineering.md)。日期命名的 Nginx 文档记录历史方案，当前操作以本文为准。

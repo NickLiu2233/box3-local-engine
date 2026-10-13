@@ -1,5 +1,7 @@
 # 系统架构
 
+玩家启动器（Electron）连接 Play 与登录门户，主进程管理 IPC 来源、服务器会话和游戏窗口；它不代替 Tauri/Rust 的引擎部署管理器。入口见[玩家启动器](./player-launcher.md)与[应用代码维护](./application-code-maintenance.md)。
+
 ```text
 Creator / Play 浏览器 → apps/game → apps/local-engine → game-server
 Player Admin 浏览器 → apps/player-admin → Player Service → PostgreSQL

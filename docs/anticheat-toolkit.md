@@ -20,16 +20,16 @@
 
 ```js
 const combat = world.anticheat.createTracker({
-  historySize: 32, // 每位玩家保留的最新记录数。
-  decayPerTick: 0, // 每个服务端脚本 tick 衰减多少分；0 表示不衰减。
-})
+    historySize: 32, // 每位玩家保留的最新记录数。
+    decayPerTick: 0, // 每个服务端脚本 tick 衰减多少分；0 表示不衰减。
+});
 
 world.anticheat.onAction(({ player, actions }) => {
-  combat.record(player, {
-    pressed: actions.filter((action) => action.pressed).length,
-  })
-  // 在这里结合自己的玩法和 combat.getHistory(player) 做判断。
-})
+    combat.record(player, {
+        pressed: actions.filter((action) => action.pressed).length,
+    });
+    // 在这里结合自己的玩法和 combat.getHistory(player) 做判断。
+});
 ```
 
 每个 `createTracker()` 都是独立的。移动检查的分数、历史和豁免不会跑到攻击检查里；同一个规则里，各个玩家也互不影响。
@@ -59,17 +59,19 @@ world.anticheat.onAction(({ player, actions }) => {
 ## 合法技能的临时豁免
 
 ```js
-const movement = world.anticheat.createTracker()
+const movement = world.anticheat.createTracker();
 
 // 在服务端已经验证通过的技能逻辑中调用；持续多久由地图决定。
 function allowMovementForSkill(player, durationTicks) {
-  movement.exempt(player, { ticks: durationTicks, reason: '地图技能' })
+    movement.exempt(player, { ticks: durationTicks, reason: '地图技能' });
 }
 
 world.anticheat.onMovement(({ player, context }) => {
-  if (movement.isExempt(player)) return
-  // 在这里写自己的移动检查。
-})
+    if (movement.isExempt(player)) {
+        return;
+    }
+    // 在这里写自己的移动检查。
+});
 ```
 
 `exempt()` 只保存本规则的标记。只有你明确查询并跳过检查，它才会影响你的规则；其他规则仍然照常执行。到期条件是当前服务端脚本 tick 达到 `untilTick`。

@@ -71,20 +71,20 @@ public/               HTML、品牌资源及自动构建产物
 浏览器只复用客户端，不导入服务端密钥：
 
 ```ts
-import { PortalClient } from './src/client'
-const client = new PortalClient()
-const state = await client.session()
+import { PortalClient } from './src/client';
+const client = new PortalClient();
+const state = await client.session();
 // 每个调用是一个独立操作，不要顺序执行所有写请求。
-await client.updateNickname('新的昵称')
+await client.updateNickname('新的昵称');
 ```
 
 服务端直接使用类，无需复制代理实现：
 
 ```ts
-import { PortalConfig, PortalServer } from './server'
-const config = PortalConfig.fromEnvironment()
-const portal = new PortalServer(config)
-await portal.listen()
+import { PortalConfig, PortalServer } from './server';
+const config = PortalConfig.fromEnvironment();
+const portal = new PortalServer(config);
+await portal.listen();
 // 停止时 await portal.close()
 ```
 
@@ -133,7 +133,7 @@ docker load -i dist/my-login-1.0-linux-arm64.tar.gz
 
 进入 **数据配置 → 访问设置 → 登录页面镜像**，填写 my-login:1.0 后保存。地址、Key、注册开关等由启动器注入，不需开发者打包进程序。
 
-默认镜像名 box3-login-example:0.2.0，刻意不同于官方名称。自定义镜像不会随引擎自动升级；缺失时报错，不自动拉取或回退。建议发布新 tag，不用同一个 tag 同时分发两个平台。归档已有同名文件时拒绝覆盖，需要明确 --force；Docker 构建本身会更新指定的本机 tag。
+默认镜像名为 `box3-login-example:<package.json 的版本>`，当前为 `box3-login-example:0.3.0`，刻意不同于官方名称。自定义镜像不会随引擎自动升级；缺失时报错，不自动拉取或回退。建议发布新 tag，不用同一个 tag 同时分发两个平台。归档已有同名文件时拒绝覆盖，需要明确 --force；Docker 构建本身会更新指定的本机 tag。
 
 导出的归档是单个登录镜像，不是引擎完整六服务离线包。
 
@@ -155,6 +155,6 @@ npm run check
 npm run export:template
 ```
 
-解压 dist/box3-login-template-0.2.0.tar.gz 后把内容放到新仓库根目录即可。它包含 TS 源码、npm 锁文件、测试、独立 Dockerfile 和完整文档，不带 node_modules、build、.env、引擎源码或工作区软链接。
+导出文件为 `dist/box3-login-template-<package.json 的版本>.tar.gz`，当前为 `dist/box3-login-template-0.3.0.tar.gz`。解压后将内容放到新仓库根目录即可。它包含 TS 源码、npm 锁文件、测试、独立 Dockerfile 和完整文档，不带 node_modules、build、.env、引擎源码或工作区软链接。
 
 发布前必须做真实设备/Cookie/封禁/限流联调，模拟器不能替代真实服务验证。登录门户模板采用 [MIT](LICENSE)，允许修改、商用和再分发；分发时保留版权与许可声明。第三方依赖遵守原许可，BOX3 品牌和商标使用不随代码许可授予。

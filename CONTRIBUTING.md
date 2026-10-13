@@ -128,6 +128,8 @@ Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig�
 
 ## 5. 代码边界
 
+自有代码、工具、测试与文档示例统一遵循[代码风格](docs/code-style.md)，不在各项目维护另一套约定。修改后执行 `npm run format:owned:check`，格式化使用 `npm run format:owned`；上游同步代码、生成结果与语言例外按该指南处理。
+
 | 领域                                     | 主要目录                    |
 | ---------------------------------------- | --------------------------- |
 | Creator、Play、Player Service 与引擎前端 | `apps/game/`                |
@@ -183,6 +185,8 @@ rush build --to @box/player-admin
 仅改文档时至少运行 `node scripts/check-documentation.js` 和 `git diff --check`。完整验证的已知失败见[版本说明](docs/current-status.md)；交付时写清哪些检查通过、哪些未运行或失败。
 
 ## 7. 文档要求
+
+专题职责、当前指南/历史验收/规划分类及检查清单见[文档维护](docs/documentation-maintenance.md)。
 
 以下变化必须在同一提交更新根 README、相关 `docs/` 专题、配置示例和回归测试：
 

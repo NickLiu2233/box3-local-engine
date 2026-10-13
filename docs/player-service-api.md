@@ -22,15 +22,15 @@
 
 ```json
 {
-  "player": {
-    "subjectId": "32位身份ID",
-    "userId": "用户ID",
-    "username": "player_01",
-    "displayName": "玩家一号",
-    "avatarSkinId": "explorer",
-    "role": "player",
-    "status": "active"
-  }
+    "player": {
+        "subjectId": "32位身份ID",
+        "userId": "用户ID",
+        "username": "player_01",
+        "displayName": "玩家一号",
+        "avatarSkinId": "explorer",
+        "role": "player",
+        "status": "active"
+    }
 }
 ```
 
@@ -50,16 +50,16 @@
 
 ```json
 {
-  "player": {
-    "subjectId": "…",
-    "username": "player_01",
-    "displayName": "玩家一号",
-    "avatarSkinId": "explorer",
-    "role": "player",
-    "status": "active"
-  },
-  "databaseEnabled": true,
-  "registrationEnabled": true
+    "player": {
+        "subjectId": "…",
+        "username": "player_01",
+        "displayName": "玩家一号",
+        "avatarSkinId": "explorer",
+        "role": "player",
+        "status": "active"
+    },
+    "databaseEnabled": true,
+    "registrationEnabled": true
 }
 ```
 
@@ -89,12 +89,12 @@
 
 ```json
 {
-  "player": {
-    "subjectId": "当前玩家身份ID",
-    "userId": "用户ID",
-    "username": "player_01",
-    "displayName": "新昵称"
-  }
+    "player": {
+        "subjectId": "当前玩家身份ID",
+        "userId": "用户ID",
+        "username": "player_01",
+        "displayName": "新昵称"
+    }
 }
 ```
 
@@ -132,12 +132,12 @@
 
 ```json
 {
-  "player": {
-    "subjectId": "…",
-    "username": "player_01",
-    "displayName": "新昵称",
-    "avatarSkinId": "pilot"
-  }
+    "player": {
+        "subjectId": "…",
+        "username": "player_01",
+        "displayName": "新昵称",
+        "avatarSkinId": "pilot"
+    }
 }
 ```
 
@@ -183,20 +183,20 @@
 
 ```json
 {
-  "players": [
-    {
-      "subjectId": "…",
-      "username": "player_01",
-      "displayName": "玩家一号",
-      "status": "active",
-      "tags": [],
-      "loginCount": 2
-    }
-  ],
-  "total": 1,
-  "page": 1,
-  "pageSize": 30,
-  "totalPages": 1
+    "players": [
+        {
+            "subjectId": "…",
+            "username": "player_01",
+            "displayName": "玩家一号",
+            "status": "active",
+            "tags": [],
+            "loginCount": 2
+        }
+    ],
+    "total": 1,
+    "page": 1,
+    "pageSize": 30,
+    "totalPages": 1
 }
 ```
 
@@ -246,8 +246,8 @@
 
 ```json
 {
-  "name": "客服组",
-  "permissions": ["players.view", "players.manage", "sessions.view", "sessions.manage"]
+    "name": "客服组",
+    "permissions": ["players.view", "players.manage", "sessions.view", "sessions.manage"]
 }
 ```
 

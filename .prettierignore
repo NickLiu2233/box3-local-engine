@@ -4,6 +4,9 @@
 **/.rush/
 **/.next/
 **/dist/
+**/dist-electron/
+**/release-electron/
+**/rush-logs/
 **/coverage/
 **/target/
 **/*.tsbuildinfo

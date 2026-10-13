@@ -18,6 +18,7 @@
 | `src/styles/`         | 按页面和职责分组的样式；由 `src/styles.css` 按顺序导入 |
 
 操作模块通过 `core/render-request.js` 请求更新界面。真正的渲染器在入口注册，避免页面渲染、事件绑定和操作逻辑互相循环导入。
+公网地址与前缀的纯解析在 `configuration/public-service-address.js`，表单、证书和访问模式的组装在 `configuration/public-access.js`。修改前执行根目录 `npm run format:owned:check`；统一规则见[自有代码风格](../../docs/code-style.md)。
 
 ## 修改与检查
 

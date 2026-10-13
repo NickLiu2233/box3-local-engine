@@ -4,9 +4,6 @@
   "private": true,
   "description": "Standalone local-first voxel engine developer preview",
   "license": "MIT",
-  "engines": {
-    "node": "22.17.x"
-  },
   "scripts": {
     "rush": "node common/scripts/install-run-rush.js",
     "install:all": "node common/scripts/install-run-rush.js install",
@@ -19,6 +16,8 @@
     "build": "node common/scripts/install-run-rush.js build",
     "format": "node common/scripts/install-run-rush.js format",
     "format:check": "node common/scripts/install-run-rush.js format-check",
+    "format:owned": "node scripts/format-owned-code.js --write",
+    "format:owned:check": "node scripts/format-owned-code.js",
     "lint": "node common/scripts/install-run-rush.js lint",
     "typecheck": "node common/scripts/install-run-rush.js typecheck",
     "test": "node common/scripts/install-run-rush.js test",
@@ -50,5 +49,8 @@
     "package:web": "node common/scripts/install-run-rush.js package-web",
     "package:web:amd64": "node common/scripts/install-run-rush.js package-web --architecture amd64",
     "package:web:arm64": "node common/scripts/install-run-rush.js package-web --architecture arm64"
+  },
+  "engines": {
+    "node": "22.17.x"
   }
 }

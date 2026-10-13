@@ -1,1 +1,1 @@
-export { default } from './shell/player-admin-page'
+export { PlayerAdminPage as default } from './shell/player-admin-page';

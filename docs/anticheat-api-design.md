@@ -139,12 +139,12 @@ flowchart TD
 
 ```js
 const token = world.anticheat.onCustomEvent((event) => {
-  // 在此同步校验自定义协议。
-})
+    // 在此同步校验自定义协议。
+});
 // 地图规则卸载时：
-token.cancel()
+token.cancel();
 // 需要重新启用时：
-token.resume()
+token.resume();
 ```
 
 每次注册有独立 token。安装规则时应保存 token，卸载或重复安装前取消旧监听，避免同一操作被重复计分。
@@ -271,9 +271,9 @@ world.anticheat.onMovement(handler: (event: GameMovementEvent) => void)
 
 ```ts
 const tracker = world.anticheat.createTracker({
-  historySize: 32,
-  decayPerTick: 0,
-})
+    historySize: 32,
+    decayPerTick: 0,
+});
 ```
 
 | 参数           | 默认值 | 约束与用途                                               |
@@ -318,24 +318,28 @@ const tracker = world.anticheat.createTracker({
 以下为文档内示例，用于说明调用方式；不会自动安装到任何地图。示例业务名需替换为地图真实协议。
 
 ```js
-const tracker = world.anticheat.createTracker({ historySize: 32 })
+const tracker = world.anticheat.createTracker({ historySize: 32 });
 const token = world.anticheat.onCustomEvent((event) => {
-  const data = event.data
-  if (!data || typeof data !== 'object' || Array.isArray(data)) return
-  if (data.kind !== 'equip-item') return
+    const data = event.data;
+    if (!data || typeof data !== 'object' || Array.isArray(data)) {
+        return;
+    }
+    if (data.kind !== 'equip-item') {
+        return;
+    }
 
-  tracker.record(event.player, { kind: data.kind })
-  if (typeof data.itemId !== 'string') {
-    tracker.addScore(event.player, 1)
-    event.context.reject('invalid-item-id')
-  }
-  // 正式业务处理仍须校验：该认证玩家是否拥有此物品、当前是否允许装备。
-})
+    tracker.record(event.player, { kind: data.kind });
+    if (typeof data.itemId !== 'string') {
+        tracker.addScore(event.player, 1);
+        event.context.reject('invalid-item-id');
+    }
+    // 正式业务处理仍须校验：该认证玩家是否拥有此物品、当前是否允许装备。
+});
 
 // 卸载规则时调用：
 function disposeRule() {
-  token.cancel()
-  tracker.clear()
+    token.cancel();
+    tracker.clear();
 }
 ```
 
@@ -508,11 +512,11 @@ npm --prefix apps/game run test:script-types
 
 ```json
 {
-  "mapId": "46e8d2b12f8f7a7664eb",
-  "userId": "1",
-  "name": "example-player",
-  "reason": "release-test-rejection",
-  "classification": "suspected-anomaly"
+    "mapId": "46e8d2b12f8f7a7664eb",
+    "userId": "1",
+    "name": "example-player",
+    "reason": "release-test-rejection",
+    "classification": "suspected-anomaly"
 }
 ```
 

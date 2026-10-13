@@ -238,6 +238,8 @@ Rush 同一仓库通常只允许一个会修改公共安装状态或使用全局
 
 ## 8. 开发与验证流程
 
+自有代码与文档示例遵循[代码风格](./code-style.md)。先执行 `npm run format:owned:check`，修正使用 `npm run format:owned`；该入口也检查 package.json 字段顺序，编辑器设置不能覆盖仓库规则。
+
 一个普通功能修改建议按以下顺序进行：
 
 1. 启动所需开发服务并复现问题；
@@ -368,14 +370,15 @@ git push -u origin codex/<short-description>
 评审修改后，在自己的分支同步主分支并重新验证：
 
 ```bash
-git fetch upstream
-git rebase upstream/main
+git fetch origin
+git rebase origin/main
 rush install
 rush verify
 git push --force-with-lease
 ```
 
 只有在已 rebase 且确实需要更新远端分支时使用 `--force-with-lease`，不要使用无保护的 `--force`。
+以上为仓库分支协作示例；获准使用私有 Fork 时先配置并确认上游，不假设所有贡献者都有 `upstream` 远端。
 
 ## 12. 常见问题
 

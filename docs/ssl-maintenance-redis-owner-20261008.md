@@ -1,5 +1,7 @@
 # SSL 证书维护、Redis 新凭据与独立配置清理
 
+> 历史验收：保留当时行为与结果；当前证书及地址规则见[Nginx 指南](./https-certificate-management.md)，数据边界见[基础设施](./local-infrastructure.md)。
+
 日期：2026-10-08；版本 v0.3.0。
 
 ## 本轮完成

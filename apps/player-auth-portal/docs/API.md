@@ -69,17 +69,17 @@ npm run dev
 模板已经封装好 `PortalClient`。在 `src/` 里的页面文件中，可以这样使用：
 
 ```ts
-import { PortalClient } from './client'
+import { PortalClient } from './client';
 
-const client = new PortalClient()
+const client = new PortalClient();
 client.session().then((session) => {
-  if (session.player) {
-    // 已经登录，可以显示昵称和账号操作。
-    console.log(session.player.displayName)
-  } else {
-    // 还没登录，显示登录表单。
-  }
-})
+    if (session.player) {
+        // 已经登录，可以显示昵称和账号操作。
+        console.log(session.player.displayName);
+    } else {
+        // 还没登录，显示登录表单。
+    }
+});
 ```
 
 各个按钮对应的方法如下，不需要自己重复写 fetch：
@@ -112,8 +112,10 @@ client.session().then((session) => {
 在登录按钮的提交处理中，可以使用返回结果：
 
 ```ts
-const result = await client.login(username, password)
-if (result.returnUrl) location.assign(result.returnUrl)
+const result = await client.login(username, password);
+if (result.returnUrl) {
+    location.assign(result.returnUrl);
+}
 ```
 
 不要直接跳到网址查询参数里的 `returnUrl`。先让后端检查，才不会被人借登录页跳到陌生网站。
@@ -121,10 +123,10 @@ if (result.returnUrl) location.assign(result.returnUrl)
 ### 修改密码之后呢？
 
 ```ts
-const result = await client.changePassword(currentPassword, newPassword)
+const result = await client.changePassword(currentPassword, newPassword);
 if (result.reloginRequired) {
-  // 清空密码输入和页面中的 player，回到登录表单。
-  // 提示玩家使用新密码重新登录。
+    // 清空密码输入和页面中的 player，回到登录表单。
+    // 提示玩家使用新密码重新登录。
 }
 ```
 
@@ -193,10 +195,10 @@ docker load -i dist/my-login-1.0-linux-arm64.tar.gz
 可以先复用模板的服务器类，不必再抄一遍代理流程：
 
 ```ts
-import { PortalConfig, PortalServer } from './server'
+import { PortalConfig, PortalServer } from './server';
 
-const portal = new PortalServer(PortalConfig.fromEnvironment())
-portal.listen().catch((error) => console.error(error.message))
+const portal = new PortalServer(PortalConfig.fromEnvironment());
+portal.listen().catch((error) => console.error(error.message));
 // 停止时：await portal.close()
 ```
 

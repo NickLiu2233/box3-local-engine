@@ -29,6 +29,7 @@
 - `src/features/maps/`：搜索、卡片、启动流程；`src/features/storage/`：本机缓存界面与操作。
 - `src/views/`：外壳、服务器页面、图标与 HTML 转义；`src/platform/`：IPC 桥与键盘焦点。
 - `electron/network/`：API 与封面传输；`electron/runtime/`：游戏窗口和缓存；`electron/storage/`：本机服务器与窗口偏好；`electron/security/`：地图签名校验。
+- `electron/application/commands.ts`：集中处理桌面命令；主进程入口保留窗口生命周期、Cookie 同步和 IPC 来源校验。
 - `electron/testing/` 与 `tests/`：测试夹具和检查。详见 [维护说明](./docs/maintenance.md)。
 
 公开封面读取和本机 IPC 是资源/桌面操作，不是业务 API。封面读取只允许当前服务器的公开图片路径，不读取服务端脚本。窗口偏好与缓存管理不会保存密码。
@@ -45,6 +46,7 @@ npm run dev:electron
 ```
 
 本机检查使用 `npm run check`。构建后执行 `npm run test:desktop`，使用隔离的测试数据验证真实 Electron `file://` 页面、图片、搜索和缓存管理，不使用玩家真实账号。
+统一格式与清单排序在根目录执行 `npm run format:owned:check`，规则见[自有代码风格](../../docs/code-style.md)。内网 IPv4 省略协议默认 HTTP，显式协议与路径保留；隐藏菜单仍支持编辑快捷键。桌面回归包含资料保存后的按钮恢复和弹窗关闭。
 
 ## 构建
 

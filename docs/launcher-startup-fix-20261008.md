@@ -1,5 +1,7 @@
 # 启动空白窗口修复
 
+> 历史修复记录：只对应本文日期与平台。当前使用见[部署管理器](./graphical-deployment-manager.md)，不能由此推断新版安装包已验收。
+
 日期：2026-10-08，版本：v0.3.0，平台：macOS ARM64。
 
 Docker 构建期间出现只读文件系统错误，随后用户截图确认 Docker 启动日志无法写入，报错为 `no space left on device`。当 Docker 状态查询挂起时，启动器原先等待全部状态查询结束才首次渲染，且 Docker 查询使用同步 Tauri 命令，会阻塞界面线程。

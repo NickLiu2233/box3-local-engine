@@ -20,12 +20,12 @@
 
 ```js
 async function punish(playerEntity, incidentId) {
-  const ban = await world.moderation.banPlayer(playerEntity.player, {
-    reason: '持续异常操作',
-    durationSeconds: 600,
-    requestId: `spam-${incidentId}`,
-  })
-  return ban.id
+    const ban = await world.moderation.banPlayer(playerEntity.player, {
+        reason: '持续异常操作',
+        durationSeconds: 600,
+        requestId: `spam-${incidentId}`,
+    });
+    return ban.id;
 }
 ```
 
@@ -45,19 +45,19 @@ async function punish(playerEntity, incidentId) {
 
 ```js
 await world.moderation.revokeBan(banId, {
-  reason: '复核后解除',
-  requestId: `review-${incidentId}`,
-})
+    reason: '复核后解除',
+    requestId: `review-${incidentId}`,
+});
 ```
 
 处罚统一全服，账号封禁会禁止登录并在后台显示封禁状态。脚本参数不再提供 `scope`，后台也不再选择处罚范围。旧的服主地图授权会升级为全服授权；已有处罚保留原范围和截止时间，不会追溯扩大处罚。脚本返回的处罚记录不包含范围字段。
 
 ```js
 await world.moderation.banCurrentIP(playerEntity.player, {
-  reason: '确认的恶意请求',
-  durationSeconds: 600,
-  requestId: `abuse-${incidentId}`,
-})
+    reason: '确认的恶意请求',
+    durationSeconds: 600,
+    requestId: `abuse-${incidentId}`,
+});
 ```
 
 共享网络里的多个玩家可能使用同一个 IP，优先使用账号封禁。无效地址、本机回环地址不能由脚本封禁。后台管理会话使用中的 IP 可以封禁：处罚只限制玩家登录和游戏连接，不影响独立的后台管理登录和会话。
@@ -72,9 +72,9 @@ await world.moderation.banCurrentIP(playerEntity.player, {
 
 ```js
 try {
-  await world.moderation.banPlayer(playerEntity.player, { reason: '违规', durationSeconds: 600 })
+    await world.moderation.banPlayer(playerEntity.player, { reason: '违规', durationSeconds: 600 });
 } catch (error) {
-  console.log(error.status, error.code, error.msg)
+    console.log(error.status, error.code, error.msg);
 }
 // 例如：{ status: 'MODERATION_ACTION_FORBIDDEN', code: 41305, msg: '授权不允许此操作' }
 ```
@@ -99,16 +99,19 @@ try {
 
 ```js
 const results = await world.moderation.banCurrentDevice(
-  world.querySelectorAll('player').map((entity) => entity.player),
-  {
-    reason: '违规设备',
-    durationSeconds: 0,
-    requestId: 'device-batch-001',
-  },
-)
+    world.querySelectorAll('player').map((entity) => entity.player),
+    {
+        reason: '违规设备',
+        durationSeconds: 0,
+        requestId: 'device-batch-001',
+    },
+);
 for (const result of results) {
-  if (result.success === true) console.log(result.index, result.ban.id)
-  else console.log(result.index, result.error)
+    if (result.success === true) {
+        console.log(result.index, result.ban.id);
+    } else {
+        console.log(result.index, result.error);
+    }
 }
 ```
 
@@ -120,13 +123,13 @@ for (const result of results) {
 
 ```js
 const page = await world.moderation.listBans({
-  player: playerEntity.player, // 可省略，省略时查询本图发起的全部处罚
-  kind: 'account', // 可省略，也支持 ip、device
-  status: 'all', // 可省略，也支持 active、expired、revoked
-  page: 1,
-  pageSize: 20,
-})
-const detail = await world.moderation.getBan(banId)
+    player: playerEntity.player, // 可省略，省略时查询本图发起的全部处罚
+    kind: 'account', // 可省略，也支持 ip、device
+    status: 'all', // 可省略，也支持 active、expired、revoked
+    page: 1,
+    pageSize: 20,
+});
+const detail = await world.moderation.getBan(banId);
 ```
 
 `listBans` 返回 `{ items, total, page, pageSize }`，按创建时间从新到旧排列，每页最多 50 条。记录包含处罚 ID、账号 ID、类型、原因、创建时间、到期时间、解除时间、状态和剩余秒数；永久有效处罚的剩余秒数为 `null`，已过期或已解除为 `0`。
@@ -161,13 +164,13 @@ npm --prefix apps/game run build:script-types
 
 ```json
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "lib": ["ES2020"],
-    "checkJs": true,
-    "skipLibCheck": true
-  },
-  "include": ["**/*.js", "box3-server-api.d.ts"]
+    "compilerOptions": {
+        "target": "ES2020",
+        "lib": ["ES2020"],
+        "checkJs": true,
+        "skipLibCheck": true
+    },
+    "include": ["**/*.js", "box3-server-api.d.ts"]
 }
 ```
 

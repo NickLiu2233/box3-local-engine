@@ -18,11 +18,11 @@ CLI 应把每台 Creator 服务器保存为独立 Profile。Profile 可以使用
 
 ```json
 {
-  "defaultProfile": "local",
-  "profiles": {
-    "local": { "endpoint": "http://127.0.0.1:3127" },
-    "staging": { "endpoint": "https://creator.staging.example.com" }
-  }
+    "defaultProfile": "local",
+    "profiles": {
+        "local": { "endpoint": "http://127.0.0.1:3127" },
+        "staging": { "endpoint": "https://creator.staging.example.com" }
+    }
 }
 ```
 
@@ -66,10 +66,10 @@ Content-Type: application/json
 
 ```json
 {
-  "id": "18 位十六进制 token id",
-  "name": "CI deploy",
-  "scopes": ["projects.list", "scripts.update"],
-  "token": "bxc_..."
+    "id": "18 位十六进制 token id",
+    "name": "CI deploy",
+    "scopes": ["projects.list", "scripts.update"],
+    "token": "bxc_..."
 }
 ```
 
@@ -97,11 +97,11 @@ GET /api/creator/v1/health
 
 ```json
 {
-  "apiVersion": "v1",
-  "engineVersion": "0.3.0",
-  "serverInstanceId": "local-engine",
-  "issuer": "local-engine",
-  "deploymentMode": "creator"
+    "apiVersion": "v1",
+    "engineVersion": "0.3.0",
+    "serverInstanceId": "local-engine",
+    "issuer": "local-engine",
+    "deploymentMode": "creator"
 }
 ```
 
@@ -170,11 +170,11 @@ Next 请求体限制已配置为 22 MiB，为 JSON 包装预留空间；最终�
 
 ```json
 {
-  "entry": "gameplay.js",
-  "side": "server",
-  "revision": "...",
-  "hash": "Qm...",
-  "shared": true
+    "entry": "gameplay.js",
+    "side": "server",
+    "revision": "...",
+    "hash": "Qm...",
+    "shared": true
 }
 ```
 

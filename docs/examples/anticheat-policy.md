@@ -13,24 +13,24 @@
 
 ```js
 const mapAnticheat = installMapAnticheat(world, {
-  observeOnly: true,
-  historySize: 64,
-  spawnGraceTicks: 48,
-  entities: world.querySelectorAll('player'),
-  movement: {
-    limits(entity, event) {
-      return movementLimitsFor(entity, event)
+    observeOnly: true,
+    historySize: 64,
+    spawnGraceTicks: 48,
+    entities: world.querySelectorAll('player'),
+    movement: {
+        limits(entity, event) {
+            return movementLimitsFor(entity, event);
+        },
     },
-  },
-  action: {
-    originRadius: serverCameraOriginTolerance,
-    maxPresses: 1,
-    cooldownTicks: { action0: weaponCooldownTicks, action1: buildCooldownTicks },
-    validate(event, action, entity) {
-      return validateWeaponOrBuild(event, action, entity)
+    action: {
+        originRadius: serverCameraOriginTolerance,
+        maxPresses: 1,
+        cooldownTicks: { action0: weaponCooldownTicks, action1: buildCooldownTicks },
+        validate(event, action, entity) {
+            return validateWeaponOrBuild(event, action, entity);
+        },
     },
-  },
-})
+});
 ```
 
 `movement.limits` 同步返回以下非负有限数，使用引擎物理单位：
@@ -50,7 +50,7 @@ const mapAnticheat = installMapAnticheat(world, {
 
 ```js
 // 仅在服务器已验证并执行的技能/冲量逻辑中调用。
-mapAnticheat.exemptMovement(entity.player, 3, '服务器击退同步')
+mapAnticheat.exemptMovement(entity.player, 3, '服务器击退同步');
 ```
 
 豁免按服务端脚本时钟到期，只影响该模块的移动规则，不影响攻击、身份、归属、重复包检查。不能把客户端自报的技能/豁免直接传入。
@@ -61,10 +61,10 @@ mapAnticheat.exemptMovement(entity.player, 3, '服务器击退同步')
 
 ```js
 return validateAnticheatRay(world, action, {
-  origin: serverEyePosition(entity),
-  maxDistance: serverWeaponRange(entity.player),
-  ignoreSelector: '#' + entity.id,
-})
+    origin: serverEyePosition(entity),
+    maxDistance: serverWeaponRange(entity.player),
+    ignoreSelector: '#' + entity.id,
+});
 ```
 
 起点由服务端相机/武器逻辑计算，不采用客户端的起点作为权威起点。方向归一化后使用服务端距离上限查询；候选实体必须与服务端首个命中实体相同，候选方块必须与服务端命中坐标相同。没有声明命中（负射线距离）的空击允许通过，地图结算仍须使用经过验证的服务端结果。
