@@ -2,9 +2,6 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const ts = require(
-    require.resolve('typescript', { paths: [path.join(__dirname, '../../apps/player-launcher')] }),
-);
 
 function frontendFiles(root, extension) {
     const directory = path.join(root, 'apps/deployment-manager/src');
@@ -23,6 +20,14 @@ function frontendSource(root, extension = '.js') {
 
 /** Locate a selector's forEach callback without depending on indentation or semicolons. */
 function querySelectorCallback(source, selector) {
+    const ts = require(
+        require.resolve('typescript', {
+            paths: [
+                path.join(__dirname, '../../apps/player-launcher'),
+                path.join(__dirname, '../../internals/apis'),
+            ],
+        }),
+    );
     const file = ts.createSourceFile(
         'frontend.js',
         source,

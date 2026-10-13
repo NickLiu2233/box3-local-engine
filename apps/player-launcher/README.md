@@ -1,5 +1,7 @@
 # BOX3 玩家启动器
 
+仓库统一原生开发入口为 `rush dev-player-launcher`（或根目录 `npm run dev:player-launcher`），会先准备 API 编译依赖，再复用本应用的 Electron/Vite 流程。安装包通过 `rush package-player-launcher --target macos-arm64` 等目标生成；完整入口见[Rush 工作区](../../docs/rush-workspace.md)。
+
 独立的 Electron + Chromium 玩家客户端；不包含 Docker、服主密钥、后台管理或服务器配置能力。
 
 当前 Electron / TypeScript 版本已提供：

@@ -4,12 +4,14 @@ const fs = require('fs');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { createDevelopmentEnvironment } = require('./dev-environment');
+const { developmentBuildPlan } = require('./workspace-projects');
 
 const repoRoot = path.resolve(__dirname, '..');
 const children = new Set();
 const isWindows = process.platform === 'win32';
 const args = new Set(process.argv.slice(2));
 const creatorOnly = args.has('--creator-only');
+const includeAdmin = !args.has('--no-admin');
 const gameRoot = path.join(repoRoot, 'apps/game');
 const baseGameTsconfig = path.join(gameRoot, 'tsconfig.json');
 
@@ -113,6 +115,18 @@ function prepareGameTsconfigs() {
 }
 
 try {
+    for (const project of developmentBuildPlan(repoRoot)) {
+        console.log(`准备开发依赖：${project.name}`);
+        const result = spawnSync(isWindows ? 'npm.cmd' : 'npm', ['run', 'build'], {
+            cwd: path.join(repoRoot, project.folder),
+            env: sharedEnv,
+            stdio: 'inherit',
+            shell: isWindows,
+        });
+        if (result.error || result.status !== 0) {
+            throw result.error || new Error(`开发依赖构建失败：${project.name}`);
+        }
+    }
     startInfrastructure();
 
     const localEngineRoot = path.join(repoRoot, 'apps/local-engine');
@@ -170,12 +184,8 @@ try {
         });
     }
 
-    const nextExecutable = path.join(
-        voxaRoot,
-        'node_modules/.bin',
-        isWindows ? 'next.cmd' : 'next',
-    );
-    start('voxa', nextExecutable, ['dev', '-p', '3123'], {
+    const nextExecutable = require.resolve('next/dist/bin/next', { paths: [voxaRoot] });
+    start('voxa', process.execPath, [nextExecutable, 'dev', '-p', '3123'], {
         cwd: voxaRoot,
         env: {
             BOX_PLAYER_SERVICE_INTERNAL_URL: 'http://127.0.0.1:3124',
@@ -184,19 +194,36 @@ try {
         },
     });
 
-    start('auth-portal', process.execPath, ['server.js'], {
-        cwd: portalRoot,
-        env: {
-            AUTH_DEMO_HOST: '127.0.0.1',
-            AUTH_DEMO_PORT: '3125',
-            AUTH_DEMO_PLAYER_SERVICE_URL: 'http://127.0.0.1:3124',
-            AUTH_DEMO_PUBLIC_URL: 'http://127.0.0.1:3125',
-            AUTH_DEMO_CREATOR_URL: 'http://127.0.0.1:3127',
-            AUTH_DEMO_PLAY_URL: 'http://127.0.0.1:3121',
-            AUTH_DEMO_API_KEY: sharedEnv.BOX_PLAYER_AUTH_API_KEY,
-            AUTH_DEMO_REGISTRATION_ENABLED: 'true',
+    start(
+        'auth-portal',
+        process.execPath,
+        ['--watch', '--import', 'tsx', 'scripts/tasks.ts', 'dev', '--live'],
+        {
+            cwd: portalRoot,
+            env: {
+                HOST: '127.0.0.1',
+                PORT: '3125',
+                AUTH_DEMO_PLAYER_SERVICE_URL: 'http://127.0.0.1:3124',
+                AUTH_DEMO_PUBLIC_URL: 'http://127.0.0.1:3125',
+                AUTH_DEMO_CREATOR_URL: 'http://127.0.0.1:3127',
+                AUTH_DEMO_PLAY_URL: 'http://127.0.0.1:3121',
+                AUTH_DEMO_API_KEY: sharedEnv.BOX_PLAYER_AUTH_API_KEY,
+                AUTH_DEMO_REGISTRATION_ENABLED: 'true',
+            },
         },
-    });
+    );
+
+    if (includeAdmin) {
+        const adminRoot = path.join(repoRoot, 'apps/player-admin');
+        const executable = path.join(
+            path.dirname(require.resolve('@umijs/max/package.json', { paths: [adminRoot] })),
+            'bin/max.js',
+        );
+        start('player-admin', process.execPath, [executable, 'dev'], {
+            cwd: adminRoot,
+            env: { PORT: '8000', PLAYER_ADMIN_DEV_API_URL: 'http://127.0.0.1:3124' },
+        });
+    }
 
     console.log('\n开发服务已启动：');
     console.log('  Creator        http://127.0.0.1:3127/');
@@ -206,6 +233,9 @@ try {
     console.log('  VOXA           http://127.0.0.1:3123/');
     console.log('  Player Service http://127.0.0.1:3124/');
     console.log('  Auth Portal    http://127.0.0.1:3125/');
+    if (includeAdmin) {
+        console.log('  Player Admin   http://127.0.0.1:8000/');
+    }
     console.log(
         '\n按 Ctrl-C 停止源码服务。默认不会启动或停止 Docker 基础服务；需要时使用 rush dev --infra。',
     );

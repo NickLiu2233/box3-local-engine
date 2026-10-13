@@ -70,16 +70,17 @@ Rush 是仓库唯一的 Monorepo 入口。`rush.json` 是项目清单，`common/
 
 根 `package.json` 提供等价的 npm 入口，便于不知道 Rush 命令的新贡献者查找：
 
-| 任务                 | Rush 命令          | npm 别名              |
-| -------------------- | ------------------ | --------------------- |
-| 安装锁定依赖         | `rush install`     | `npm run install:all` |
-| 更新依赖锁           | `rush update`      | `npm run update:all`  |
-| 启动完整开发栈       | `rush dev`         | `npm run dev`         |
-| 启动开发栈及基础服务 | `rush dev --infra` | `npm run dev:infra`   |
-| 独立查看 API 文档    | —                  | `npm run api:docs`    |
-| 全量构建             | `rush build`       | `npm run build`       |
-| 格式化               | `rush format`      | `npm run format`      |
-| 完整验证             | `rush verify`      | `npm run verify`      |
+| 任务                 | Rush 命令              | npm 别名                  |
+| -------------------- | ---------------------- | ------------------------- |
+| 安装锁定依赖         | `rush install`         | `npm run install:all`     |
+| 更新依赖锁           | `rush update`          | `npm run update:all`      |
+| 启动完整开发栈       | `rush dev`             | `npm run dev`             |
+| 启动开发栈及基础服务 | `rush dev --infra`     | `npm run dev:infra`       |
+| 检查项目登记         | `rush workspace-check` | `npm run check:workspace` |
+| 独立查看 API 文档    | `rush api-docs`        | `npm run api:docs`        |
+| 全量构建             | `rush build`           | `npm run build`           |
+| 格式化               | `rush format`          | `npm run format`          |
+| 完整验证             | `rush verify`          | `npm run verify`          |
 
 npm 别名的额外参数必须放在 `--` 后，例如：
 
@@ -103,6 +104,7 @@ npm run dev
 | VOXA               | `http://127.0.0.1:3123/` |
 | Player Service API | `http://127.0.0.1:3124/` |
 | 参考登录门户       | `http://127.0.0.1:3125/` |
+| 玩家后台           | `http://127.0.0.1:8000/` |
 
 `rush dev` 默认使用 `.env` 中已有的 PostgreSQL/Redis，不会启动或停止 Docker 基础服务。需要本机开发数据库时执行（等价于 `rush dev --infra`）：
 
@@ -116,7 +118,7 @@ npm run dev:infra
 npm run dev:creator
 ```
 
-玩家管理前端不由 `rush dev` 启动。开发后台页面时保留上述 Player Service，并在另一个终端运行：
+玩家管理前端默认由 `rush dev` 启动。已有 Player Service、只开发后台时，使用 `npm run dev:admin`，或在项目目录执行：
 
 ```bash
 cd apps/player-admin
@@ -124,6 +126,8 @@ npm run dev
 ```
 
 访问 `http://127.0.0.1:8000/`。Umi 会把 `/api` 代理到 `3124`；生产发行版则把构建结果挂载在 Player Service 根路径，不需要独立前端进程。
+
+`rush dev --no-admin` 可关闭默认后台前端；`rush dev-player-launcher` 启动原生玩家启动器，`rush dev-manager` 预览部署管理器。项目登记、独立入口和打包/部署命令见[Rush 工作区指南](docs/rush-workspace.md)。
 
 Creator、Play 和 Player Service 使用独立的 `.next-*` 与临时 tsconfig。前端页面通常支持热更新；`apps/local-engine/src/`、`services/game-server/src/` 和公共包构建产物变化后通常需要重启开发栈。
 

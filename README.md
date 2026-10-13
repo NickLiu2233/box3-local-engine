@@ -79,6 +79,7 @@ Player Admin 在发行镜像中构建进 Player Service，不是第七个业务�
 git clone https://github.com/ifishcool/box-local-engine.git
 cd box-local-engine
 npm run install:all
+npm run check:workspace
 cp .env.docker.example .env
 ```
 
@@ -90,7 +91,7 @@ cp .env.docker.example .env
 npm run dev
 ```
 
-`rush dev` 直接运行 Creator、Play、VOXA、Player Service 和参考登录门户源码，默认连接 `.env` 中已有的 PostgreSQL/Redis。没有可用基础服务时使用：
+`rush dev` 先准备共享编译依赖，再运行 Creator、Play、VOXA、Player Service、参考登录门户和玩家后台源码，默认连接 `.env` 中已有的 PostgreSQL/Redis。没有可用基础服务时使用：
 
 ```bash
 npm run dev:infra
@@ -102,14 +103,15 @@ npm run dev:infra
 npm run dev:creator
 ```
 
-后台管理前端需要另开终端启动：
+后台管理前端默认已启动在 `8000`。只开发该前端、已有 Player Service 时，可单独执行：
 
 ```bash
-cd apps/player-admin
-npm run dev
+npm run dev:admin
 ```
 
 开发页面访问 `http://127.0.0.1:8000/`，请求会代理到 Player Service `3124`。发行模式不需要单独启动该前端。
+
+玩家启动器用 `npm run dev:player-launcher`，部署管理器前端用 `npm run dev:manager`。项目登记、Rush/npm 命令对照及已有镜像部署见[Rush 工作区指南](docs/rush-workspace.md)。
 
 API 文档可单独通过 `npm run api:docs` 启动。提交改动前运行 `npm run verify`（等价于 `rush verify`）；详细开发步骤见[贡献者指南](CONTRIBUTING.md)，镜像与桌面打包命令见[构建与分发](docs/release-and-distribution.md)。
 

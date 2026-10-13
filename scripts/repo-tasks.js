@@ -58,12 +58,14 @@ function prepareTestDependencies() {
 }
 
 function check() {
+    node('scripts/rush-project-command.js', ['workspace-check']);
     prepareTestDependencies();
     npmScript('internals/apis', 'test');
     run(process.execPath, [
         '--test',
         'scripts/dev-environment.test.js',
         'scripts/repo-tasks.test.js',
+        'scripts/workspace-projects.test.js',
         'scripts/docker-engine-build.test.js',
         'scripts/deployment-manager-build.test.js',
         'scripts/deployment-manager-structure.test.js',

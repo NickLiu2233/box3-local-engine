@@ -26,6 +26,9 @@ if (command === 'package-images') {
     run('package-offline-images.js', [option('architecture'), option('service')].filter(Boolean));
 }
 if (command === 'package-desktop') {
+    if (!option('target')) {
+        throw new Error('package-desktop 必须指定 --target。');
+    }
     run('package-release.js', [
         'desktop',
         option('target'),

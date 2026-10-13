@@ -14,7 +14,7 @@ cp .env.docker.example .env
 npm run dev:infra
 ```
 
-后台开发还需另开终端运行 `cd apps/player-admin && npm run dev`，访问 8000 端口。环境准备与验证限制见[开发手册](./developer-guide.md)和[当前状态](./current-status.md)。
+开发栈默认包含 8000 端口的玩家后台，单独开发该前端使用 `rush dev-admin`。环境准备与验证限制见[开发手册](./developer-guide.md)、[Rush 工作区](./rush-workspace.md)和[当前状态](./current-status.md)。
 
 ## Fork 与 Pull Request
 

@@ -24,6 +24,66 @@
     },
     {
       "commandKind": "global",
+      "name": "workspace-check",
+      "summary": "Check main project registration and workspace dependencies.",
+      "shellCommand": "node scripts/rush-project-command.js workspace-check"
+    },
+    {
+      "commandKind": "global",
+      "name": "dev-admin",
+      "summary": "Prepare dependencies and start the player administration frontend.",
+      "shellCommand": "node scripts/rush-project-command.js dev-admin"
+    },
+    {
+      "commandKind": "global",
+      "name": "dev-manager",
+      "summary": "Prepare dependencies and start the deployment manager frontend.",
+      "shellCommand": "node scripts/rush-project-command.js dev-manager"
+    },
+    {
+      "commandKind": "global",
+      "name": "dev-player-launcher",
+      "summary": "Prepare dependencies and start the native player launcher with Vite.",
+      "shellCommand": "node scripts/rush-project-command.js dev-player-launcher"
+    },
+    {
+      "commandKind": "global",
+      "name": "api-generate",
+      "summary": "Generate the shared HTTP API contract and client.",
+      "shellCommand": "node scripts/rush-project-command.js api-generate"
+    },
+    {
+      "commandKind": "global",
+      "name": "api-check",
+      "summary": "Check the shared HTTP API contract and generated client.",
+      "shellCommand": "node scripts/rush-project-command.js api-check"
+    },
+    {
+      "commandKind": "global",
+      "name": "api-build",
+      "summary": "Build the shared HTTP API package.",
+      "shellCommand": "node scripts/rush-project-command.js api-build"
+    },
+    {
+      "commandKind": "global",
+      "name": "api-docs",
+      "summary": "Start the standalone Swagger documentation server.",
+      "shellCommand": "node scripts/rush-project-command.js api-docs"
+    },
+    {
+      "commandKind": "global",
+      "name": "package-player-launcher",
+      "summary": "Build a standalone player launcher installer.",
+      "shellCommand": "node scripts/rush-project-command.js package-player-launcher"
+    },
+    {
+      "commandKind": "global",
+      "name": "deploy-service",
+      "summary": "Start a configured service using existing Docker images.",
+      "shellCommand": "node scripts/rush-project-command.js deploy-service"
+    },
+    {
+      "commandKind": "global",
       "name": "format",
       "summary": "Format the repository.",
       "shellCommand": "node scripts/repo-tasks.js format"
@@ -103,6 +163,34 @@
       "associatedCommands": ["dev", "dev-creator"]
     },
     {
+      "parameterKind": "flag",
+      "longName": "--no-admin",
+      "description": "Do not start the optional player administration frontend.",
+      "associatedCommands": ["dev", "dev-creator"]
+    },
+    {
+      "parameterKind": "flag",
+      "longName": "--native",
+      "description": "Start the deployment manager through its existing Tauri development command.",
+      "associatedCommands": ["dev-manager"]
+    },
+    {
+      "parameterKind": "flag",
+      "longName": "--dry-run",
+      "description": "Print the selected project and dependency preparation plan without starting processes.",
+      "associatedCommands": [
+        "dev-admin",
+        "dev-manager",
+        "dev-player-launcher",
+        "api-generate",
+        "api-check",
+        "api-build",
+        "api-docs",
+        "package-player-launcher",
+        "deploy-service"
+      ]
+    },
+    {
       "parameterKind": "choice",
       "longName": "--architecture",
       "description": "Target Linux architecture.",
@@ -123,8 +211,8 @@
       "parameterKind": "string",
       "longName": "--service",
       "argumentName": "SERVICE",
-      "description": "Optional single image service name.",
-      "associatedCommands": ["package-images"]
+      "description": "Image service name, or configured service to start with deploy-service.",
+      "associatedCommands": ["package-images", "deploy-service"]
     },
     {
       "parameterKind": "choice",
@@ -156,8 +244,7 @@
           "description": "Linux ARM64"
         }
       ],
-      "associatedCommands": ["package-desktop"],
-      "required": true
+      "associatedCommands": ["package-desktop", "package-player-launcher"]
     },
     {
       "parameterKind": "string",

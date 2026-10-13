@@ -118,15 +118,16 @@ rush dev --infra
 
 对应 npm 别名为 `npm run dev` 和 `npm run dev:infra`。
 
-| 服务            | 地址                     | 用途                 |
-| --------------- | ------------------------ | -------------------- |
-| Creator         | `http://127.0.0.1:3127/` | 地图工程、编辑和发布 |
-| Play            | `http://127.0.0.1:3121/` | 地图大厅、房间和游玩 |
-| VOXA            | `http://127.0.0.1:3123/` | 模型、皮肤和动画编辑 |
-| Player Service  | `http://127.0.0.1:3124/` | 登录与后台管理 API   |
-| 参考登录门户    | `http://127.0.0.1:3125/` | 注册、登录和回跳示例 |
-| Creator Runtime | `9966/9967`              | Creator 游戏运行时   |
-| Play Runtime    | `9971`                   | Play 游戏运行时      |
+| 服务            | 地址                     | 用途                    |
+| --------------- | ------------------------ | ----------------------- |
+| Creator         | `http://127.0.0.1:3127/` | 地图工程、编辑和发布    |
+| Play            | `http://127.0.0.1:3121/` | 地图大厅、房间和游玩    |
+| VOXA            | `http://127.0.0.1:3123/` | 模型、皮肤和动画编辑    |
+| Player Service  | `http://127.0.0.1:3124/` | 登录与后台管理 API      |
+| 参考登录门户    | `http://127.0.0.1:3125/` | 注册、登录和回跳示例    |
+| 玩家后台        | `http://127.0.0.1:8000/` | 默认启动的独立 Umi 前端 |
+| Creator Runtime | `9966/9967`              | Creator 游戏运行时      |
+| Play Runtime    | `9971`                   | Play 游戏运行时         |
 
 `rush dev` 直接运行源码，不会构建或启动业务镜像；只有显式传入 `--infra` 才会管理开发 PostgreSQL/Redis。停止开发命令时，不要顺手删除数据库卷。
 
@@ -140,7 +141,7 @@ rush dev-creator --infra
 
 ### 后台管理前端
 
-后台管理的 Umi 前端为了保持独立热更新，不包含在 `rush dev` 进程中。先保持 Player Service 和 PostgreSQL 运行，再另开终端：
+后台管理的 Umi 前端默认随 `rush dev` 独立启动，保留自己的热更新。已有 Player Service 和 PostgreSQL、只开发后台时，执行 `rush dev-admin` 或在项目目录启动：
 
 ```bash
 cd apps/player-admin
@@ -190,6 +191,8 @@ npm run api:build
 不能只隐藏前端按钮。账号、权限、付费、奖励和权威存档也不能交给客户端脚本决定。
 
 ## 7. Rush 日常开发命令
+
+全部主 npm 项目已登记在 Rush；新增或移动项目后执行 `rush workspace-check`。API、后台、部署管理器、原生玩家启动器和安装包的统一入口见[Rush 工作区指南](./rush-workspace.md)。`rush dev --no-admin` 可关闭默认后台前端。
 
 在仓库根目录执行跨项目命令：
 

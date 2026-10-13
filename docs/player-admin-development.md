@@ -31,7 +31,7 @@
 rush dev-creator --infra
 ```
 
-然后在另一个终端启动 Umi：
+上述命令已默认启动 Umi。已有 Player Service、只开发前端时，使用 `rush dev-admin`，或在项目目录运行：
 
 ```bash
 cd apps/player-admin
