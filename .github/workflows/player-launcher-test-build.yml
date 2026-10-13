@@ -1,0 +1,148 @@
+name: Test Build BOX3 Player Launcher
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: player-test-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
+  OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
+  OSS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
+  OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
+  PLAYER_BUILD_CHANNEL: testing
+jobs:
+  merge-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Require a merged pull request
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/github-build-gate.js merge staging
+
+  validate:
+    needs: merge-gate
+    if: needs.merge-gate.outputs.merged == 'true'
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Validate player test branch and OSS configuration
+        id: version
+        run: node --experimental-strip-types apps/player-launcher/scripts/release.mts validate
+  installers:
+    needs: validate
+    name: Package (${{ matrix.target }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: windows-amd64
+            runner: windows-2022
+            architecture: x64
+          - target: windows-arm64
+            runner: windows-11-arm
+            architecture: arm64
+          - target: macos-arm64
+            runner: macos-14
+            architecture: arm64
+          - target: linux-amd64
+            runner: ubuntu-22.04
+            architecture: x64
+          - target: linux-arm64
+            runner: ubuntu-22.04-arm
+            architecture: arm64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          architecture: ${{ matrix.architecture }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: ${{ matrix.architecture }}
+      - name: Install OSS-compatible transfer client
+        run: python -m pip install --disable-pip-version-check awscli==1.42.35
+      - name: Install Linux Electron and AppImage dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            xvfb xauth libgtk-3-0 libnss3 libasound2 libgbm1 libxss1 \
+            libatk-bridge2.0-0 libdrm2 libx11-xcb1 libxtst6 libfuse2
+      - name: Install player workspace dependencies
+        run: node common/scripts/install-run-rush.js install --to @box/player-launcher
+      - name: Build and verify generated API client
+        run: |
+          npm --prefix internals/apis run build
+          npm --prefix internals/apis run check:openapi
+      - name: Check player sources and regressions
+        run: npm --prefix apps/player-launcher run check
+      - name: Test desktop and real resource cache
+        timeout-minutes: 6
+        if: runner.os != 'Linux'
+        run: |
+          npm --prefix apps/player-launcher run test:desktop
+          npm --prefix apps/player-launcher run test:menu
+          npm --prefix apps/player-launcher run test:cache
+      - name: Test Linux desktop and real resource cache
+        timeout-minutes: 6
+        if: runner.os == 'Linux'
+        run: |
+          xvfb-run -a npm --prefix apps/player-launcher run test:desktop
+          xvfb-run -a npm --prefix apps/player-launcher run test:menu
+          xvfb-run -a npm --prefix apps/player-launcher run test:cache
+      - name: Build and verify Windows player installer
+        if: runner.os == 'Windows'
+        env:
+          CSC_LINK: ${{ secrets.PLAYER_WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.PLAYER_WINDOWS_CSC_KEY_PASSWORD }}
+        run: >-
+          node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{
+          matrix.target }}
+      - name: Build and verify macOS player installer
+        if: runner.os == 'macOS'
+        env:
+          CSC_LINK: ${{ secrets.PLAYER_MACOS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.PLAYER_MACOS_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.PLAYER_APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.PLAYER_APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.PLAYER_APPLE_TEAM_ID }}
+        run: >-
+          node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{
+          matrix.target }}
+      - name: Build and verify Linux player AppImage
+        if: runner.os == 'Linux'
+        run: >-
+          xvfb-run -a node --experimental-strip-types apps/player-launcher/scripts/release.mts build
+          ${{ matrix.target }}
+      - name: Upload verified player installer to Aliyun OSS
+        timeout-minutes: 35
+        run: >-
+          node --experimental-strip-types apps/player-launcher/scripts/release.mts upload ${{
+          matrix.target }}

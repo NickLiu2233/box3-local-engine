@@ -1,0 +1,123 @@
+name: Test Build BOX3 Local Engine
+
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-build-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
+  OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
+  OSS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
+  OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
+  # Never use the stable distribution directory or a mutable latest pointer.
+  OSS_TEST_PREFIX: local-engine-testing/${{ github.sha }}/${{ github.run_id }}-${{ github.run_attempt }}
+
+jobs:
+  merge-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Require a merged pull request
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/github-build-gate.js merge staging
+
+  images:
+    needs: merge-gate
+    if: needs.merge-gate.outputs.merged == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - architecture: amd64
+            runner: ubuntu-latest
+          - architecture: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    env:
+      BOX_IMAGE_TAG: test-${{ github.sha }}-linux-${{ matrix.architecture }}
+      BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
+      BOX_BUILD_COMMIT: ${{ github.sha }}
+      BOX_BUILD_SOURCE: github-actions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - uses: docker/setup-buildx-action@v3
+      - name: Validate test build configuration
+        run: |
+          node scripts/sync-root-version.js --check
+          for variable_name in OSS_BUCKET OSS_ENDPOINT OSS_ACCESS_KEY_ID OSS_ACCESS_KEY_SECRET; do
+            if [ -z "${!variable_name:-}" ]; then
+              echo "Missing OSS configuration: $variable_name" >&2
+              exit 1
+            fi
+          done
+          case "$OSS_BUCKET" in
+            oss://*|*/*) echo 'OSS_BUCKET must be a bucket name.' >&2; exit 1 ;;
+          esac
+          case "$OSS_ENDPOINT" in
+            http://*|https://*|*/*) echo 'OSS_ENDPOINT must be a hostname.' >&2; exit 1 ;;
+          esac
+          case "$OSS_TEST_PREFIX" in
+            local-engine-testing/*) ;;
+            *) echo 'Unsafe test upload prefix.' >&2; exit 1 ;;
+          esac
+      - name: Free temporary runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/share/powershell /usr/local/lib/heroku
+          docker system prune --all --force --volumes || true
+          docker builder prune --all --force || true
+      - name: Build test image archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          export BOX_BUILD_VERSION="$(node -p "require('./package.json').version")"
+          export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
+          mkdir -p test-build
+          for service in player-service player-auth-portal server-manager creator play voxa; do
+            docker compose build "$service"
+            docker builder prune --all --force
+          done
+          docker image save \
+            "box-local-engine-player-service:${BOX_IMAGE_TAG}" \
+            "box-local-engine-player-auth-portal:${BOX_IMAGE_TAG}" \
+            "box-local-engine-server-manager:${BOX_IMAGE_TAG}" \
+            "box-local-engine-creator:${BOX_IMAGE_TAG}" \
+            "box-local-engine-play:${BOX_IMAGE_TAG}" \
+            "box-local-engine-voxa:${BOX_IMAGE_TAG}" \
+            | gzip -1 > "test-build/box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz"
+          (cd test-build && sha256sum *.tar.gz > SHA256SUMS)
+          node -e 'const fs=require("node:fs");const e=process.env;fs.writeFileSync("test-build/BUILD-INFO.json",JSON.stringify({channel:"testing",version:e.BOX_BUILD_VERSION,commit:e.BOX_BUILD_COMMIT,ref:e.GITHUB_REF,imageTag:e.BOX_IMAGE_TAG,platform:e.BOX_PLAY_PLATFORM,date:e.BOX_BUILD_DATE},null,2)+"\n")'
+      - name: Upload test build to Aliyun OSS
+        shell: bash
+        env:
+          ARCHITECTURE: ${{ matrix.architecture }}
+        run: |
+          set -euo pipefail
+          curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
+          destination="oss://$OSS_BUCKET/$OSS_TEST_PREFIX/$ARCHITECTURE/"
+          ossutil cp test-build/ "$destination" --recursive --update
+          printf '### Test build\n\nOSS path: `%s`\n\nImage tag: `%s`\n' \
+            "$destination" "$BOX_IMAGE_TAG" >> "$GITHUB_STEP_SUMMARY"

@@ -116,6 +116,9 @@ function check() {
         'scripts/server-installation-contract.test.js',
         'scripts/server-image-plan.test.js',
         'scripts/server-package-workflow.test.js',
+        'scripts/test-build-workflow.test.js',
+        'scripts/player-test-build-workflow.test.js',
+        'scripts/github-build-gate.test.js',
         'scripts/build-image-downloads.test.js',
     ]);
     node('scripts/check-desktop-deployment-manager.js');

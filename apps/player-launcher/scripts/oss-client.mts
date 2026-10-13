@@ -46,7 +46,21 @@ export function isMissingObject(error:string):boolean {
 }
 
 /** Uses the same OSS S3 compatibility as release.yml's Windows transfer steps. */
-export async function createOssClient(config:OssConfig, execute = runOssProcess) {
+export async function createOssClient(
+    config:OssConfig,
+    execute = runOssProcess,
+    keyPrefix = 'box-player-launcher/player-v',
+) {
+    if (
+        !(
+            keyPrefix.startsWith('box-player-launcher/player-v') ||
+            /^box-player-launcher-testing\/[a-f0-9]{40}\/[1-9]\d*-[1-9]\d*\/$/.test(keyPrefix)
+        ) ||
+        keyPrefix.includes('..') ||
+        keyPrefix.includes('\\')
+    ) {
+        throw new Error('Invalid player OSS scope');
+    }
     const directory = await mkdtemp(path.join(tmpdir(), 'box-player-oss-'));
     const configFile = path.join(directory, 'aws-config');
     await writeFile(
@@ -72,11 +86,7 @@ export async function createOssClient(config:OssConfig, execute = runOssProcess)
         extra:string[] = [],
         allowMissing = false,
     ):Promise<string | null> {
-        if (
-            !key.startsWith('box-player-launcher/player-v') ||
-            key.includes('..') ||
-            key.includes('\\')
-        ) {
+        if (!key.startsWith(keyPrefix) || key.includes('..') || key.includes('\\')) {
             throw new Error('OSS key must stay in the player release directory');
         }
         try {

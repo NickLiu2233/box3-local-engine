@@ -10,7 +10,6 @@ import {
     fileDigest,
     MAC_SIGNATURE_REVISION,
     playerTarget,
-    releaseInfo,
     targetConfiguration,
     targets,
     validateManifest,
@@ -20,6 +19,7 @@ import {
 import { createOssClient, ossConfiguration } from './oss-client.mts';
 import { cachedInstaller, manifestFromHead, manifestMetadata } from './release-cache.mts';
 import { builderEnvironment, macSigningArguments } from './signing-environment.mts';
+import { playerBuildContext } from './build-context.mts';
 
 import type { ArtifactManifest, PlayerTarget } from './release-contract.mts';
 
@@ -27,12 +27,7 @@ const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = path.resolve(appRoot, '../..');
 const require = createRequire(import.meta.url);
 const packageInfo = JSON.parse(await readFile(path.join(appRoot, 'package.json'), 'utf8'));
-const info = releaseInfo(
-    process.env.PLAYER_RELEASE_TAG || process.env.GITHUB_REF_NAME || '',
-    process.env.PLAYER_RELEASE_COMMIT || process.env.GITHUB_SHA || '',
-    packageInfo.version,
-);
-const prefix = `box-player-launcher/${info.tag}`;
+const { channel, info, prefix } = playerBuildContext(process.env, packageInfo.version);
 const outputDirectory = path.join(appRoot, 'release-electron');
 
 async function output(values:Record<string, string>):Promise<void> {
@@ -126,6 +121,9 @@ async function build(target:PlayerTarget):Promise<void> {
         `--config.artifactName=${filename}`,
     ];
     const signingEnv = builderEnvironment(process.env);
+    if (channel === 'testing') {
+        args.push(`--config.extraMetadata.version=${info.version}`);
+    }
     if (mac) {
         args.push(...macSigningArguments(signingEnv));
     }
@@ -194,7 +192,7 @@ async function build(target:PlayerTarget):Promise<void> {
 async function withOss(
     action:(client:Awaited<ReturnType<typeof createOssClient>>) => Promise<void>,
 ):Promise<void> {
-    const client = await createOssClient(ossConfiguration(process.env));
+    const client = await createOssClient(ossConfiguration(process.env), undefined, `${prefix}/`);
     try {
         await action(client);
     } finally {
@@ -205,7 +203,7 @@ async function withOss(
 async function probe(target:PlayerTarget):Promise<void> {
     await withOss(async (oss) => {
         const filename = artifactName(info, target);
-        const hit = await cachedInstaller(oss, info, target);
+        const hit = await cachedInstaller(oss, info, target, prefix);
         await output({ 'cache-hit': String(hit) });
         console.log(
             hit
@@ -247,7 +245,7 @@ async function upload(target:PlayerTarget):Promise<void> {
             throw new Error(`OSS upload verification failed: ${filename}`);
         }
     });
-    console.log(`Uploaded verified player installer: ${filename}`);
+    console.log(`Uploaded verified player installer: ${filename} (${prefix})`);
 }
 
 async function downloadAll():Promise<void> {
@@ -310,7 +308,11 @@ const [command, targetValue] = process.argv.slice(2);
 if (command === 'validate') {
     ossConfiguration(process.env);
     await output({ version: info.version, prerelease: String(info.prerelease) });
-    console.log(`Independent player release validated: ${info.tag}`);
+    console.log(
+        channel === 'testing'
+            ? `Player test build validated: ${info.version} (${prefix})`
+            : `Independent player release validated: ${info.tag}`,
+    );
 } else if (command === 'probe') {
     await probe(playerTarget(targetValue || ''));
 } else if (command === 'build') {
@@ -318,6 +320,9 @@ if (command === 'validate') {
 } else if (command === 'upload') {
     await upload(playerTarget(targetValue || ''));
 } else if (command === 'download') {
+    if (channel !== 'production') {
+        throw new Error('Test builds do not collect a GitHub Release');
+    }
     await downloadAll();
 } else {
     throw new Error(

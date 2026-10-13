@@ -2,8 +2,8 @@ name: Release BOX3 Local Engine
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - release
 
 permissions:
   contents: read
@@ -22,22 +22,45 @@ env:
   # Intermediate build artifacts use a version subdirectory. Stable releases
   # use OSS_SERVER_RELEASE_PREFIX below, which is the origin directory behind
   # https://assets.box3.fun/local-engine/.
-  OSS_BUILD_PREFIX: local-engine/${{ github.ref_name }}
   OSS_SERVER_RELEASE_PREFIX: local-engine
 
 jobs:
-  validate-release:
+  merge-gate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      merged: ${{ steps.merge.outputs.merged }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Require a merged pull request
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/github-build-gate.js merge release
+
+  validate-release:
+    needs: merge-gate
+    if: needs.merge-gate.outputs.merged == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.identity.outputs.version }}
+      tag: ${{ steps.identity.outputs.tag }}
+      prefix: ${{ steps.identity.outputs.prefix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
       - name: Validate release version and OSS configuration
         run: |
           node scripts/sync-root-version.js --check
-          version="$(node -p "require('./package.json').version")"
-          if [ "$GITHUB_REF_NAME" != "v$version" ]; then
-            echo "Release tag $GITHUB_REF_NAME does not match package version v$version." >&2
-            exit 1
-          fi
           for variable_name in OSS_BUCKET OSS_ENDPOINT OSS_ACCESS_KEY_ID OSS_ACCESS_KEY_SECRET; do
             if [ -z "${!variable_name:-}" ]; then
               echo "Missing required GitHub Actions secret for $variable_name." >&2
@@ -57,7 +80,16 @@ jobs:
               ;;
           esac
 
+      - name: Resolve and guard immutable release version
+        id: identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/github-build-gate.js release engine
+
   images:
+    env:
+      BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
+      OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
     needs: validate-release
     strategy:
       fail-fast: false
@@ -92,7 +124,7 @@ jobs:
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          archive="box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
+          archive="box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.tar.gz"
           object="oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive"
           if ossutil stat "$object" >/tmp/oss-stat.txt 2>&1; then
             echo "cache-hit=true" >> "$GITHUB_OUTPUT"
@@ -111,14 +143,14 @@ jobs:
       - name: Build offline images
         if: steps.image-cache.outputs.cache-hit != 'true'
         env:
-          BOX_IMAGE_TAG: ${{ github.ref_name }}-linux-${{ matrix.architecture }}
+          BOX_IMAGE_TAG: ${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}
           BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
         run: |
           # Keep the OCI labels embedded in every image aligned with this
           # release. The desktop launcher reads these labels after importing
           # the offline archive; without them it can only report `unknown`
           # and incorrectly categorises a GitHub build as a local build.
-          export BOX_BUILD_VERSION="${{ github.ref_name }}"
+          export BOX_BUILD_VERSION="${{ env.BOX_RELEASE_TAG }}"
           export BOX_BUILD_COMMIT="${{ github.sha }}"
           export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
           export BOX_BUILD_SOURCE="github-actions"
@@ -142,11 +174,11 @@ jobs:
           docker builder prune --all --force
       - name: Build and upload per-service image downloads
         run: |
-          archive="box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz"
+          archive="box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.tar.gz"
           if ! test -f "$archive"; then
             ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" "$archive"
           fi
-          catalog="box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          catalog="box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
           node scripts/build-image-downloads.js "$archive" '${{ matrix.architecture }}' "$catalog"
           for image in box-local-engine-image-*.tar.gz; do
             ossutil cp "$image" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
@@ -159,11 +191,14 @@ jobs:
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          ossutil cp "box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.tar.gz" \
+          ossutil cp "box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.tar.gz" \
             "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
 
   desktop:
-    needs: images
+    env:
+      BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
+      OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
+    needs: [images, validate-release]
     strategy:
       fail-fast: false
       matrix:
@@ -263,19 +298,19 @@ jobs:
             aws configure set default.s3.addressing_style virtual
             aws configure set default.s3.payload_signing_enabled false
             aws s3api get-object --bucket "$OSS_BUCKET" \
-              --key "$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json" \
-              "apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json" \
+              --key "$OSS_BUILD_PREFIX/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json" \
+              "apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json" \
               --endpoint-url "https://$OSS_ENDPOINT"
           else
             ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json" \
+            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json" \
               apps/local-engine/dist/images/
           fi
       - name: Build lightweight desktop launcher
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
           test -f "$catalog"
           node common/scripts/install-run-rush.js package-desktop \
             --target '${{ matrix.target }}' \
@@ -306,7 +341,10 @@ jobs:
           fi
 
   headless-server:
-    needs: images
+    env:
+      BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
+      OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
+    needs: [images, validate-release]
     strategy:
       fail-fast: false
       matrix:
@@ -328,7 +366,7 @@ jobs:
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
           ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog"
       - name: Install headless package tools
         run: sudo apt-get update && sudo apt-get install -y zip
@@ -338,7 +376,7 @@ jobs:
           BOX_BUILD_SOURCE: github-actions
         run: |
           export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
-          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ github.ref_name }}-linux-${{ matrix.architecture }}.json"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
           node scripts/build-headless-server-package.js '${{ matrix.architecture }}' --catalog "$catalog"
           version=$(node -p "require('./package.json').version")
           node scripts/verify-headless-server-package.js \
@@ -352,7 +390,10 @@ jobs:
           ossutil cp apps/local-engine/dist/server-packages/ "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --recursive --update
 
   publish:
-    needs: [desktop, headless-server]
+    env:
+      BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
+      OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
+    needs: [desktop, headless-server, validate-release]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -365,7 +406,7 @@ jobs:
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           mkdir -p release-files
-          version="${GITHUB_REF_NAME#v}"
+          version="${BOX_RELEASE_TAG#v}"
           for target in windows-amd64 windows-arm64 macos-arm64 linux-amd64 linux-arm64; do
             file="BOX-Local-Engine-${version}-${target}.zip"
             ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/$file" "release-files/$file"
@@ -373,7 +414,7 @@ jobs:
           for architecture in amd64 arm64; do
             file="BOX3-Engine-Server-${version}-linux-${architecture}.zip"
             ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$file" "release-files/$file"
-            catalog="box-local-engine-images-${GITHUB_REF_NAME}-linux-${architecture}.json"
+            catalog="box-local-engine-images-${BOX_RELEASE_TAG}-linux-${architecture}.json"
             ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$catalog" "release-files/$catalog"
             node -e 'for (const image of require("./" + process.argv[1]).images) console.log(image.archive)' "release-files/$catalog" > /tmp/image-downloads.txt
             while IFS= read -r image; do
@@ -384,10 +425,12 @@ jobs:
         run: |
           cp distribution/server/bootstrap.sh release-files/install.sh
           chmod +x release-files/install.sh
-          node scripts/render-release-notes.js "${GITHUB_REF_NAME#v}" release-files/RELEASE-NOTES.md "$(TZ=Asia/Shanghai date +'%Y-%m-%d')"
+          node scripts/render-release-notes.js "${BOX_RELEASE_TAG#v}" release-files/RELEASE-NOTES.md "$(TZ=Asia/Shanghai date +'%Y-%m-%d')"
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.BOX_RELEASE_TAG }}
+          target_commitish: ${{ github.sha }}
           generate_release_notes: true
           body_path: release-files/RELEASE-NOTES.md
           files: |
@@ -396,7 +439,7 @@ jobs:
             release-files/BOX3-Engine-Server-*.zip
       - name: Publish stable Linux installer to OSS
         run: |
-          version="${GITHUB_REF_NAME#v}"
+          version="${BOX_RELEASE_TAG#v}"
           node scripts/build-release-manifest.js "$version" release-files/latest.json "$(TZ=Asia/Shanghai date +'%Y-%m-%d')"
           printf '%s\n' "$version" > release-files/latest.txt
           for target in windows-amd64 windows-arm64 macos-arm64 linux-amd64 linux-arm64; do

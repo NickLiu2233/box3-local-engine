@@ -6,6 +6,38 @@ const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const workflow = fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
+const yaml = require(
+    require.resolve('js-yaml', { paths: [path.join(root, 'tools/repo-tooling')] }),
+);
+const release = yaml.load(workflow);
+assert.deepEqual(release.on.push, { branches: ['release'] });
+assert.equal(release.jobs['validate-release'].needs, 'merge-gate');
+assert.equal(release.jobs['validate-release'].if, "needs.merge-gate.outputs.merged == 'true'");
+assert.ok(
+    release.jobs['merge-gate'].steps.some(
+        (step) => step.run === 'node scripts/github-build-gate.js merge release',
+    ),
+);
+assert.ok(
+    release.jobs['validate-release'].steps.some(
+        (step) => step.run === 'node scripts/github-build-gate.js release engine',
+    ),
+);
+for (const job of ['images', 'desktop', 'headless-server', 'publish']) {
+    assert.equal(
+        release.jobs[job].env.BOX_RELEASE_TAG,
+        '${{ needs.validate-release.outputs.tag }}',
+    );
+    assert.equal(
+        release.jobs[job].env.OSS_BUILD_PREFIX,
+        '${{ needs.validate-release.outputs.prefix }}',
+    );
+}
+const publication = release.jobs.publish.steps.find(
+    (step) => step.uses === 'softprops/action-gh-release@v2',
+);
+assert.equal(publication.with.tag_name, '${{ env.BOX_RELEASE_TAG }}');
+assert.equal(publication.with.target_commitish, '${{ github.sha }}');
 const installerBuilder = fs.readFileSync(
     path.join(root, 'scripts/build-desktop-offline-installer.js'),
     'utf8',
@@ -47,16 +79,16 @@ assert.match(
 assert.match(workflow, /architecture: amd64\s+runner: ubuntu-latest/);
 assert.match(workflow, /architecture: arm64\s+runner: ubuntu-24\.04-arm/);
 assert.match(workflow, /^ {2}validate-release:/m);
-assert.match(workflow, /images:\s+needs: validate-release/);
+assert.equal(release.jobs.images.needs, 'validate-release');
 assert.match(workflow, /sync-root-version\.js --check/);
-assert.match(workflow, /GITHUB_REF_NAME.*v\$version/);
+assert.doesNotMatch(workflow, /GITHUB_REF_NAME|github\.ref_name/);
 assert.doesNotMatch(workflow, /docker\/setup-qemu-action/);
 assert.match(
     workflow,
-    /box-local-engine-images-\$\{\{ github\.ref_name \}\}-linux-\$\{\{ matrix\.architecture \}\}\.tar\.gz/,
+    /box-local-engine-images-\$\{\{ env\.BOX_RELEASE_TAG \}\}-linux-\$\{\{ matrix\.architecture \}\}\.tar\.gz/,
 );
 assert.match(workflow, /docker builder prune --all --force/);
-assert.match(workflow, /export BOX_BUILD_VERSION="\$\{\{ github\.ref_name \}\}"/);
+assert.match(workflow, /export BOX_BUILD_VERSION="\$\{\{ env\.BOX_RELEASE_TAG \}\}"/);
 assert.match(workflow, /export BOX_BUILD_COMMIT="\$\{\{ github\.sha \}\}"/);
 assert.match(
     workflow,
@@ -73,9 +105,9 @@ assert.match(
     installerBuilder,
     /const imageTag = local \? localImageTag\(imageManifest\) : imageManifest\.imageTag/,
 );
-assert.match(workflow, /headless-server:\s+needs: images/);
+assert.deepEqual(release.jobs['headless-server'].needs, ['images', 'validate-release']);
 assert.match(workflow, /node scripts\/build-headless-server-package\.js/);
-assert.match(workflow, /needs: \[desktop, headless-server\]/);
+assert.deepEqual(release.jobs.publish.needs, ['desktop', 'headless-server', 'validate-release']);
 assert.match(
     workflow,
     /files:\s*\|[\s\S]*release-files\/BOX-Local-Engine-\*\.zip[\s\S]*release-files\/BOX3-Engine-Server-\*\.zip/,
@@ -155,7 +187,6 @@ assert.match(
     workflow,
     /OSS_ACCESS_KEY_SECRET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_SECRET\s*\}\}/,
 );
-assert.match(workflow, /OSS_BUILD_PREFIX: local-engine\/\$\{\{ github\.ref_name \}\}/);
 assert.match(workflow, /OSS_SERVER_RELEASE_PREFIX: local-engine/);
 assert.match(workflow, /ALIYUN_OSS_BUCKET must contain only the bucket name/);
 assert.match(workflow, /ALIYUN_OSS_ENDPOINT must be an OSS endpoint hostname/);

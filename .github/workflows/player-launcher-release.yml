@@ -2,8 +2,8 @@ name: Release BOX3 Player Launcher
 
 on:
   push:
-    tags:
-      - 'player-v*'
+    branches:
+      - release
 
 permissions:
   contents: read
@@ -23,19 +23,48 @@ env:
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
 
 jobs:
-  validate:
-    runs-on: ubuntu-24.04
+  merge-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
-      version: ${{ steps.version.outputs.version }}
-      prerelease: ${{ steps.version.outputs.prerelease }}
+      merged: ${{ steps.merge.outputs.merged }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Validate independent player tag and OSS configuration
+      - name: Require a merged pull request
+        id: merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/github-build-gate.js merge release
+
+  validate:
+    needs: merge-gate
+    if: needs.merge-gate.outputs.merged == 'true'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      tag: ${{ steps.identity.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Validate player version and OSS configuration
         id: version
         run: node --experimental-strip-types apps/player-launcher/scripts/release.mts validate
+
+      - name: Guard immutable player version
+        id: identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/github-build-gate.js release player
 
   installers:
     needs: validate
@@ -152,7 +181,8 @@ jobs:
       - name: Publish independent player GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
+          tag_name: ${{ needs.validate.outputs.tag }}
+          target_commitish: ${{ github.sha }}
           name: BOX3 Player Launcher v${{ needs.validate.outputs.version }}
           body_path: player-release-files/release-notes.md
           prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}

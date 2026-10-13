@@ -4,6 +4,7 @@
 
 - [开发入门](./developer-guide.md)：环境、启动、目录和常用命令。
 - [代码规范](./code-style.md)：格式、依赖、模块边界与安全要求。
+- [Release & Version](./release-and-version.md)：测试与正式通道、版本和依赖更新。
 - [贡献指南](../CONTRIBUTING.md)：Fork、验证与 Pull Request。
 - [项目介绍](../README.md)：产品与快速开始。
 

@@ -221,7 +221,7 @@ test('only missing OSS objects are cache misses; authentication/network failures
     );
 });
 
-test('player release workflow is tag-only, checks OSS before installing and leaves engine Latest untouched', async () => {
+test('player release workflow requires a merge, checks OSS before installing and leaves engine Latest untouched', async () => {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
     const release = await readFile(
         path.join(root, '.github/workflows/player-launcher-release.yml'),
@@ -236,11 +236,10 @@ test('player release workflow is tag-only, checks OSS before installing and leav
         } // The ordinary CI workflow is optional.
         throw error;
     });
-    assert.match(release, /tags:\s*\n\s*- 'player-v\*'/);
-    assert.doesNotMatch(
-        release,
-        /workflow_dispatch|branches:|package-images|package-desktop|docker/,
-    );
+    assert.match(release, /branches:\s*\n\s*- release/);
+    assert.match(release, /github-build-gate\.js merge release/);
+    assert.match(release, /github-build-gate\.js release player/);
+    assert.doesNotMatch(release, /workflow_dispatch|tags:|package-images|package-desktop|docker/);
     assert.ok(
         release.indexOf('release.mts probe') < release.indexOf('install --to @box/player-launcher'),
     );

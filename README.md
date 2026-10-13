@@ -75,6 +75,8 @@ npm run dev:infra
 
 提交前运行 `npm run verify`。源码开发不会自动更新已有容器或安装包；部署使用 [GitHub Releases](https://github.com/ifishcool/box-local-engine/releases) 中的产物。
 
+测试构建与正式发布的分支、OSS 路径和版本约定见 [Release & Version](docs/release-and-version.md)。
+
 不要公开数据库、Docker Socket 或管理端，不要提交密钥、用户数据、地图与备份。权限判定和权威数据必须留在服务端，不能依赖客户端隐藏按钮。
 
 问题反馈与讨论见 [Issues](https://github.com/ifishcool/box-local-engine/issues)。第三方组件保留各自许可，项目品牌与商标不由 MIT 授权。

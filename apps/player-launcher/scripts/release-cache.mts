@@ -66,8 +66,9 @@ export async function cachedInstaller(
     oss:{ head:(key:string) => Promise<OssObjectHead | null> },
     info:ReleaseInfo,
     target:PlayerTarget,
+    prefix = `box-player-launcher/${info.tag}`,
 ):Promise<boolean> {
-    const head = await oss.head(`box-player-launcher/${info.tag}/${artifactName(info, target)}`);
+    const head = await oss.head(`${prefix}/${artifactName(info, target)}`);
     if (!head) {
         return false;
     }

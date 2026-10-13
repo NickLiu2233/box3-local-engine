@@ -2,10 +2,10 @@
 
 ## 标签与版本
 
-安装包发布只由推送 `player-v<版本号>` 标签触发，例如 `player-v0.1.0`、`player-v0.2.0-beta.1`。
+正式安装包由合并 PR 到 `release` 分支触发，无需手动推送 Tag。配置校验后、构建前自动保留 `player-v<版本号>` 标签，成功后发布 GitHub Release，例如 `player-v0.1.0`、`player-v0.2.0-beta.1`。
 标签版本必须与 `apps/player-launcher/package.json` 的 `version` 一致。它不依赖根目录或引擎版本，`sync-root-version.js` 不会修改玩家启动器版本。
 
-发行安装包只通过玩家标签流水线生成，与 main/PR 检查隔离。
+正式安装包只在 release 合并校验通过后生成，与 main/PR 检查隔离。相同版本不允许发布另一个提交；同一提交的失败重跑可复用已有产物。
 `.github/workflows/player-launcher-release.yml` 独立生成以下五个安装包：
 
 | 目标          | 原生 runner      | 文件                                               |
@@ -22,6 +22,8 @@ Linux 使用 AppImage，应用执行文件名为 `box3-player-launcher`。CI 安
 
 ## OSS 与 Release
 
+合并 PR 到 `staging` 后运行 `.github/workflows/player-launcher-test-build.yml`。dev、main、未合并 PR 和直接推送都不打包。五个平台复用原生检查和打包逻辑，版本与文件名带 `dev.<run-id>.<attempt>`，上传到 `box-player-launcher-testing/<commit>/<run-id>-<attempt>/`；不创建 GitHub Release，不访问正式安装包目录。规则见 [Release & Version](../../../docs/release-and-version.md)。
+
 复用引擎 `release.yml` 已配置的 GitHub Secrets：
 
 - `ALIYUN_OSS_BUCKET`：仅 Bucket 名称。
@@ -36,7 +38,7 @@ Linux 使用 AppImage，应用执行文件名为 `box3-player-launcher`。CI 安
 
 发布顺序：
 
-1. 检查玩家标签、版本和 OSS 配置。
+1. 校验 release 的 PR 合并提交、版本不可复用与 OSS 配置。
 2. 每个平台在安装 Rush/Electron 依赖前检查 OSS 中的安装包。
 3. 安装包已存在则复用；新上传对象自带版本/目标/提交/大小/SHA256 元数据，检查这些值一致后跳过依赖安装和构建。兼容前一次流程已上传、尚无对象元数据的安装包，不要求额外 JSON 或 SHA256 文件存在。
    macOS 例外：旧流程的包留下了失效签名。缺少当前签名校验版本标记的 macOS 对象会重新构建，Windows/Linux 缓存不受影响。
