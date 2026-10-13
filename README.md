@@ -4,7 +4,7 @@ BOX3 Local Engine 把地图创作、模型制作、多人游玩和玩家管理�
 
 正常创作与游玩所需的引擎资源和预置玩家皮肤包含在仓库或离线镜像中，不依赖 BOX3 云端资源服务。桌面启动器负责配置和管理服务，Linux 服务器也可以通过 Web 管理端维护。
 
-当前源码版本：`0.3.0`。项目仍在试用与验证阶段，官方源码仓库先通过邀请访问。收到邀请后按[源码访问与协作](docs/source-access.md)开始；当前能力、历史记录和验证边界见[版本说明](docs/current-status.md)。
+当前源码版本：`0.3.0`。项目已全面开源，公开仓库为 [ifishcool/box-local-engine](https://github.com/ifishcool/box-local-engine)，任何人都可以阅读、克隆、Fork 并提交 Pull Request。代码采用 MIT；当前能力与验证限制见[版本说明](docs/current-status.md)。
 
 ## 选择使用方式
 
@@ -22,7 +22,7 @@ BOX3 Local Engine 把地图创作、模型制作、多人游玩和玩家管理�
 | 构建镜像与发行包                 | [构建与分发](docs/release-and-distribution.md)           |
 | 查看全部专题                     | [文档中心](docs/README.md)                               |
 
-只想部署使用，不需要安装源码开发环境。先向维护者确认可用的测试包或下载渠道，再按对应部署文档操作；源码版本不代表下载渠道已经更新。公网部署前请先阅读[网络与防火墙要求](docs/linux-web-manager.md#8-网络与防火墙)。
+只想部署使用，不需要安装源码开发环境。已发布安装包见 [GitHub Releases](https://github.com/ifishcool/box-local-engine/releases)，部署步骤按上表选择；源码版本不代表某个已下载安装包已更新。公网部署前请先阅读[网络与防火墙要求](docs/linux-web-manager.md#8-网络与防火墙)。
 
 ## 产品组成
 
@@ -33,7 +33,7 @@ BOX3 Local Engine 把地图创作、模型制作、多人游玩和玩家管理�
 - 由服主在后台配置的地图脚本授权，脚本无需保存管理员密钥；
 - 服务端反作弊监听与拒绝处理，由图主根据地图玩法编写规则。
 
-邀请只用于官方源码仓库访问，不是程序运行激活。功能的使用边界见[版本说明](docs/current-status.md)。
+运行程序不需要源码访问许可或激活；服务器账号与权限仍由服主管理。功能边界见[版本说明](docs/current-status.md)。
 
 | 服务               | 职责                                   | 源码开发地址             |
 | ------------------ | -------------------------------------- | ------------------------ |
@@ -71,11 +71,13 @@ Player Admin 在发行镜像中构建进 Player Service，不是第七个业务�
 
 ## 源码快速开始
 
-先接受仓库邀请，并使用维护者提供的地址克隆源码。没有源码访问时，安装和使用测试包请按维护者提供的渠道操作。
+直接克隆公开仓库；准备贡献代码时先 Fork，按[贡献指南](CONTRIBUTING.md)创建主题分支。
 
 要求：Node.js `22.17.x`、Docker Compose v2。Rush 会自动安装仓库锁定的 Rush `5.156.0` 和 pnpm `10.12.1`；完整验证和桌面 App 构建还需要 Rust stable 及目标平台原生工具链。
 
 ```bash
+git clone https://github.com/ifishcool/box-local-engine.git
+cd box-local-engine
 npm run install:all
 cp .env.docker.example .env
 ```
@@ -142,6 +144,7 @@ docker compose --profile infra stop postgres redis
 | --------------------------- | ---------------------------------------------- |
 | `apps/game/`                | Creator、Play、Player Service 页面与引擎客户端 |
 | `apps/player-admin/`        | 后台管理 Umi 前端                              |
+| `apps/player-launcher/`     | Electron 玩家启动器                            |
 | `apps/local-engine/`        | 工程、地图组、发布包和运行时生命周期           |
 | `apps/voxa/`                | VOXA 模型、皮肤和动画编辑器                    |
 | `apps/deployment-manager/`  | Vite + Tauri 桌面启动器                        |
@@ -152,7 +155,7 @@ docker compose --profile infra stop postgres redis
 
 ## 参与开发
 
-源码仓库地址和提交方式以维护者提供的邀请为准，不默认要求公开 Fork。只读账号也能本机开发；写入权限和私有 Fork 由维护者另外安排。
+欢迎通过 [Issues](https://github.com/ifishcool/box-local-engine/issues)反馈问题或讨论改进。贡献代码时 Fork 公开仓库，在自己的主题分支完成修改与验证，再向上游 `main` 提交 Pull Request；不需要申请邀请或上游写入权限。完整流程见[贡献指南](CONTRIBUTING.md)与[源码协作](docs/source-access.md)。
 
 后台页面复用入口见[后台管理开发说明](docs/player-admin-development.md)与[复用索引](docs/player-admin-code.md)。
 
@@ -176,7 +179,7 @@ GitHub Release 发布桌面包、服务器包和 `install.sh`。Linux 服务器�
 
 ## 许可与安全
 
-邀请制管理官方仓库访问，不改变 MIT 已授予的修改、商用和再分发权利。它能控制首次官方交付与后续协作，不能保证已收到源码者不再分发代码。
+公开仓库中的项目代码按 MIT 提供，欢迎 Fork、修改、商用和再分发，并按协议保留适用版权与许可声明。第三方组件、素材和品牌仍遵循各自许可与使用边界。
 
 引擎和启动器不再进行运行时许可证检测；完成数据配置即可启动服务。管理登录、账户权限和内部接口鉴权仍然保留。
 项目代码采用 MIT 开源许可，允许修改、商用和二次分发，使用或分发时须按协议保留版权与许可声明。

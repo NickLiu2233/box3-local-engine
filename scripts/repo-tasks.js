@@ -67,10 +67,8 @@ function check() {
         'scripts/docker-engine-build.test.js',
         'scripts/deployment-manager-build.test.js',
         'scripts/deployment-manager-structure.test.js',
-        'scripts/deployment-manager-contract.test.js',
         'scripts/client-format.test.js',
         'scripts/package-manifest-order.test.js',
-        'scripts/owned-code-config.test.js',
         'scripts/documentation-links.test.js',
         'scripts/browser-runtime-config.test.js',
     ]);

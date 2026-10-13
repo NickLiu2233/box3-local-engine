@@ -1,10 +1,10 @@
 # BOX3 Local Engine 文档中心
 
-整理日期：2026-10-13。当前源码 `0.3.0`，先通过邀请参与开发；不是声明安装包或 CDN 已同步。
+整理日期：2026-10-13。当前源码 `0.3.0`，仓库已公开开源，欢迎 Fork 与 Pull Request；不是声明安装包或 CDN 已同步。
 
 ## 推荐阅读顺序
 
-- 第一次拿到源码：[邀请与访问](./source-access.md) → [贡献指南](../CONTRIBUTING.md) → [开发手册](./developer-guide.md)。
+- 第一次参与项目：[公开源码与协作](./source-access.md) → [贡献指南](../CONTRIBUTING.md) → [开发手册](./developer-guide.md)。
 - 部署试用包：[桌面启动器](./graphical-deployment-manager.md)或 [Linux 管理端](./linux-web-manager.md) → [配置](./configuration-reference.md) → [备份边界](./local-infrastructure.md)。
 - 创作与运营：[地图与发布包](./projects.md) → [玩家管理](./player-identity.md) → [地图授权](./script-moderation.md)与[反作弊规则](./anticheat-toolkit.md)。
 - 玩家连接与游玩：[玩家启动器](./player-launcher.md) → [资源缓存](./launcher-service-worker-cache.md) → [HTTP 兼容](./http-compatibility.md)。
@@ -14,15 +14,15 @@
 
 Player Admin 源码开发时独立运行，发行时并入 Player Service。完整离线包有六个官方镜像，不含内部迁移器或签发器。
 程序不要求激活，但登录、管理权限、地图脚本授权、资源完整性校验仍然存在。客户端不保存秘密，DTS 不是安全沙箱。
-邀请制控制官方仓库访问，不收回已经按 MIT 交付的代码使用权。运行数据和源码不混存，文件备份不替代 PostgreSQL 备份。
+公开源码与官方发布权限分开管理，贡献者不需要上游写入权限。运行数据和源码不混存，文件备份不替代 PostgreSQL 备份。
 
 ## 文档目录
 
 当前指南优先用于操作；带日期的验收、技术记录和规划保留上下文，不作为当前版本通过证明。
 
-### 开始、访问与许可
+### 源码与许可
 
-- [邀请制源码访问与协作](./source-access.md)
+- [公开源码与协作](./source-access.md)
 - [当前版本与文档范围](./current-status.md)
 - [开源许可说明](./open-source-licensing.md)
 - [公开仓库检查记录](./public-repository-audit.md)

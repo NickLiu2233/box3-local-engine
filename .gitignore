@@ -76,6 +76,7 @@ apps/deployment-manager/src-tauri/payload/*.tar.gz
 
 # Player launcher Electron build output.
 apps/player-launcher/dist-electron/
+apps/player-launcher/private/tmp/
 apps/player-launcher/release-electron/
 apps/player-launcher/release-electron-ts/
 apps/player-launcher/release-electron-next/

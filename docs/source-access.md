@@ -1,53 +1,41 @@
-# 邀请制源码访问与协作
+# 公开源码与协作
 
-目前先通过邀请向开发者提供引擎源码，不默认向所有人开放官方源码仓库。
-仓库地址、账号权限和试用安排由维护者提供。本文说明协作安排，不替代 [MIT License](../LICENSE.md)。
+BOX3 Local Engine 已全面开源，官方公开仓库为 [ifishcool/box-local-engine](https://github.com/ifishcool/box-local-engine)。任何人都可以浏览、克隆、Fork 和提交 Pull Request，不需要邀请或访问申请。
 
-## 先获得仓库访问
+## 获取源码
 
-维护者应在代码托管平台实际配置私有可见性、邀请名单和协作权限。只写文档不会关闭旧仓库，也不会创建新的邀请仓库。准备新仓库时按[检查记录](./public-repository-audit.md)使用清理后的工作目录，不复制旧 `.git`、私有工具或本机数据。
-
-联系维护者，说明想试用、修复或开发的功能，并提供用于接收邀请的代码托管账号。
-可从维护者约定的沟通渠道或程序“关于”页的交流入口联系；加入交流群不自动获得源码权限。
-收到邀请后，使用自己的账号认证和维护者提供的仓库地址。不要借用、转发他人的账号或访问令牌。
-没有写权限仍可阅读和本机开发；需要提交代码时，先确认维护者支持的 PR、私有 Fork 或补丁方式。
-私有 Fork 不一定已启用，不能直接照搬公开仓库的 Fork 流程。
-仓库权限按工作需要分配：阅读和试用先使用必要的只读权限，分支写入和评审权限另行确认。
+只阅读、开发或运行源码时，可以直接克隆官方仓库：
 
 ```bash
-git clone <维护者提供的仓库地址> box-local-engine
+git clone https://github.com/ifishcool/box-local-engine.git
 cd box-local-engine
 npm run install:all
 cp .env.docker.example .env
 npm run dev:infra
 ```
 
-后台开发还需另开终端运行 `cd apps/player-admin && npm run dev`，访问 8000 端口。
-环境准备见[贡献指南](../CONTRIBUTING.md)，详细开发流程见[开发者手册](./developer-guide.md)。
+后台开发还需另开终端运行 `cd apps/player-admin && npm run dev`，访问 8000 端口。环境准备与验证限制见[开发手册](./developer-guide.md)和[当前状态](./current-status.md)。
 
-## 邀请制能控制什么
+## Fork 与 Pull Request
 
-维护者可以控制谁直接访问官方仓库、取得后续更新、参与评审和提交协作。
-可以按试用反馈逐步邀请更多人，也可以撤销官方仓库访问权限。
-仓库账号权限不是运行时激活：源码版本不需要设备绑定、许可证文件或续期。
+1. 在官方仓库点击 Fork，创建自己的副本。
+2. 克隆自己的 Fork，`origin` 指向自己的仓库；将官方仓库添加为 `upstream`。
+3. 从最新上游 `main` 创建主题分支，修改代码、测试和对应文档。
+4. 验证后推送主题分支到自己的 `origin`，向官方 `main` 提交 Pull Request。
+5. 根据评审修改，并在上游更新后重新验证。
 
-## 与 MIT 的关系
+完整命令、提交要求与依赖约定见[贡献指南](../CONTRIBUTING.md)。Fork 不授予上游写入或发布权限，提交贡献也不需要这些权限。
 
-收到按 MIT 提供的代码后，使用者仍可以按协议修改、商用和再分发，并保留版权与许可声明。
-邀请制不增加“禁止分享源码”“不得商用”等软件许可限制；撤销仓库访问也不等于撤销已经交付的 MIT 代码许可。
-因此，它能控制官方交付与协作节奏，不能保证收到源码的人不再分发已有代码。
-如将来需要另一种授权安排，应先重新明确许可，而不是在文档里悄悄增加与 MIT 冲突的条款。
-许可边界见[开源许可说明](./open-source-licensing.md)和 [MIT 原文](https://opensource.org/license/mit)。
+## 反馈与安全
 
-## 提交反馈与保护数据
+普通问题可通过 [Issues](https://github.com/ifishcool/box-local-engine/issues)反馈，附源码或应用版本、系统、复现步骤、预期结果与实际结果。较大的功能先讨论范围，避免重复开发。
 
-反馈应包含源码版本、系统、操作步骤和已脱敏的日志。安全问题先通过维护者约定的私下渠道沟通。
-不得夹带访问令牌、数据库口令、玩家信息、他人地图、模型或内部工具数据。
-提交前运行 `node scripts/check-public-repository.js --staged`；该检查有范围限制，不能代替人工检查。
-`migrator` 等内部工具不随邀请源码交付，缺少它们不影响普通开发和构建。
+不要在公开 Issue、PR、截图或日志中提供密码、访问令牌、Cookie、数据库连接串、玩家资料或他人的作品。安全漏洞先使用维护者提供的私下渠道沟通，不公开利用步骤与真实凭据。提交前执行 `node scripts/check-public-repository.js --staged`，并人工复核暂存内容。
 
-## 发行物是另一条通道
+## 许可与发行
 
-源码仓库访问与安装包下载分别管理。已有 OSS/CDN 及 Tag Release 配置不是私密交付的保证。
-维护者应在打 Tag、创建 Release 或上传对象前确认渠道可见性，不能只依靠仓库邀请保护已经公开的下载。
-文档更新不代表远端仓库权限、Release 或 CDN 已经变更。
+项目代码采用 [MIT](../LICENSE.md)，使用、修改与再分发须遵循适用版权与许可声明。第三方组件、素材和品牌另有边界，见[许可说明](./open-source-licensing.md)。
+
+安装包见 [GitHub Releases](https://github.com/ifishcool/box-local-engine/releases)，构建与分发见[发行指南](./release-and-distribution.md)。公开源码不等于某个安装包、容器或 CDN 已更新到最新提交，测试记录也不能代替当前版本验收。
+
+运行程序不需要激活，但服务器登录、账户权限与地图脚本授权仍然存在。内部迁移器及签发工具不属于引擎公共源码和发行包；缺少这些工具不影响普通开发与构建。

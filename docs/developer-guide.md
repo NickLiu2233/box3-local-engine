@@ -27,21 +27,22 @@ Node 版本不一致时，先通过 nvm、fnm 或其他版本管理器切换到 
 
 ## 2. 获取代码与创建分支
 
-目前官方源码先邀请访问。仓库地址和权限由维护者提供，详见[源码访问与协作](./source-access.md)。
+官方仓库 [ifishcool/box-local-engine](https://github.com/ifishcool/box-local-engine)已公开，任何人都可以克隆、Fork 并贡献代码，见[公开源码与协作](./source-access.md)。
 
-先接受邀请，再克隆维护者提供的仓库。私有 Fork 是否可用由维护者确认，不默认要求公开 Fork：
+贡献代码时先在 GitHub Fork 到自己的账号，再克隆自己的副本并添加官方上游：
 
 ```bash
-git clone <维护者提供的仓库地址> box-local-engine
+git clone https://github.com/<your-account>/box-local-engine.git
 cd box-local-engine
-git fetch origin
+git remote add upstream https://github.com/ifishcool/box-local-engine.git
+git fetch upstream
 ```
 
 每项工作从最新主分支创建独立分支：
 
 ```bash
 git switch main
-git pull --ff-only origin main
+git merge --ff-only upstream/main
 git switch -c codex/<short-description>
 git status --short
 ```
@@ -370,15 +371,15 @@ git push -u origin codex/<short-description>
 评审修改后，在自己的分支同步主分支并重新验证：
 
 ```bash
-git fetch origin
-git rebase origin/main
+git fetch upstream
+git merge upstream/main
 rush install
 rush verify
-git push --force-with-lease
+git push
 ```
 
-只有在已 rebase 且确实需要更新远端分支时使用 `--force-with-lease`，不要使用无保护的 `--force`。
-以上为仓库分支协作示例；获准使用私有 Fork 时先配置并确认上游，不假设所有贡献者都有 `upstream` 远端。
+默认合并上游更新，不改写评审分支历史。确需 rebase 时只在自己独占的主题分支操作；只有该情况下才可能需要 `--force-with-lease`，不要使用无保护的 `--force`。
+以上 `upstream` 是前面添加的官方仓库；`origin` 仍指向自己的 Fork，更新主题分支后从该 Fork 提交 Pull Request。
 
 ## 12. 常见问题
 

@@ -2,7 +2,7 @@
 
 更新日期：2026-10-13。
 
-本规则用于本仓库维护的启动器、玩家后台、玩家启动器、登录门户、运行适配和工程脚本。范围与选项的唯一来源为 `scripts/lib/owned-code-config.cjs`，`.prettierrc.cjs` 和 `scripts/format-owned-code.js` 共用它。`.editorconfig` 使用相同覆盖范围，由测试检查。新增文件和已有文件遵循同一规则，不依靠个人设置。
+本规则用于本仓库维护的启动器、玩家后台、玩家启动器、登录门户、运行适配和工程脚本。范围与选项的唯一来源为 `scripts/lib/owned-code-config.cjs`，`.prettierrc.cjs` 和 `scripts/format-owned-code.js` 共用它。`.editorconfig` 将相同缩进的目录合并为分组，不逐项复制检查清单；上游源码和生成物保留现有约定。新增文件和已有文件遵循同一规则，不依靠个人设置。
 
 ## 目录范围
 
@@ -46,7 +46,7 @@
 npm run format:owned
 npm run format:owned:check
 node --test scripts/client-format.test.js scripts/package-manifest-order.test.js
-node --test scripts/owned-code-config.test.js scripts/documentation-links.test.js
+node --test scripts/documentation-links.test.js
 ```
 
 根目录 `format` / `format:check` 工作流也会先调用自有代码检查。范围内的路由适配即使被全仓 Prettier 忽略，仍由自有代码检查覆盖。

@@ -2,7 +2,7 @@
 
 BOX3 Engine 有两种使用方式：桌面启动器适合 Windows、macOS 和 Linux 桌面；无图形 Linux 服务器使用 Web 管理端。Play 与登录门户可以面向玩家公开；Creator 和 VOXA 默认仅本机访问，远程创作需要额外的 HTTPS、访问控制和权限保护。
 
-源码目前先通过邀请提供，安装包按维护者提供的试用渠道获取；运行程序不需要源码邀请或许可证激活。渠道是否开放与 MIT 代码许可分开处理。
+源码位于[公开仓库](https://github.com/ifishcool/box-local-engine)，已发布安装包见 [GitHub Releases](https://github.com/ifishcool/box-local-engine/releases)。运行程序不需要邀请或许可证激活；公开源码与服务器登录权限是不同边界。
 
 ## 最小要求
 

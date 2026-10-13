@@ -14,60 +14,18 @@ trim_trailing_whitespace = false
 [Makefile]
 indent_style = tab
 
-# Keep these selectors aligned with scripts/lib/owned-code-config.cjs.
-[apps/deployment-manager/**/*.{js,cjs,ts,tsx,mts,css,less}]
+# Owned source; upstream and generated files retain their existing conventions.
+[{apps/deployment-manager,apps/player-admin,apps/player-launcher,internals/deployment-routing,scripts,tools/repo-tooling,docs/examples}/**/*.{js,cjs,ts,tsx,mts,css,less}]
 indent_size = 4
 
-[apps/player-admin/**/*.{js,cjs,ts,tsx,mts,css,less}]
+[apps/player-auth-portal/{src,server,scripts,test}/**/*.{js,cjs,ts,tsx,mts,css,less}]
 indent_size = 4
 
-[apps/player-launcher/**/*.{js,cjs,ts,tsx,mts,css,less}]
+[apps/local-engine/{src,scripts}/**/*.{js,cjs,ts,tsx,mts,css,less}]
 indent_size = 4
 
-[apps/player-auth-portal/src/**/*.{js,cjs,ts,tsx,mts,css,less}]
+[{docs,apps/deployment-manager,apps/player-admin,apps/player-launcher,apps/player-auth-portal,apps/local-engine}/**/*.md]
 indent_size = 4
 
-[apps/player-auth-portal/server/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[apps/player-auth-portal/scripts/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[apps/player-auth-portal/test/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[apps/local-engine/src/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[apps/local-engine/scripts/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[internals/deployment-routing/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[scripts/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[tools/repo-tooling/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[docs/examples/**/*.{js,cjs,ts,tsx,mts,css,less}]
-indent_size = 4
-
-[.prettierrc.cjs]
-indent_size = 4
-
-[.eslintrc.cjs]
-indent_size = 4
-
-[docs/**/*.md]
-indent_size = 4
-
-[apps/{deployment-manager,player-admin,player-launcher,player-auth-portal,local-engine}/**/*.md]
-indent_size = 4
-
-[README.md]
-indent_size = 4
-
-[CONTRIBUTING.md]
+[{.prettierrc.cjs,.eslintrc.cjs,README.md,CONTRIBUTING.md}]
 indent_size = 4

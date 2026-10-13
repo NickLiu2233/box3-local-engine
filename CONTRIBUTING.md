@@ -4,11 +4,11 @@
 
 项目代码采用 MIT 开源许可，允许按协议修改、商用和再分发；品牌和商标使用另行处理。贡献代码前请确认你有权提交，并保留原作者与第三方许可声明。
 
-当前源码版本为 `0.3.0`，官方源码先通过邀请访问。先阅读[源码访问与协作](docs/source-access.md)，邀请制不改变 MIT 使用与再分发权利。
+当前源码版本为 `0.3.0`，官方仓库 [ifishcool/box-local-engine](https://github.com/ifishcool/box-local-engine)已公开。任何人都可以 Fork 并贡献代码，不需要仓库邀请。
 
 ## 1. 开始前
 
-先接受仓库邀请。第一次接手某个改动时，先找对应模块和测试；目标较大或涉及数据、协议时，先与维护者讨论范围。
+第一次接手某个改动时，先找对应模块和测试；目标较大或涉及数据、协议时，先开 Issue 与维护者讨论范围。
 
 开始工作前先确认工作区状态，不要覆盖其他协作者的改动：
 
@@ -21,18 +21,19 @@ git remote -v
 
 ## 2. 获取源码、同步与分支
 
-先接受维护者发出的仓库邀请，再克隆提供的地址。不要求创建公开 Fork；私有 Fork、仓库分支或补丁的提交方式以维护者确认的权限为准。
+先在 GitHub Fork 公开仓库到自己的账号，再克隆自己的 Fork。`origin` 指向自己的 Fork，`upstream` 指向官方仓库：
 
 ```bash
-git clone <维护者提供的仓库地址> box-local-engine
+git clone https://github.com/<your-account>/box-local-engine.git
 cd box-local-engine
-git fetch origin
+git remote add upstream https://github.com/ifishcool/box-local-engine.git
+git fetch upstream
 git switch main
-git pull --ff-only origin main
+git merge --ff-only upstream/main
 git switch -c codex/<short-description>
 ```
 
-没有写权限时先做本机改动，再通过约定渠道提供补丁或申请协作权限。若允许私有 Fork，才将 `upstream` 设置为维护者提供的源仓库地址。
+将 `<your-account>` 替换为自己的 GitHub 用户名。主题分支推送到自己的 `origin`，Pull Request 的目标选择官方仓库的 `main`；Fork 贡献不要求官方仓库写入权限。
 不要覆盖其他人的未提交改动，不要向多人共用的分支强制推送。
 
 ## 3. 环境要求
@@ -231,11 +232,11 @@ git commit -m "feat: describe the change"
 git push -u origin codex/<short-description>
 ```
 
-评审期间需要同步主分支时，先确保工作区干净。下面按直接克隆协作仓库写 `origin`；使用获准的私有 Fork 时，改用维护者仓库对应的 `upstream`。
+评审期间需要同步主分支时，先确保工作区干净。在自己的主题分支合并上游更新，再重新验证：
 
 ```bash
-git fetch origin
-git merge origin/main
+git fetch upstream
+git merge upstream/main
 npm run install:all
 npm run verify
 git push
@@ -269,7 +270,7 @@ Pull Request 至少说明：
 
 ## 11. 发布纪律
 
-邀请源码和发行物下载是不同通道。现有 Tag 流水线会上传 OSS/CDN，并创建 Release；打 Tag 前确认是否允许向该渠道交付，仓库私有并不自动让 OSS 文件私有。文档修改不改变远端权限。
+公开源码与官方发行权限分开管理。Fork 的贡献者通过 Pull Request 提交改动，官方 Tag、GitHub Release 和 OSS/CDN 发布由维护者执行；不要在 Fork 中配置或索取官方发布密钥。公开源码不代表所有历史安装包已同步更新。
 
 主分支和 Pull Request 的 Verify 工作流执行生产依赖审计、Compose 校验和 `rush verify`。Tag Release 工作流负责版本/OSS 配置校验、镜像与安装包构建、GitHub Release 及 OSS/CDN 发布；它不会再次执行完整 Verify，因此创建 Tag 前必须确认对应提交的 Verify 已通过。
 

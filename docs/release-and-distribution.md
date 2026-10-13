@@ -2,11 +2,10 @@
 
 当前项目版本为 `0.3.0`。公开发行必须来自干净、已验证且版本匹配的 Git Tag。Windows 公开包需要 Authenticode；macOS 公开包需要 Apple Developer ID 签名与公证。
 
-## 邀请阶段的交付
+## 公开源码与官方发行
 
-源码访问按[邀请协作安排](./source-access.md)进行，安装包和 CDN 下载另行管理。
-现有 Tag 工作流会创建 Release 并向 OSS/CDN 发布附件；它没有因为源码邀请制自动变成私有交付。
-只给受邀者提供测试包时，使用维护者确认的受控渠道，并标明版本、校验值、候选状态和签名状态。
+源码仓库已公开，任何人都可以 Fork 和提交 Pull Request，流程见[公开协作](./source-access.md)。官方 Tag、Release 与 OSS/CDN 发布由维护者管理，贡献者不需要也不应持有官方发布密钥。
+现有 Tag 工作流创建 GitHub Release 并向 OSS/CDN 发布附件。测试包与正式版本须区分，并标明版本、校验值、候选状态和签名状态。
 本文描述流水线配置，不声明当前 CDN 的 latest.txt 已指向源码 0.3.0。
 
 ## 本机构建

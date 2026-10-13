@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const test = require('node:test');
+const { querySelectorCallback } = require('./lib/deployment-manager-source');
 const checker = fs.readFileSync(
     path.join(__dirname, 'check-deployment-manager-structure.js'),
     'utf8',
@@ -67,5 +68,17 @@ for (const [name, platformPath] of [
                 }),
             /views must render data/,
         );
+    });
+}
+
+for (const width of [2, 4]) {
+    test(`selector callback inspection ignores ${width}-space formatting`, () => {
+        const space = ' '.repeat(width);
+        const source = `document.querySelectorAll('[data-database-mode]').forEach((node) =>\n${space}node.addEventListener('click', () => {\n${space}${space}state.config.databaseMode = node.dataset.databaseMode;\n${space}}),\n);`;
+        assert.match(
+            querySelectorCallback(source, '[data-database-mode]'),
+            /state\.config\.databaseMode = node\.dataset\.databaseMode/,
+        );
+        assert.equal(querySelectorCallback(source, '[data-redis-mode]'), undefined);
     });
 }

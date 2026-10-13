@@ -37,7 +37,8 @@ async function main() {
                 file.endsWith('.md') ||
                 (/\.(?:js|cjs|ts|tsx|mts|css|less)$/.test(file) &&
                     directories.some((directory) => file.startsWith(`${directory}/`))),
-        );
+        )
+        .filter((file) => fs.existsSync(path.join(root, file)));
     let changed = 0;
     const entries = [
         ...new Set([...files, ...configurationFiles, ...documentationFiles, ...manifests]),

@@ -1,5 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const vm = require('node:vm');
@@ -7,6 +9,35 @@ const prettier = require(
     require.resolve('prettier', { paths: [path.join(__dirname, '../tools/repo-tooling')] }),
 );
 const plugin = require('./lib/client-format-plugin.cjs');
+const ownedCode = require('./lib/owned-code-config.cjs');
+const configuration = require('../.prettierrc.cjs');
+
+test('editor and formatter resolve the same owned source and documentation indentation', async () => {
+    assert.deepEqual(configuration.overrides[0].files, ownedCode.patterns);
+    assert.deepEqual(configuration.overrides[0].options, ownedCode.options);
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'box-editor-style-'));
+    try {
+        const config = path.join(temporary, 'empty.json');
+        fs.writeFileSync(config, '{}');
+        const samples = [
+            ...ownedCode.directories.map((directory) => `${directory}/format-example.ts`),
+            ...ownedCode.documentationDirectories.map((directory) => `${directory}/README.md`),
+            ...ownedCode.configurationFiles,
+            ...ownedCode.documentationFiles,
+        ];
+        for (const file of samples) {
+            const absolute = path.join(__dirname, '..', file);
+            const resolved = await prettier.resolveConfig(absolute);
+            const editor = await prettier.resolveConfig(absolute, { config, editorconfig: true });
+            assert.equal(resolved.tabWidth, 4, file);
+            assert.equal(editor.tabWidth, resolved.tabWidth, file);
+            assert.equal(resolved.semi, true, file);
+            assert.equal(resolved.singleQuote, true, file);
+        }
+    } finally {
+        fs.rmSync(temporary, { recursive: true, force: true });
+    }
+});
 
 test('client formatting adds control blocks and compact type annotations without altering literals', async () => {
     const source = `const label: string = 'if (value) return';\nfunction read(value: boolean): string { if (value) return label; else return ''; }`;
