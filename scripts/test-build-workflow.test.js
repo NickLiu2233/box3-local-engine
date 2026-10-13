@@ -5,12 +5,16 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const crypto = require('node:crypto');
-const zlib = require('node:zlib');
 const { spawnSync } = require('node:child_process');
 const yaml = require(
     require.resolve('js-yaml', { paths: [path.join(__dirname, '../tools/repo-tooling')] }),
 );
+const {
+    stagingContext,
+    prepareCatalog,
+    validateStagingCatalog,
+} = require('./staging-build-context');
+const { validateDesktopCatalog } = require('./build-desktop-offline-installer');
 
 const root = path.resolve(__dirname, '..');
 const workflow = yaml.load(
@@ -18,167 +22,220 @@ const workflow = yaml.load(
 );
 const steps = workflow.jobs.images.steps;
 const build = steps.find((step) => step.name === 'Build test image archive').run;
-const upload = steps.find((step) => step.name === 'Upload test build to Aliyun OSS').run;
+const probe = steps.find((step) => step.id === 'image-cache').run;
+const upload = steps.find((step) => step.name === 'Split and upload test images').run;
 
-test('test and production workflow triggers and upload namespaces remain separate', () => {
+test('staging allows repeated versions and manual runs while production remains isolated', () => {
     const release = yaml.load(
         fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8'),
     );
-    const verify = yaml.load(
-        fs.readFileSync(path.join(root, '.github/workflows/verify.yml'), 'utf8'),
-    );
     assert.deepEqual(workflow.on.push.branches, ['staging']);
-    assert.deepEqual(verify.on.push.branches, [
-        'main',
-        'dev',
-        'staging',
-        'release',
-        'dev/**',
-        'release/**',
-        'player-dev/**',
-        'player-release/**',
-    ]);
-    assert.equal(workflow.on.workflow_dispatch, undefined);
-    assert.equal(workflow.on.push.tags, undefined);
+    assert.equal(workflow.on.workflow_dispatch.inputs.rebuild_images.default, false);
     assert.equal(workflow.on.pull_request, undefined);
-    assert.equal(workflow.jobs.images.if, "needs.merge-gate.outputs.merged == 'true'");
-    assert.equal(workflow.jobs.images.needs, 'merge-gate');
+    assert.equal(workflow.jobs.prepare.if, "github.ref == 'refs/heads/staging'");
+    assert.deepEqual(Object.keys(workflow.jobs), ['prepare', 'images', 'desktop']);
+    assert.equal(workflow.jobs.images.needs, 'prepare');
+    assert.deepEqual(workflow.jobs.desktop.needs, ['images', 'prepare']);
+    assert.equal(workflow.jobs.desktop.env.BOX_BUILD_CHANNEL, 'testing');
+    assert.equal(workflow.jobs.images.env.OSS_BUILD_PREFIX, '${{ needs.prepare.outputs.prefix }}');
+    assert.deepEqual(workflow.jobs.desktop.strategy.matrix, release.jobs.desktop.strategy.matrix);
+    assert.ok(workflow.jobs.desktop.steps.some((step) => step.run?.includes('package-desktop')));
     assert.ok(
-        workflow.jobs['merge-gate'].steps.some(
-            (step) => step.run === 'node scripts/github-build-gate.js merge staging',
+        workflow.jobs.desktop.steps.some((step) =>
+            step.run?.includes('launchers/${{ github.sha }}'),
         ),
     );
-    assert.deepEqual(verify.on.pull_request.types, [
-        'opened',
-        'synchronize',
-        'reopened',
-        'ready_for_review',
-    ]);
-    assert.deepEqual(workflow.permissions, { contents: 'read' });
-    assert.equal(
-        workflow.env.OSS_TEST_PREFIX,
-        'local-engine-testing/${{ github.sha }}/${{ github.run_id }}-${{ github.run_attempt }}',
-    );
-    assert.deepEqual(release.on.push, { branches: ['release'] });
-    assert.equal(release.env.OSS_SERVER_RELEASE_PREFIX, 'local-engine');
-    assert.match(upload, /ossutil cp test-build\/ "\$destination" --recursive --update/);
+    for (const name of [
+        'Free temporary runner disk space',
+        'Build test image archive',
+        'Split and upload test images',
+    ]) {
+        assert.equal(
+            steps.find((step) => step.name === name).if,
+            "steps.image-cache.outputs.cache-hit != 'true'",
+        );
+    }
     assert.doesNotMatch(
         JSON.stringify(workflow),
-        /latest\.(?:txt|json)|action-gh-release|OSS_SERVER_RELEASE_PREFIX/,
+        /action-gh-release|latest\.(?:txt|json)|github-build-gate\.js release/,
     );
+    assert.deepEqual(release.on.push, { branches: ['release'] });
+    assert.equal(release.jobs['validate-release'].if, "needs.merge-gate.outputs.merged == 'true'");
 });
 
+function run(command, fixture, env) {
+    const result = spawnSync('bash', ['-c', command], {
+        cwd: fixture,
+        env,
+        encoding: 'utf8',
+        timeout: 30_000,
+    });
+    assert.ifError(result.error);
+    assert.equal(result.status, 0, result.stderr);
+}
+
 for (const architecture of ['amd64', 'arm64']) {
-    test(`test ${architecture} archive and mocked upload retain an isolated path and identity`, () => {
-        const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'box-test-build-'));
+    test(`staging ${architecture} uploads once, reuses a different commit and can explicitly rebuild`, () => {
+        const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'box-staging-cache-'));
         try {
             const bin = path.join(fixture, 'bin');
             fs.mkdirSync(bin);
-            fs.writeFileSync(path.join(fixture, 'package.json'), '{"version":"0.3.0"}');
-            for (const tool of ['docker', 'ossutil']) {
-                fs.writeFileSync(
-                    path.join(bin, tool),
-                    `#!${process.execPath}\nconst fs = require('node:fs');
-const args = process.argv.slice(2);
-fs.appendFileSync(process.env.COMMAND_LOG, JSON.stringify({ tool: '${tool}', args }) + '\\n');
-if (args[0] === 'compose' && args[2] === process.env.FAIL_SERVICE) process.exit(1);
-if (args[0] === 'image' && args[1] === 'save' && process.env.FAIL_SAVE) process.exit(1);
-if (args[0] === 'image' && args[1] === 'save') process.stdout.write(JSON.stringify(args.slice(2)));
-`,
-                    { mode: 0o755 },
+            fs.mkdirSync(path.join(fixture, 'scripts'));
+            for (const file of [
+                'staging-build-context.js',
+                'build-image-downloads.js',
+                'split-image-archive.py',
+            ]) {
+                fs.copyFileSync(
+                    path.join(root, 'scripts', file),
+                    path.join(fixture, 'scripts', file),
                 );
             }
-            const commit = 'a'.repeat(40);
-            const imageTag = `test-${commit}-linux-${architecture}`;
-            const prefix = `local-engine-testing/${commit}/123-1`;
+            fs.writeFileSync(path.join(fixture, 'package.json'), '{"version":"0.3.0"}');
+            const context = stagingContext('0.3.0', architecture);
             const env = {
                 ...process.env,
                 PATH: `${bin}${path.delimiter}${process.env.PATH}`,
                 COMMAND_LOG: path.join(fixture, 'commands.jsonl'),
-                BOX_IMAGE_TAG: imageTag,
-                BOX_BUILD_COMMIT: commit,
+                OSS_STORE: path.join(fixture, 'oss'),
+                SAVE_ARCHIVE: path.join(fixture, 'docker.tar'),
+                BOX_IMAGE_TAG: context.imageTag,
                 BOX_PLAY_PLATFORM: `linux/${architecture}`,
-                GITHUB_REF: 'refs/heads/dev/nested/test',
-                OSS_TEST_PREFIX: prefix,
+                BOX_BUILD_COMMIT: 'a'.repeat(40),
+                GITHUB_REF: 'refs/heads/staging',
+                OSS_BUILD_PREFIX: context.prefix,
                 OSS_BUCKET: 'fixture-bucket',
-                OSS_ENDPOINT: 'oss.example.test',
-                OSS_ACCESS_KEY_ID: 'fixture-id',
-                OSS_ACCESS_KEY_SECRET: 'fixture-secret',
                 ARCHITECTURE: architecture,
-                GITHUB_STEP_SUMMARY: path.join(fixture, 'summary.md'),
+                FORCE_REBUILD: 'false',
+                GITHUB_OUTPUT: path.join(fixture, 'outputs'),
             };
-            const result = spawnSync('bash', ['-c', build], {
-                cwd: fixture,
-                env,
-                encoding: 'utf8',
-            });
-            assert.equal(result.status, 0, result.stderr);
-            const archive = path.join(
+            fs.writeFileSync(
+                path.join(bin, 'docker'),
+                `#!${process.execPath}
+const fs=require('node:fs');const args=process.argv.slice(2);
+fs.appendFileSync(process.env.COMMAND_LOG, JSON.stringify({tool:'docker',args})+'\\n');
+if(args[0]==='image' && args[1]==='save') process.stdout.write(fs.readFileSync(process.env.SAVE_ARCHIVE));
+`,
+                { mode: 0o755 },
+            );
+            fs.writeFileSync(
+                path.join(bin, 'ossutil'),
+                `#!${process.execPath}
+const fs=require('node:fs'),path=require('node:path');const args=process.argv.slice(2);
+fs.appendFileSync(process.env.COMMAND_LOG,JSON.stringify({tool:'ossutil',args})+'\\n');
+const remote=value=>path.join(process.env.OSS_STORE,value.replace(/^oss:\\/\\/fixture-bucket\\//,''));
+if(args[0]==='stat'){process.exit(fs.existsSync(remote(args[1]))?0:1);}
+if(args[0]==='cp'){
+ const source=args[1].startsWith('oss://')?remote(args[1]):args[1];
+ const target=args[2].startsWith('oss://')?remote(args[2]):args[2];
+ if(!fs.existsSync(source))process.exit(1);
+ const destination=args[2].endsWith('/')?path.join(target,path.basename(source)):target;
+ fs.mkdirSync(path.dirname(destination),{recursive:true});fs.copyFileSync(source,destination);
+}
+`,
+                { mode: 0o755 },
+            );
+            const makeArchive = () => {
+                const result = spawnSync(
+                    process.platform === 'win32' ? 'python' : 'python3',
+                    [
+                        '-c',
+                        `import io,json,os,tarfile,sys
+with tarfile.open(sys.argv[1],'w') as archive:
+ manifest=[]
+ for service in ['creator','voxa','play','player-service','player-auth-portal','server-manager']:
+  name=service+'.json'
+  data=json.dumps({'os':'linux','architecture':os.environ['ARCHITECTURE'],'config':{'Labels':{'org.opencontainers.image.revision':os.environ['BOX_BUILD_COMMIT']}}}).encode()
+  item=tarfile.TarInfo(name);item.size=len(data);archive.addfile(item,io.BytesIO(data))
+  manifest.append({'Config':name,'RepoTags':['box-local-engine-'+service+':'+os.environ['BOX_IMAGE_TAG']],'Layers':[]})
+ data=json.dumps(manifest).encode();item=tarfile.TarInfo('manifest.json');item.size=len(data);archive.addfile(item,io.BytesIO(data))
+`,
+                        env.SAVE_ARCHIVE,
+                    ],
+                    { env, encoding: 'utf8' },
+                );
+                assert.equal(result.status, 0, result.stderr);
+            };
+            makeArchive();
+            run(probe, fixture, env);
+            assert.match(fs.readFileSync(env.GITHUB_OUTPUT, 'utf8'), /cache-hit=false/);
+            run(build, fixture, env);
+            run(upload, fixture, env);
+            const catalogPath = path.join(
                 fixture,
-                `test-build/box-local-engine-images-${imageTag}.tar.gz`,
+                `test-build/box-local-engine-images-${context.imageTag}.json`,
             );
-            const saved = JSON.parse(zlib.gunzipSync(fs.readFileSync(archive)));
-            assert.equal(saved.length, 6);
-            assert.ok(saved.every((image) => image.endsWith(`:${imageTag}`)));
-            const digest = crypto
-                .createHash('sha256')
-                .update(fs.readFileSync(archive))
-                .digest('hex');
+            let catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+            validateStagingCatalog(catalog, '0.3.0', architecture);
+            validateDesktopCatalog(catalog, '0.3.0', architecture, 'testing');
             assert.ok(
-                fs
-                    .readFileSync(path.join(fixture, 'test-build/SHA256SUMS'), 'utf8')
-                    .startsWith(digest),
+                catalog.images.every((image) => image.downloadBaseUrl === context.downloadBaseUrl),
             );
-            const info = JSON.parse(
-                fs.readFileSync(path.join(fixture, 'test-build/BUILD-INFO.json'), 'utf8'),
+            assert.ok(
+                catalog.images.every((image) => image.sourceRevision === env.BOX_BUILD_COMMIT),
             );
-            assert.equal(info.channel, 'testing');
-            assert.equal(info.commit, commit);
-            assert.equal(info.imageTag, imageTag);
-            assert.equal(info.platform, `linux/${architecture}`);
-            // Skip only tool installation; execute the actual configured upload command against a fake OSS CLI.
-            const command = upload.replace(
-                'curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash\n',
-                '',
+            assert.throws(
+                () => validateDesktopCatalog(catalog, '0.3.0', architecture),
+                /Testing catalogs/,
             );
-            const uploaded = spawnSync('bash', ['-c', command], {
-                cwd: fixture,
-                env,
-                encoding: 'utf8',
-            });
-            assert.equal(uploaded.status, 0, uploaded.stderr);
-            const calls = fs
+            assert.throws(() => validateStagingCatalog(catalog, '0.4.0', architecture));
+            assert.throws(() =>
+                prepareCatalog(
+                    {
+                        ...catalog,
+                        images: catalog.images.map((image) => ({
+                            ...image,
+                            imageTag: 'v0.3.0-linux-' + architecture,
+                        })),
+                    },
+                    '0.3.0',
+                    architecture,
+                ),
+            );
+
+            const before = fs
                 .readFileSync(env.COMMAND_LOG, 'utf8')
                 .trim()
                 .split('\n')
                 .map(JSON.parse);
-            assert.equal(
-                calls.filter((call) => call.tool === 'docker' && call.args[0] === 'compose').length,
-                6,
+            const builds = () =>
+                fs
+                    .readFileSync(env.COMMAND_LOG, 'utf8')
+                    .trim()
+                    .split('\n')
+                    .map(JSON.parse)
+                    .filter((call) => call.tool === 'docker' && call.args[0] === 'compose').length;
+            assert.equal(builds(), 6);
+            env.BOX_BUILD_COMMIT = 'b'.repeat(40);
+            fs.writeFileSync(env.GITHUB_OUTPUT, '');
+            run(probe, fixture, env);
+            assert.match(fs.readFileSync(env.GITHUB_OUTPUT, 'utf8'), /cache-hit=true/);
+            assert.equal(builds(), 6, 'cache hit must not build again');
+            const marker = before.findLast(
+                (call) => call.tool === 'ossutil' && call.args[0] === 'cp',
             );
-            const copy = calls.find((call) => call.tool === 'ossutil' && call.args[0] === 'cp');
-            assert.deepEqual(copy.args, [
-                'cp',
-                'test-build/',
-                `oss://fixture-bucket/${prefix}/${architecture}/`,
-                '--recursive',
-                '--update',
-            ]);
-            const failed = spawnSync('bash', ['-c', build], {
-                cwd: fixture,
-                env: { ...env, FAIL_SERVICE: 'player-service' },
-                encoding: 'utf8',
-            });
-            assert.notEqual(failed.status, 0, 'a failed service build must stop the workflow step');
-            const failedSave = spawnSync('bash', ['-c', build], {
-                cwd: fixture,
-                env: { ...env, FAIL_SAVE: '1' },
-                encoding: 'utf8',
-            });
-            assert.notEqual(
-                failedSave.status,
-                0,
-                'image export failure must not be hidden by gzip',
+            assert.ok(marker.args[1].endsWith('.json'), 'catalog is uploaded last');
+
+            fs.writeFileSync(env.GITHUB_OUTPUT, '');
+            env.FORCE_REBUILD = 'true';
+            makeArchive();
+            run(probe, fixture, env);
+            assert.match(fs.readFileSync(env.GITHUB_OUTPUT, 'utf8'), /cache-hit=false/);
+            run(build, fixture, env);
+            run(upload, fixture, env);
+            assert.equal(builds(), 12);
+            catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
+            assert.ok(
+                catalog.images.every((image) => image.sourceRevision === env.BOX_BUILD_COMMIT),
+            );
+            env.FORCE_REBUILD = 'false';
+            fs.unlinkSync(path.join(env.OSS_STORE, context.prefix, catalog.images[0].archive));
+            fs.writeFileSync(env.GITHUB_OUTPUT, '');
+            run(probe, fixture, env);
+            assert.match(
+                fs.readFileSync(env.GITHUB_OUTPUT, 'utf8'),
+                /cache-hit=false/,
+                'incomplete caches must not be accepted',
             );
         } finally {
             fs.rmSync(fixture, { recursive: true, force: true });

@@ -302,6 +302,7 @@ mod tests {
             image_tag: "new".into(),
             platform: "linux/arm64".into(),
             images: vec![ImageRelease {
+                download_base_url: None,
                 format_version: 1,
                 image: "box-local-engine-play".into(),
                 image_id: id('b'),
@@ -417,7 +418,9 @@ mod tests {
         }
         fn acquire(&self, image: &ImageRelease) -> Result<PathBuf, String> {
             *self.downloads.borrow_mut() += 1;
-            self.commands.borrow_mut().push(vec!["acquire".into(), image.image.clone()]);
+            self.commands
+                .borrow_mut()
+                .push(vec!["acquire".into(), image.image.clone()]);
             if self.download_fails {
                 return Err("download failed".into());
             }
@@ -450,8 +453,15 @@ mod tests {
         release.images.push(excluded);
         prepare(&release, "same-version", &["play", "voxa"], &fake).unwrap();
         let commands = fake.commands.borrow();
-        let imports = commands.iter().position(|command| command[0] == "load").unwrap();
-        let acquired = commands.iter().enumerate().filter(|(_, command)| command[0] == "acquire").collect::<Vec<_>>();
+        let imports = commands
+            .iter()
+            .position(|command| command[0] == "load")
+            .unwrap();
+        let acquired = commands
+            .iter()
+            .enumerate()
+            .filter(|(_, command)| command[0] == "acquire")
+            .collect::<Vec<_>>();
         assert_eq!(acquired.len(), 2);
         assert!(acquired.iter().all(|(index, _)| *index < imports));
         assert_eq!(*fake.downloads.borrow(), 2);
@@ -462,8 +472,15 @@ mod tests {
         let mut fake = Fake::new();
         fake.download_fails = true;
         assert!(prepare(&catalog(), "same-version", &["play"], &fake).is_err());
-        assert!(!fake.commands.borrow().iter().any(|command| command[0] == "load"));
-        assert_eq!(fake.tags.borrow()["box-local-engine-play:same-version"], id('a'));
+        assert!(!fake
+            .commands
+            .borrow()
+            .iter()
+            .any(|command| command[0] == "load"));
+        assert_eq!(
+            fake.tags.borrow()["box-local-engine-play:same-version"],
+            id('a')
+        );
         assert_eq!(fake.records.borrow().len(), 1);
     }
 

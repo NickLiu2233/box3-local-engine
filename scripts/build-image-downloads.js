@@ -12,6 +12,17 @@ const services = [
     'server-manager',
 ];
 
+function validDownloadBase(value) {
+    return (
+        value === undefined ||
+        value === null ||
+        value === 'https://assets.box3.fun/local-engine' ||
+        /^https:\/\/assets\.box3\.fun\/local-engine-testing\/v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/.test(
+            value,
+        )
+    );
+}
+
 function validateCatalog(catalog, architecture) {
     if (
         !['amd64', 'arm64'].includes(architecture) ||
@@ -46,7 +57,8 @@ function validateCatalog(catalog, architecture) {
                 `box-local-engine-image-${service}-${architecture}-${image.sha256}.tar.gz` ||
             !/^[a-f0-9]{64}$/.test(image.sha256 || '') ||
             !Number.isSafeInteger(image.size) ||
-            image.size <= 0
+            image.size <= 0 ||
+            !validDownloadBase(image.downloadBaseUrl)
         ) {
             throw new Error(`Invalid image download: ${service}`);
         }
@@ -101,4 +113,4 @@ if (require.main === module) {
     }
 }
 
-module.exports = { splitArchive, validateCatalog, localImageTag };
+module.exports = { splitArchive, validateCatalog, localImageTag, validDownloadBase };

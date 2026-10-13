@@ -102,6 +102,7 @@ mod tests {
     fn images() -> Vec<ImageRelease> {
         (0..5)
             .map(|index| ImageRelease {
+                download_base_url: None,
                 format_version: 1,
                 image: format!("image-{index}"),
                 image_id: String::new(),

@@ -12,6 +12,27 @@ const release = {
     sections: [{ title: 'New features', items: ['<img src=x onerror=alert(1)>'] }],
 };
 
+test('testing launcher never requests the production update manifest', async () => {
+    const app = await createFixture({
+        releaseResponse: release,
+        responses: {
+            get_about_info: {
+                applicationVersion: '0.3.0',
+                imageTag: 'test-v0.3.0-linux-arm64',
+                platform: 'macos',
+                architecture: 'aarch64',
+            },
+        },
+    });
+    await app.api.checkForUpdates(true);
+    assert.equal(
+        app.calls.some((call) => call.command === 'fetch_release'),
+        false,
+    );
+    assert.equal(app.api.state.updateDialogOpen, false);
+    assert.match(app.api.state.notice, /测试启动器/);
+});
+
 test('startup checks CDN and newer releases display escaped changelog, version and date', async () => {
     const app = await createFixture({ releaseResponse: release });
     assert.equal(app.calls.filter((call) => call.command === 'fetch_release').length, 1);

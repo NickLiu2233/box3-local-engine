@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - staging
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,27 +20,8 @@ env:
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
   PLAYER_BUILD_CHANNEL: testing
 jobs:
-  merge-gate:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      merged: ${{ steps.merge.outputs.merged }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-      - name: Require a merged pull request
-        id: merge
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/github-build-gate.js merge staging
-
   validate:
-    needs: merge-gate
-    if: needs.merge-gate.outputs.merged == 'true'
+    if: github.ref == 'refs/heads/staging'
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.version.outputs.version }}

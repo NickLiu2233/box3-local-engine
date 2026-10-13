@@ -8,7 +8,7 @@ const yaml = require(
     require.resolve('js-yaml', { paths: [path.join(__dirname, '../tools/repo-tooling')] }),
 );
 
-test('merged staging builds player installers while release publishes from its own package version', () => {
+test('staging builds player installers while release keeps its stricter merged-PR rule', () => {
     const root = path.resolve(__dirname, '..');
     const workflow = yaml.load(
         fs.readFileSync(
@@ -22,17 +22,11 @@ test('merged staging builds player installers while release publishes from its o
     assert.deepEqual(workflow.on.push.branches, ['staging']);
     assert.equal(workflow.on.push.tags, undefined);
     assert.equal(workflow.on.pull_request, undefined);
-    assert.equal(workflow.on.workflow_dispatch, undefined);
+    assert.ok(Object.hasOwn(workflow.on, 'workflow_dispatch'));
     assert.deepEqual(workflow.permissions, { contents: 'read' });
     assert.equal(workflow.env.PLAYER_BUILD_CHANNEL, 'testing');
-    assert.deepEqual(Object.keys(workflow.jobs), ['merge-gate', 'validate', 'installers']);
-    assert.equal(workflow.jobs.validate.if, "needs.merge-gate.outputs.merged == 'true'");
-    assert.equal(workflow.jobs.validate.needs, 'merge-gate');
-    assert.ok(
-        workflow.jobs['merge-gate'].steps.some(
-            (step) => step.run === 'node scripts/github-build-gate.js merge staging',
-        ),
-    );
+    assert.deepEqual(Object.keys(workflow.jobs), ['validate', 'installers']);
+    assert.equal(workflow.jobs.validate.if, "github.ref == 'refs/heads/staging'");
     assert.deepEqual(
         workflow.jobs.installers.strategy.matrix,
         release.jobs.installers.strategy.matrix,

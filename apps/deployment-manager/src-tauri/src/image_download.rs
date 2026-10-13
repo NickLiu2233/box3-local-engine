@@ -23,9 +23,14 @@ pub(crate) struct ImageRelease {
     pub image_tag: String,
     pub platform: String,
     pub size: u64,
+    #[serde(default)]
+    pub download_base_url: Option<String>,
 }
 
 impl ImageRelease {
+    pub fn download_url(&self) -> Result<String, String> {
+        crate::image_source::download_url(self.download_base_url.as_deref(), &self.archive)
+    }
     pub fn accepts(&self, id: &str) -> bool {
         self.image_id == id || self.image_ids.iter().any(|value| value == id)
     }
@@ -75,6 +80,7 @@ impl ImageCatalog {
                 return Err(format!("镜像更新清单缺少或重复服务：{service}"));
             }
             let image = matching[0];
+            image.download_url()?;
             let digest = image
                 .image_id
                 .strip_prefix("sha256:")
@@ -220,12 +226,7 @@ pub(crate) fn download(
     cache: &Path,
     progress: impl FnMut(u64),
 ) -> Result<PathBuf, String> {
-    download_from_url(
-        release,
-        cache,
-        &format!("https://assets.box3.fun/local-engine/{}", release.archive),
-        progress,
-    )
+    download_from_url(release, cache, &release.download_url()?, progress)
 }
 
 pub(super) fn download_from_url(
@@ -255,7 +256,11 @@ pub(super) fn download_from_url(
     }
     progress(offset);
     (|| {
-        let client = reqwest::blocking::Client::builder()
+        let client = reqwest::blocking::Client::builder();
+        // Unit fixtures use loopback HTTP and must not inherit host-wide proxies.
+        #[cfg(test)]
+        let client = client.no_proxy();
+        let client = client
             .redirect(reqwest::redirect::Policy::none())
             .connect_timeout(Duration::from_secs(30))
             .timeout(Duration::from_secs(3600))
@@ -312,6 +317,27 @@ pub(super) fn download_from_url(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn testing_download_source_survives_installer_json_deserialization() {
+        let source = "https://assets.box3.fun/local-engine-testing/v0.3.0";
+        let image: ImageRelease = serde_json::from_value(serde_json::json!({
+            "formatVersion": 1,
+            "image": "box-local-engine-play",
+            "imageId": format!("sha256:{}", "a".repeat(64)),
+            "imageIds": [format!("sha256:{}", "a".repeat(64))],
+            "archive": "test-image.tar.gz",
+            "sha256": "b".repeat(64),
+            "imageTag": "test-v0.3.0-linux-arm64",
+            "platform": "linux/arm64",
+            "size": 5,
+            "downloadBaseUrl": source
+        }))
+        .unwrap();
+        assert_eq!(
+            image.download_url().unwrap(),
+            format!("{source}/test-image.tar.gz")
+        );
+    }
     fn release() -> ImageRelease {
         ImageRelease {
             format_version: 1,
@@ -323,6 +349,7 @@ mod tests {
             image_tag: "v0.3.0-linux-arm64".into(),
             platform: "linux/arm64".into(),
             size: 5,
+            download_base_url: None,
         }
     }
     #[test]

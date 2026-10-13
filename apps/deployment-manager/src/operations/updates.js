@@ -25,15 +25,20 @@ export async function checkForUpdates(manual = false) {
     }
     if (!pending) {
         state.updateChecking = true;
-        const releaseRequest = isWebManager()
-            ? invoke('get_latest_release').then(validateRelease)
-            : fetchLatestRelease();
-        pending = Promise.all([invoke('get_about_info'), releaseRequest])
-            .then(([info, release]) => ({
-                release,
-                info,
-                newer: isNewerVersion(release.version, info.applicationVersion),
-            }))
+        pending = invoke('get_about_info')
+            .then(async (info) => {
+                if (info.imageTag?.startsWith('test-')) {
+                    return { info, release: null, newer: false, testing: true };
+                }
+                const release = await (isWebManager()
+                    ? invoke('get_latest_release').then(validateRelease)
+                    : fetchLatestRelease());
+                return {
+                    info,
+                    release,
+                    newer: isNewerVersion(release.version, info.applicationVersion),
+                };
+            })
             .finally(() => {
                 pending = null;
                 state.updateChecking = false;
@@ -53,7 +58,9 @@ export async function checkForUpdates(manual = false) {
             state.updateDownloadTarget = null;
             state.updateDialogOpen = false;
             if (manual) {
-                state.notice = '当前已是最新版本。';
+                state.notice = result.testing
+                    ? '测试启动器请下载新的预发布包更新。'
+                    : '当前已是最新版本。';
             }
         }
     } catch (error) {

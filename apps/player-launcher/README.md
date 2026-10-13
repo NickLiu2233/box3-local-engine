@@ -66,5 +66,5 @@ Electron 是发行入口，使用 `bundle:electron`。资源缓存只存可再�
 
 ## 独立发布
 
-推送 `player-v<版本>` 标签时，独立流水线生成 Windows AMD64、Windows ARM64、macOS ARM64、Linux AMD64 和 Linux ARM64 安装包；Linux 采用 AppImage。先检查 OSS 中同版本产物，缺失的再构建，并上传到 OSS 与 GitHub Release。
+合并 PR 到 `release` 分支并通过合并与版本校验后，独立流水线自动固定 `player-v<版本>` 标签，生成 Windows AMD64、Windows ARM64、macOS ARM64、Linux AMD64 和 Linux ARM64 安装包；Linux 采用 AppImage。先检查 OSS 中同版本产物，缺失的再构建，并上传到 OSS 与 GitHub Release。
 版本取本目录 `package.json`，不与引擎版本同步。OSS 只保存安装包，校验文件在本地生成并附到 GitHub Release。配置与操作见 [发布说明](./docs/release.md)。

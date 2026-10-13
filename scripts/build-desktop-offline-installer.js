@@ -42,6 +42,28 @@ function fail(message) {
     process.exit(1);
 }
 
+function validateDesktopCatalog(catalog, version, architecture, channel = 'production') {
+    const { validateCatalog } = require('./build-image-downloads');
+    validateCatalog(catalog, architecture);
+    if (channel === 'testing') {
+        return require('./staging-build-context').validateStagingCatalog(
+            catalog,
+            version,
+            architecture,
+        );
+    }
+    if (
+        channel !== 'production' ||
+        catalog.channel === 'testing' ||
+        catalog.images.some((image) => image.downloadBaseUrl?.includes('/local-engine-testing/'))
+    ) {
+        throw new Error(
+            'Testing catalogs require BOX_BUILD_CHANNEL=testing; production sources must stay isolated',
+        );
+    }
+    return catalog;
+}
+
 function gitOutput(args) {
     const result = spawnSync('git', args, {
         cwd: repoRoot,
@@ -285,10 +307,12 @@ function main() {
             fail('无法生成独立服务镜像包');
         }
     }
-    const { validateCatalog, localImageTag } = require('./build-image-downloads');
-    const imageManifest = validateCatalog(
+    const { localImageTag } = require('./build-image-downloads');
+    const imageManifest = validateDesktopCatalog(
         JSON.parse(fs.readFileSync(catalogPath, 'utf8')),
+        version,
         expectedArchitecture,
+        process.env.BOX_BUILD_CHANNEL || 'production',
     );
     const imageDetails = imageManifest.images;
     const imageTag = local ? localImageTag(imageManifest) : imageManifest.imageTag;
@@ -309,6 +333,7 @@ function main() {
     }
     const packageMode = {
         mode: local ? 'local' : 'slim',
+        ...(imageManifest.channel === 'testing' ? { channel: 'testing' } : {}),
         imageTag,
         platform: imageManifest.platform,
     };
@@ -395,7 +420,7 @@ function main() {
     }
 
     fs.mkdirSync(outputRoot, { recursive: true });
-    const packageName = `BOX-Local-Engine-${version}-${platform}${local ? '-local' : ''}`;
+    const packageName = `BOX-Local-Engine-${version}-${platform}${imageManifest.channel === 'testing' ? '-test' : local ? '-local' : ''}`;
     const packageRoot = path.join(outputRoot, packageName);
     fs.rmSync(packageRoot, { recursive: true, force: true });
     fs.mkdirSync(packageRoot, { recursive: true });
@@ -474,4 +499,5 @@ module.exports = {
     tauriBuildFailure,
     macApplicationHasResourceSeal,
     ensureMacApplicationSignature,
+    validateDesktopCatalog,
 };

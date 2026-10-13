@@ -22,7 +22,7 @@ Linux 使用 AppImage，应用执行文件名为 `box3-player-launcher`。CI 安
 
 ## OSS 与 Release
 
-合并 PR 到 `staging` 后运行 `.github/workflows/player-launcher-test-build.yml`。dev、main、未合并 PR 和直接推送都不打包。五个平台复用原生检查和打包逻辑，版本与文件名带 `dev.<run-id>.<attempt>`，上传到 `box-player-launcher-testing/<commit>/<run-id>-<attempt>/`；不创建 GitHub Release，不访问正式安装包目录。规则见 [Release & Version](../../../docs/release-and-version.md)。
+`staging` 更新或手动运行会触发 `.github/workflows/player-launcher-test-build.yml`，允许直接提交和同版本重跑；dev、main 和 PR 本身不打包。五个平台复用原生检查和打包逻辑，版本与文件名带 `dev.<run-id>.<attempt>`，上传到 `box-player-launcher-testing/<commit>/<run-id>-<attempt>/`；不创建 GitHub Release，不访问正式安装包目录。规则见 [Release & Version](../../../docs/release-and-version.md)。
 
 复用引擎 `release.yml` 已配置的 GitHub Secrets：
 
@@ -31,7 +31,7 @@ Linux 使用 AppImage，应用执行文件名为 `box3-player-launcher`。CI 安
 - `ALIYUN_OSS_ACCESS_KEY_ID`
 - `ALIYUN_OSS_ACCESS_KEY_SECRET`
 
-产物存储在独立目录 `oss://<Bucket>/box-player-launcher/<player-v标签>/`，不与引擎的 `box-local-engine/` 目录混用。
+产物存储在独立目录 `oss://<Bucket>/box-player-launcher/<player-v标签>/`，不与引擎的 `local-engine/` 目录混用。
 使用 AWS CLI 的 OSS S3 兼容接口，与引擎流水线 Windows 步骤相同；固定 virtual-hosted 寻址，凭据只通过子进程环境传递。
 
 安装包上传/下载使用高阶 `s3 cp`，超过 16 MiB 分块传输，分块大小 16 MiB，并发 4。输出实际字节/速率进度，并每 15 秒报告状态。连接超时 20 秒、读取超时 60 秒，整个传输最多 10 分钟；HEAD 最多 90 秒。上传后还会核对 OSS 对象大小和 SHA256 元数据，只有核对成功才报告完成。上传步骤另设 12 分钟上限。参见 [AWS CLI S3 配置](https://docs.aws.amazon.com/cli/latest/topic/s3-config.html)。
@@ -70,21 +70,19 @@ Windows 未配置证书时保持未签名行为。macOS 未配置证书时使用
 
 ## 发布操作
 
-在仓库根目录更新启动器自己的版本、提交代码后打标签：
-
-首次使用时，先将本次新增的工作流和发布脚本一并提交。下面的命令示例用于之后的版本升级。
+在仓库根目录更新启动器自己的版本，完成验证后提交到主题分支：
 
 ```bash
 npm --prefix apps/player-launcher version 0.1.1 --no-git-tag-version
+npm --prefix apps/player-launcher run check
 git add apps/player-launcher/package.json
-git commit -m "chore(player): release 0.1.1"
-git tag player-v0.1.1
-git push origin main
-git push origin player-v0.1.1
+git commit -m "chore(player): prepare 0.1.1"
+git push -u origin HEAD
 ```
 
-以上版本号仅作操作示例。推送前运行 `npm --prefix apps/player-launcher run check` 和桌面/缓存测试。
-查看 Actions 中 `Release BOX3 Player Launcher`，五个原生目标成功后，安装包会同时存在于 OSS 版本目录和当前标签的 Release。
+以上版本号仅作示例。按主题分支 → dev → staging → release 流程创建 PR；staging 用于测试原生包，正式发布由合入 release 的 PR 触发，不手动创建或推送 Tag。合入前还需完成根目录完整验证及相关桌面/缓存测试，并确认引擎版本满足同一次 release 更新的要求，见 [Release & Version](../../../docs/release-and-version.md)。
+
+查看 Actions 中 `Release BOX3 Player Launcher`：五个原生目标及汇总任务成功后，核对 OSS 版本目录和当前玩家标签的 GitHub Release 附件。
 
 ## 发布代码职责
 
