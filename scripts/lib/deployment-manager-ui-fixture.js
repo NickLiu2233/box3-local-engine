@@ -14,6 +14,7 @@ import ${JSON.stringify(path.join(src, 'main.js'))}
 import { state } from ${JSON.stringify(path.join(src, 'core/state.js'))}
 import { render } from ${JSON.stringify(path.join(src, 'app/render.js'))}
 import { setup } from ${JSON.stringify(path.join(src, 'views/setup/index.js'))}
+import { revealInvalidSetupField } from ${JSON.stringify(path.join(src, 'configuration/form.js'))}
 import { getServiceUrl } from ${JSON.stringify(path.join(src, 'configuration/addresses.js'))}
 import { copyOwnerSecret } from ${JSON.stringify(path.join(src, 'operations/owner-secrets.js'))}
 import { saveRawEnvironment, saveConfiguration, loadRawNginxConfig, saveRawNginxConfig, reloadRawNginxConfig } from ${JSON.stringify(path.join(src, 'operations/configuration.js'))}
@@ -24,7 +25,7 @@ import { chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx,
 import { confirmBackupAction, openBackupDialog } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
 import { checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate } from ${JSON.stringify(path.join(src, 'operations/updates.js'))}
 import { isNewerVersion, validateRelease } from ${JSON.stringify(path.join(src, 'utils/releases.js'))}
-globalThis.manager = { openExternalNginxDialog, closeExternalNginxDialog, externalNginxConfiguration, state, render, setup, getServiceUrl, copyOwnerSecret, saveRawEnvironment, saveConfiguration, loadRawNginxConfig, saveRawNginxConfig, reloadRawNginxConfig, confirmBackupAction, openBackupDialog, sslRoutes, chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
+globalThis.manager = { revealInvalidSetupField, openExternalNginxDialog, closeExternalNginxDialog, externalNginxConfiguration, state, render, setup, getServiceUrl, copyOwnerSecret, saveRawEnvironment, saveConfiguration, loadRawNginxConfig, saveRawNginxConfig, reloadRawNginxConfig, confirmBackupAction, openBackupDialog, sslRoutes, chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
 `;
 const adapterSource = `
 export const invoke = (...args) => globalThis.adapterInvoke(...args)
@@ -196,6 +197,8 @@ async function createFixture({
         rawTextarea = null,
         rawNginxTextarea = null,
         resetLoginImage = null,
+        aboutUpdateButton = null,
+        aboutRepositoryButton = null,
         updateProgressLabel = null,
         updateProgressBar = null,
         timerId = 0;
@@ -256,6 +259,12 @@ async function createFixture({
         set innerHTML(value) {
             renderCount++;
             html = value;
+            aboutUpdateButton = html.includes('data-check-version-updates')
+                ? new FixtureElement()
+                : null;
+            aboutRepositoryButton = html.includes('data-open-project-repository')
+                ? new FixtureElement()
+                : null;
             updateProgressLabel = html.includes('id="launcher-update-progress-label"')
                 ? {
                       get textContent() {
@@ -322,6 +331,12 @@ async function createFixture({
             events.get(name)?.delete(handler);
         },
         querySelector(selector) {
+            if (selector === '[data-check-version-updates]') {
+                return aboutUpdateButton;
+            }
+            if (selector === '[data-open-project-repository]') {
+                return aboutRepositoryButton;
+            }
             if (
                 selector === '.progress-dialog-content' &&
                 html.includes('class="progress-dialog-content"')

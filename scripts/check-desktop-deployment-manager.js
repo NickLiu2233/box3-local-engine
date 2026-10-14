@@ -450,7 +450,7 @@ for (const field of [
     'playMemoryMb',
     'playCpuLimit',
 ]) {
-    assert.match(frontend, new RegExp(`input\\('${field}'`));
+    assert.match(frontend, new RegExp(`(?:input|field)\\('${field}'`));
 }
 assert.match(frontend, /运行时空闲回收（分钟）/);
 assert.match(frontend, /Teleport 私有房间上限/);
@@ -693,7 +693,8 @@ assert.match(backend, /OwnerSecretsView/);
 assert.match(frontend, /data-save-raw-environment/);
 assert.doesNotMatch(frontend, /运行日志|查看运行日志|syncLogPolling|loadLogs/);
 assert.doesNotMatch(backend, /fn get_logs|fn get_service_logs/);
-assert.match(frontend, /服主交流QQ群：1107448537/);
+assert.match(frontend, /服主交流群/);
+assert.match(frontend, /QQ群 1107448537/);
 assert.match(frontend, /open_community_group/);
 assert.match(backend, /fn open_community_group\(\)/);
 assert.match(frontend, /addEventListener\('contextmenu', \(event\) => event\.preventDefault\(\)\)/);

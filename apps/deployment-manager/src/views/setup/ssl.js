@@ -3,6 +3,7 @@ import { fileInput } from '../../ui/forms.js';
 import { escapeHtml } from '../../ui/html.js';
 import { nginxMode } from '../../configuration/ssl.js';
 import { icon } from '../../ui/icons.js';
+import { serviceModeChoice } from './controls.js';
 
 export function nginxSetting() {
     const mode = nginxMode();
@@ -12,23 +13,22 @@ export function nginxSetting() {
     const panel = state.sslStatus?.running
         ? `<div class="managed-install-card"><div><span class="managed-state running">正在运行</span><strong>内置 ${label}</strong></div><button type="button" class="button primary" id="nginx-reload" ${disabled}>重载</button></div>`
         : `<div class="managed-install-card"><strong>${available ? `内置 ${label} 已下载` : '尚未安装 Nginx 最新稳定版'}</strong><button type="button" class="button primary" id="${available ? 'nginx-enable' : 'nginx-download'}" ${disabled}>${available ? '启用并启动' : '立即下载'}</button></div>`;
-    return `<div class="config-group"><div class="group-title"><h2>Nginx</h2></div>
+    return `<div class="config-group data-service-group"><div class="group-title"><h2>Nginx</h2></div>
     <input type="hidden" id="ssl-mode" value="${mode}"/>
-    <div class="database-mode-choice">${[
-        ['managed', '内置 Nginx', '启动器自动维护'],
-        ['external', '已有外部 Nginx', '连接已有服务'],
-    ]
-        .map(
-            ([value, title, description]) =>
-                `<button type="button" class="${mode === value ? 'active' : ''}" data-nginx-mode="${value}"><strong>${title}</strong><span>${description}</span></button>`,
-        )
-        .join('')}</div>
+    ${serviceModeChoice(
+        'data-nginx-mode',
+        [
+            ['managed', '内置 Nginx'],
+            ['external', '已有外部 Nginx'],
+        ],
+        mode,
+    )}
     ${mode === 'managed' ? panel : externalNginxPanel()}
   </div>`;
 }
 
 function externalNginxPanel() {
-    return '<div class="database-download-note"><span>外部 Nginx 由你维护。请在“访问设置”快速配置并保存，再复制生成的配置到外部 Nginx；启动器不会修改或重载外部 Nginx。</span></div>';
+    return '<div class="managed-install-card"><strong>外部 Nginx 由你维护</strong><button type="button" class="button" data-setup-section="network">配置访问入口</button></div>';
 }
 
 export function sslCertificateSetting(service) {

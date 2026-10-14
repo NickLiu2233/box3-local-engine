@@ -1,222 +1,240 @@
-.about-card {
+.about-page {
+    width: min(1400px, 100%);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+    container-type: inline-size;
+}
+
+.about-card,
+.about-release-card {
+    min-width: 0;
     overflow: hidden;
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: var(--radius-panel);
     background: var(--panel);
+}
+
+.about-release-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 24px;
+    padding: 24px;
+}
+
+.about-product {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.about-product > img {
+    width: 56px;
+    height: 56px;
+    flex: none;
+    object-fit: contain;
+}
+
+.about-product-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.about-product-title h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 650;
+    letter-spacing: -0.03em;
+}
+
+.about-version {
+    padding: 4px 7px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-control);
+    color: var(--muted);
+    font:
+        12px/1.2 ui-monospace,
+        SFMono-Regular,
+        Menlo,
+        monospace;
+}
+
+.about-product p {
+    margin: 5px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.about-update-button {
+    gap: 7px;
+    white-space: nowrap;
+}
+
+.about-update-button svg {
+    width: 14px;
+    height: 14px;
+}
+
+.about-release-facts {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 32px;
+    margin: 0;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+}
+
+.about-release-facts > div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.about-release-facts dt,
+.about-release-facts dd {
+    margin: 0;
+}
+
+.about-release-facts dt {
+    color: var(--muted);
+}
+
+.about-content-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: 16px;
 }
 
 .about-card-heading {
     min-height: 48px;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: 12px;
     padding: 0 16px;
 }
 
 .about-card-heading h2 {
     margin: 0;
     font-size: 14px;
+    font-weight: 650;
+}
+
+.about-card-heading > span {
+    color: var(--muted);
+    font-size: 11px;
 }
 
 .about-document-list {
-    border-top: 1px solid var(--border);
-}
-
-.about-image-list {
-    border-top: 1px solid var(--border);
-}
-
-.about-image-row {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 13px 16px;
-    border-top: 1px solid var(--border);
-}
-
-.about-image-row:first-child {
-    border-top: 0;
-}
-
-.about-image-summary {
-    min-width: 0;
     display: grid;
-    gap: 4px;
-    flex: 1;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
 }
 
-.about-image-row strong {
-    font-size: 13px;
-}
-
-.about-image-row small {
-    overflow: hidden;
-    color: var(--muted);
-    font-size: 11px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.about-image-details {
-    min-width: 106px;
-    flex: 0 0 auto;
-}
-
-.about-image-details summary {
-    color: var(--muted);
-    cursor: pointer;
-    font-size: 11px;
-    list-style: none;
-    text-align: right;
-}
-
-.about-image-details summary::-webkit-details-marker {
-    display: none;
-}
-
-.about-image-details summary::after {
-    content: '⌄';
-    display: inline-block;
-    margin-left: 5px;
-    transition: transform 140ms ease;
-}
-
-.about-image-details[open] summary {
-    color: var(--text);
-}
-
-.about-image-details[open] {
-    flex-basis: 100%;
+.about-document-row {
     width: 100%;
-}
-
-.about-image-details[open] summary::after {
-    transform: rotate(180deg);
-}
-
-.about-image-meta {
     min-width: 0;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 16px;
-    margin: 12px 0 0;
-    padding: 12px;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: var(--panel-soft);
-    color: var(--muted);
-    font-size: 11px;
-}
-
-.about-image-meta > div {
-    min-width: 0;
-}
-
-.about-image-meta dt,
-.about-image-meta dd {
-    overflow: hidden;
-    margin: 0;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.about-image-meta dt {
-    margin-bottom: 3px;
-    color: var(--muted);
-    font-family: inherit;
-    font-size: 10px;
-}
-
-.about-image-meta dd {
-    color: var(--text);
-    font-family: 'SFMono-Regular', Consolas, monospace;
-    font-size: 11px;
-}
-
-.about-image-meta dd {
-    overflow: visible;
-    text-overflow: clip;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    line-height: 1.45;
-}
-
-.about-image-empty {
-    min-height: 58px;
+    min-height: 82px;
     display: flex;
     align-items: center;
-    padding: 10px 16px;
-    color: var(--muted);
-    font-size: 12px;
-}
-
-/* About uses a compact release card and expandable component rows. Avoid the
-   old spreadsheet-like fact grid here: build information is supporting
-   context, not the primary task on this screen. */
-.about-page {
-    width: min(1400px, 100%);
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-}
-
-.about-release-card {
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    background: linear-gradient(135deg, var(--panel) 0%, var(--panel-soft) 180%);
-}
-
-.about-release-facts {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin: 0;
-}
-
-.about-release-facts > div {
-    min-width: 0;
-    min-height: 92px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 16px 20px;
+    gap: 12px;
+    padding: 16px;
+    border: 0;
     border-right: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: background-color 140ms ease;
 }
 
-.about-release-facts > div:nth-child(3n) {
+.about-document-row:last-child {
     border-right: 0;
 }
 
-.about-release-facts dt,
-.about-release-facts dd {
+.about-document-row > span:not(.about-link-icon) {
     min-width: 0;
-    margin: 0;
+    flex: 1;
+    display: grid;
+    gap: 5px;
 }
 
-.about-release-facts dt {
-    margin-bottom: 6px;
+.about-document-row strong {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.about-document-row small {
     color: var(--muted);
     font-size: 11px;
+    line-height: 1.4;
 }
 
-.about-release-facts dd {
-    overflow: hidden;
-    color: var(--text);
-    font-family: 'SFMono-Regular', Consolas, monospace;
-    font-size: 12px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.about-link-icon {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: var(--radius-control);
+    background: var(--panel-soft);
+    color: var(--muted);
 }
 
-.about-image-list {
-    border-top: 1px solid var(--border);
+.about-document-row > svg {
+    width: 14px;
+    height: 14px;
+    flex: none;
+    color: var(--muted);
 }
 
-.about-changelog-list {
-    max-height: min(560px, 65vh);
-    overflow-y: auto;
-    overscroll-behavior: contain;
-    border-top: 1px solid var(--border);
-    scrollbar-color: color-mix(in srgb, var(--muted) 42%, transparent) transparent;
-    scrollbar-gutter: stable;
-    scrollbar-width: thin;
+.about-document-row:focus-visible {
+    outline: 2px solid var(--text);
+    outline-offset: -3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .about-document-row:hover {
+        background: var(--panel-soft);
+    }
+}
+
+@container (max-width: 740px) {
+    .about-content-layout {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .about-link-icon {
+        display: none;
+    }
+}
+
+@container (max-width: 500px) {
+    .about-release-card {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .about-update-button {
+        justify-self: start;
+    }
+
+    .about-document-list {
+        grid-auto-flow: row;
+    }
+
+    .about-document-row {
+        border-right: 0;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .about-document-row:last-child {
+        border-bottom: 0;
+    }
 }

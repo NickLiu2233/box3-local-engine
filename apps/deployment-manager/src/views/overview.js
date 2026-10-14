@@ -5,10 +5,12 @@ import { icon } from '../ui/icons.js';
 import { progressPanel } from '../ui/shell.js';
 import { services, startPrompts } from '../core/constants.js';
 import { state } from '../core/state.js';
+import { serviceStatus } from '../ui/service-status.js';
 
 export function overview() {
     // 总览提供业务级启动入口，并将运行中的用户数据服务与本地基础设施分组展示。
-    const dockerReady = state.status?.dockerReady === true;
+    const statusUnavailable = Boolean(state.statusErrors.system);
+    const dockerReady = !statusUnavailable && state.status?.dockerReady === true;
     const installed = state.status?.configured;
     const allHealthy = Boolean(state.status?.allHealthy);
     const runningCount = state.status?.services?.filter((service) => service.running).length || 0;
@@ -24,20 +26,24 @@ export function overview() {
             ? Boolean(state.config.databaseHost)
             : Boolean(state.managedDatabaseInfo?.configured);
     const canStart = Boolean(installed && databaseReady && !state.busy);
-    const runningServices = (state.status?.services || []).filter((service) => service.running);
+    const runningServices = (state.status?.services || []).filter(
+        (service) => service.enabled !== false && service.running,
+    );
     const environmentServiceIds = new Set(['creator', 'voxa', 'play']);
     const environmentRunning = runningServices.some((service) =>
         environmentServiceIds.has(service.name),
     );
     const action = (scope, label, detail) =>
         `<button type="button" class="overview-start-option ${state.startScopes.has(scope) ? 'selected' : ''}" data-start-scope="${scope}" aria-pressed="${state.startScopes.has(scope)}" ${canStart ? '' : 'disabled'}><span>${icon('play')}</span><strong>${label}</strong><small>${detail}</small></button>`;
-    const actions = !dockerReady
-        ? `<div class="overview-required docker-required"><strong>Docker 服务未连接</strong><span>${dockerPlatform().hint}</span><button type="button" class="button primary" id="connect-docker" ${state.busy ? 'disabled' : ''}>${state.busy ? dockerPlatform().busy : dockerPlatform().action}</button></div>`
-        : installed
-          ? !databaseReady
-              ? `<div class="overview-required"><strong>数据库还没有配置</strong><span>配置 PostgreSQL 后即可启动服务。</span><button type="button" class="button primary" data-page="setup">前往数据配置</button></div>`
-              : `${environmentRunning ? '' : `<div class="overview-start-options">${action('play', '游玩端', '启动游玩环境，供玩家进入地图')}${action('creator', '创作端', '启动创作环境，用于编辑地图和模型')}</div><button type="button" class="button primary overview-confirm-start" id="confirm-start-scopes" ${state.startScopes.size ? '' : 'disabled'}>确认启动</button>`}${runningCount ? `<button type="button" class="button overview-stop" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止所有服务</button>` : ''}`
-          : `<button type="button" class="button primary" data-page="setup">开始配置</button>`;
+    const actions = statusUnavailable
+        ? `<div class="overview-required"><strong>暂时无法读取服务状态</strong><span>请检查管理器连接后重新读取。下方保留最近一次读取的服务信息。</span></div>`
+        : !dockerReady
+          ? `<div class="overview-required docker-required"><strong>Docker 服务未连接</strong><span>${dockerPlatform().hint}</span><button type="button" class="button primary" id="connect-docker" ${state.busy ? 'disabled' : ''}>${state.busy ? dockerPlatform().busy : dockerPlatform().action}</button></div>`
+          : installed
+            ? !databaseReady
+                ? `<div class="overview-required"><strong>数据库还没有配置</strong><span>配置 PostgreSQL 后即可启动服务。</span><button type="button" class="button primary" data-page="setup">前往数据配置</button></div>`
+                : `${environmentRunning ? '' : `<div class="overview-start-options">${action('play', '游玩端', '启动游玩环境，供玩家进入地图')}${action('creator', '创作端', '启动创作环境，用于编辑地图和模型')}</div><button type="button" class="button primary overview-confirm-start" id="confirm-start-scopes" ${state.startScopes.size ? '' : 'disabled'}>确认启动</button>`}${runningCount ? `<button type="button" class="button overview-stop" id="stop" ${state.busy ? 'disabled' : ''}>${icon('stop')}停止所有服务</button>` : ''}`
+            : `<button type="button" class="button primary" data-page="setup">开始配置</button>`;
     const idle = Boolean(installed && !runningCount && databaseReady);
     const idlePrompt = idle
         ? state.startPrompt ||
@@ -81,12 +87,16 @@ export function overview() {
                 if (!name) {
                     return '';
                 }
-                const url = openable ? getServiceUrl(service.name) : '';
+                const url =
+                    openable && service.running && !statusUnavailable
+                        ? getServiceUrl(service.name)
+                        : '';
+                const status = service.external
+                    ? { label: '外部服务', tone: 'external' }
+                    : serviceStatus(service);
                 const detailText = typeof detail === 'function' ? detail(service) : detail;
-                const detailMarkup = detailText
-                    ? `<code>${escapeHtml(detailText)}</code>`
-                    : '<span class="running-service-spacer" aria-hidden="true"></span>';
-                return `<div class="running-service-row"><strong>${name}</strong>${detailMarkup}${url ? `<button type="button" class="button" data-open="${escapeHtml(url)}">打开</button>` : ''}</div>`;
+                const detailMarkup = detailText ? `<small>${escapeHtml(detailText)}</small>` : '';
+                return `<div class="running-service-row"><div class="running-service-identity"><strong>${name}</strong>${detailMarkup}</div><span class="service-status ${status.tone}">${status.label}</span>${url ? `<button type="button" class="button" data-open="${escapeHtml(url)}" aria-label="打开${escapeHtml(name)}">打开${icon('external')}</button>` : ''}</div>`;
             })
             .join('');
     const environmentOrder = ['creator', 'voxa', 'play'];
@@ -117,11 +127,11 @@ export function overview() {
         [...configuredInfrastructureServices, ...externalInfrastructureServices],
         {
             openable: false,
-            detail: (service) => (service.external ? '外部服务' : '本机 Docker 服务'),
+            detail: (service) => (service.external ? '' : '本机 Docker 服务'),
         },
     );
     const runningEnvironmentList = runningEnvironmentRows
-        ? `<section class="running-services"><h2>运行中服务</h2><div class="running-service-list">${runningEnvironmentRows}</div></section>`
+        ? `<section class="running-services"><h2>创作与游玩</h2><div class="running-service-list">${runningEnvironmentRows}</div></section>`
         : '';
     const userDataList = userDataRows
         ? `<section class="running-services"><h2>用户数据</h2><div class="running-service-list">${userDataRows}</div></section>`
@@ -138,9 +148,9 @@ export function overview() {
         ? `<button class="button" data-page="performance">${icon('performance')}性能</button>`
         : '';
     return `<header><div><h1>服务总览</h1></div>
-    <div class="header-actions">${performanceAction}</div></header>
+    <div class="header-actions"><button type="button" class="button" id="refresh-service-status" ${state.busy ? 'disabled' : ''}>${icon('refresh')}刷新状态</button>${performanceAction}</div></header>
     ${state.busy ? progressPanel() : ''}
-    <section class="overview-simple">${statusMarkup}${actions}${runningEnvironmentList}${supportLists}${ownerSecretMarkup}</section>`;
+    <section class="overview-simple">${environmentRunning && databaseReady ? `<div class="overview-toolbar">${statusMarkup}${actions}</div>` : `${statusMarkup}${actions}`}${runningEnvironmentList}${supportLists}${ownerSecretMarkup}</section>`;
 }
 
 function serviceCard([id, name, description, portKey, defaultPort], options = {}) {

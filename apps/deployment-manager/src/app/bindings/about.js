@@ -13,13 +13,20 @@ import {
 } from '../../operations/updates.js';
 
 export function bindAboutEvents() {
-    document.querySelector('#check-version-updates')?.addEventListener('click', () => {
+    const checkUpdates = () => {
         if (state.updateRelease) {
-            openUpdateDialog();
+            return openUpdateDialog();
         } else {
-            checkForUpdates(true);
+            return checkForUpdates(true);
         }
-    });
+    };
+    document.querySelector('#check-version-updates')?.addEventListener('click', checkUpdates);
+    document.querySelector('[data-check-version-updates]')?.addEventListener('click', checkUpdates);
+    document
+        .querySelector('[data-open-project-repository]')
+        ?.addEventListener('click', () =>
+            openExternal('https://github.com/box3lab/box3-local-engine', 'open_project_repository'),
+        );
     document.querySelector('#close-update-dialog')?.addEventListener('click', closeUpdateDialog);
     document.querySelector('[data-update-dismiss]')?.addEventListener('click', (event) => {
         if (event.target === event.currentTarget) {

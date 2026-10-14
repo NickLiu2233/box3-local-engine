@@ -256,3 +256,70 @@ for (const webManager of [false, true]) {
         assert.ok(!app.html.includes('id="external-example-nginx"'));
     });
 }
+
+test('invalid advanced configuration expands its disclosure before focusing the field', async () => {
+    const app = await createFixture();
+    app.api.state.page = 'setup';
+    app.api.state.setupSection = 'capacity';
+    app.api.state.config.databaseMode = 'external';
+    app.api.render();
+    const disclosure = { open: false, parentElement: null };
+    let focused = false;
+    const target = {
+        closest: () => disclosure,
+        focus: () => {
+            assert.equal(disclosure.open, true);
+            focused = true;
+        },
+        reportValidity() {},
+    };
+    const originalQuery = app.document.querySelector.bind(app.document);
+    app.document.querySelector = (selector) =>
+        selector === '#setup-form [name="databasePoolSize"]' ? target : originalQuery(selector);
+    const invalid = {
+        name: 'databasePoolSize',
+        min: '1',
+        max: '100',
+        validity: { valueMissing: false },
+        closest: (selector) =>
+            selector === '[data-setup-panel]'
+                ? { dataset: { setupPanel: 'data' } }
+                : { querySelector: () => ({ textContent: '每运行时连接池' }) },
+    };
+    assert.equal(app.api.revealInvalidSetupField({ querySelector: () => invalid }), true);
+    assert.equal(app.api.state.setupSection, 'data');
+    assert.equal(focused, true);
+});
+
+for (const webManager of [false, true]) {
+    test(`${webManager ? 'Web' : 'desktop'}: collapsed advanced fields remain part of saved configuration`, async () => {
+        const app = await createFixture({ webManager, token: 'fixture-token' });
+        app.api.state.page = 'setup';
+        app.api.state.setupSection = 'data';
+        app.api.state.sslLoaded = true;
+        Object.assign(app.api.state.config, {
+            databaseMode: 'external',
+            databaseHost: 'db.example.test',
+            databaseName: 'box',
+            databaseUser: 'box',
+            databasePoolSize: 16,
+            redisMode: 'external',
+            redisHost: 'cache.example.test',
+            redisDb: 3,
+            storageCacheRedisDb: 4,
+            storageCacheRedisTtl: 180,
+            playNetworkMode: 'local',
+            creatorNetworkMode: 'local',
+        });
+        app.api.render();
+        assert.match(app.html, /data-disclosure="database-advanced"><summary>/);
+        await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} });
+        assert.equal(app.api.state.error, '');
+        const saved = app.calls.find((call) => call.command === 'save_configuration_command')
+            .payload.config;
+        assert.equal(saved.databasePoolSize, 16);
+        assert.equal(saved.redisDb, 3);
+        assert.equal(saved.storageCacheRedisDb, 4);
+        assert.equal(saved.storageCacheRedisTtl, 180);
+    });
+}

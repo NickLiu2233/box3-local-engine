@@ -12,6 +12,7 @@ import { icon } from './icons.js';
 import { state } from '../core/state.js';
 import { themeControl } from './theme.js';
 import { updateDialog } from './update-dialog.js';
+import { statusFeedback } from './status-feedback.js';
 
 function navItem(page, iconName, label) {
     return `<button class="nav-item ${state.page === page ? 'active' : ''}" data-page="${page}">${icon(iconName)}<span>${label}</span></button>`;
@@ -19,15 +20,12 @@ function navItem(page, iconName, label) {
 
 export function shell(content) {
     const webLoginRequired = isWebManager() && !hasWebManagerToken();
-    const updateLabel = state.updateChecking
-        ? '正在检测更新'
-        : state.updateRelease
-          ? '发现新版本，下载更新'
-          : '检测版本更新';
+    const updateLabel = state.updateChecking ? '正在检测更新' : '发现新版本，下载更新';
     const canCheckUpdates = !isWebManager() || hasWebManagerToken();
-    const updateControl = canCheckUpdates
-        ? `<button class="icon-button update-check${state.updateRelease ? ' update-available' : ''}" id="check-version-updates" title="${updateLabel}" aria-label="${updateLabel}" ${state.updateChecking ? 'disabled' : ''}>${icon('download')}</button>`
-        : '';
+    const updateControl =
+        canCheckUpdates && state.updateRelease
+            ? `<button class="icon-button update-check update-available" id="check-version-updates" title="${updateLabel}" aria-label="${updateLabel}" ${state.updateChecking ? 'disabled' : ''}>${icon('download')}</button>`
+            : '';
     const primaryNavigation = webLoginRequired
         ? navItem('web-login', 'device', '管理登录')
         : `${navItem('overview', 'home', '服务总览')}${navItem('setup', 'settings', '数据配置')}${navItem('backups', 'archive', '数据与备份')}`;
@@ -37,7 +35,7 @@ export function shell(content) {
       <nav>${primaryNavigation}${navItem('about', 'info', '关于')}</nav>
       <div class="sidebar-bottom">${isWebManager() && hasWebManagerToken() ? `<button class="web-logout" id="web-logout">${icon('logout')}<span>退出管理</span></button>` : ''}${themeControl()}${!webLoginRequired ? `<div class="sidebar-foot"><span class="status-dot ${state.status?.dockerReady ? 'good' : ''}"></span><span>${state.status?.dockerReady ? 'Docker 已连接' : 'Docker 未连接'}</span>${updateControl}</div>` : ''}</div>
     </aside>
-    <main>${content}</main>
+    <main>${!webLoginRequired ? statusFeedback() : ''}${content}</main>
     ${feedbackToast()}
     ${state.startMenuOpen ? startScopeDialog() : ''}
     ${state.backupDialog ? backupConfirmDialog() : ''}

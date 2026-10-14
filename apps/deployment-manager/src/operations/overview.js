@@ -6,7 +6,7 @@ import {
     isWebManager,
     subscribeManager,
 } from '../infrastructure/transport.js';
-import { refreshStatus } from './status.js';
+import { applySystemStatus, refreshStatus } from './status.js';
 import { render } from '../core/render-request.js';
 import { state } from '../core/state.js';
 
@@ -47,23 +47,9 @@ export async function refreshOverviewStatus() {
     overviewStatusLoading = true;
     try {
         const status = await invoke('get_system_status');
-        state.status = status;
-        state.dockerCheck = {
-            cliAvailable: status.dockerCliAvailable,
-            cliVersion: status.dockerCliVersion,
-            engineReady: status.dockerReady,
-            message: status.dockerMessage,
-        };
+        applySystemStatus(status);
     } catch (error) {
-        state.status = {
-            dockerReady: false,
-            dockerCliAvailable: false,
-            dockerCliVersion: '',
-            dockerMessage: String(error),
-            configured: false,
-            services: [],
-        };
-        state.dockerCheck = null;
+        applySystemStatus(null, error);
     } finally {
         overviewStatusLoading = false;
         if (state.page === 'overview') {
@@ -170,7 +156,7 @@ export async function runAction(command, payload = {}) {
     const startsDockerWork =
         command === 'start_services' ||
         (command === 'control_service' && ['start', 'restart'].includes(payload.action));
-    if (startsDockerWork && !state.status?.dockerReady) {
+    if (startsDockerWork && (state.statusErrors.system || !state.status?.dockerReady)) {
         state.error = dockerPlatform().hint;
         state.progress = { stage: 'docker-required', message: state.error, percent: 100 };
         state.page = 'overview';
@@ -201,20 +187,6 @@ function applyOverviewSnapshot(status, error) {
     if (state.page !== 'overview') {
         return;
     }
-    if (error) {
-        state.error = error;
-        render();
-        return;
-    }
-    if (state.error?.includes('实时连接') || state.error?.includes('管理令牌无效')) {
-        state.error = '';
-    }
-    state.status = status;
-    state.dockerCheck = {
-        cliAvailable: status.dockerCliAvailable,
-        cliVersion: status.dockerCliVersion,
-        engineReady: status.dockerReady,
-        message: status.dockerMessage,
-    };
+    applySystemStatus(status, error);
     render();
 }

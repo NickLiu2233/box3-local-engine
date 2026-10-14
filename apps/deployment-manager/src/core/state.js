@@ -5,6 +5,7 @@ export const state = {
     setupSection: 'data',
     busy: false,
     status: null,
+    statusErrors: {},
     config: null,
     savedAuthPortalImage: '',
     about: null,

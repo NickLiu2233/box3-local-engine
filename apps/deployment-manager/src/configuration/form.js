@@ -107,6 +107,13 @@ export function revealInvalidSetupField(form) {
         ? document.querySelector(`#setup-form [name="${CSS.escape(invalid.name)}"]`)
         : null;
     if (target) {
+        for (
+            let disclosure = target.closest('details');
+            disclosure;
+            disclosure = disclosure.parentElement?.closest('details')
+        ) {
+            disclosure.open = true;
+        }
         target.focus();
         target.reportValidity();
     }

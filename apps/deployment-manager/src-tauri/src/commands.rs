@@ -29,6 +29,9 @@ mod config;
 #[path = "docker.rs"]
 mod docker;
 
+#[path = "external_links.rs"]
+mod external_links;
+
 use config::{
     compose_path, default_runtime_root, detect_lan_ip, ensure_runtime_files, env_path, parse_env,
     random_hex, remove_env, resolve_secret, runtime_env_path, runtime_location_file, runtime_root,
@@ -4434,6 +4437,7 @@ pub fn run() {
             export_diagnostics,
             open_service,
             open_community_group,
+            external_links::open_project_repository,
             open_docker_desktop_download,
             start_docker_desktop,
             get_docker_check,

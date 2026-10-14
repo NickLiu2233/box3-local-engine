@@ -3,6 +3,7 @@ import { dockerPlatform, openExternal } from '../../infrastructure/transport.js'
 import { recheckDocker, runAction, startDockerDesktop } from '../../operations/overview.js';
 import { render } from '../../core/render-request.js';
 import { state } from '../../core/state.js';
+import { refreshStatus } from '../../operations/status.js';
 
 function closeServiceMenuOnOutside(event) {
     if (!state.serviceMenu) {
@@ -20,6 +21,12 @@ export function bindServicesEvents() {
     document.removeEventListener('click', closeServiceMenuOnOutside);
 
     document.addEventListener('click', closeServiceMenuOnOutside);
+
+    document.querySelector('#refresh-service-status')?.addEventListener('click', () => {
+        if (!state.busy) {
+            void refreshStatus();
+        }
+    });
 
     document.querySelector('#connect-docker')?.addEventListener('click', () => {
         void (dockerPlatform().canStart ? startDockerDesktop() : recheckDocker());

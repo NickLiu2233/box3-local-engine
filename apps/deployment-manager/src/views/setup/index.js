@@ -14,11 +14,11 @@ import { authPortalImageSetting } from './auth-portal.js';
 import { externalNginxEntry, externalProtocolSetting } from './external-nginx.js';
 import { nginxMode } from '../../configuration/ssl.js';
 import { nginxSetting, sslCertificateSetting } from './ssl.js';
+import { dataServices } from './data-services.js';
+import { setupNavigation, setupSectionLabel } from './navigation.js';
 
 export function setup() {
     const config = state.config || {};
-    const databaseMode = config.databaseMode || 'managed';
-    const redisMode = config.redisMode || 'disabled';
     const choice = accessChoice(config);
     const accessMode = isPublicMode(choice) ? 'public' : choice;
     const shared = choice === 'public-shared';
@@ -43,8 +43,6 @@ export function setup() {
       ${preview ? `<div class="network-endpoint-preview" data-public-preview="${service}" aria-label="实际访问地址"><code>${escapeHtml(preview)}</code></div>` : ''}
       ${shared || nginxMode() === 'external' ? '' : sslCertificateSetting(service)}</div>`;
     };
-    const tab = (id, label) =>
-        `<button type="button" class="setup-tab ${state.setupSection === id ? 'active' : ''}" data-setup-section="${id}">${label}</button>`;
     const nginxConfigAvailable = Boolean(state.sslStatus?.nginxConfigAvailable);
     const rawNginxPanel = nginxConfigAvailable
         ? `<section class="setup-panel environment-panel ${state.setupSection === 'nginx' ? 'active' : ''}" data-setup-panel="nginx"><div class="config-group raw-config-group"><div class="group-title"><div><h2>原始 Nginx 配置</h2><span>保存前会校验语法，通过后重载内置 Nginx</span></div><button type="button" class="text-button" id="reload-raw-nginx" ${state.nginxConfigSaving ? 'disabled' : ''}>重新读取</button></div><textarea id="raw-nginx-config" class="raw-environment" spellcheck="false" ${state.nginxConfigSaving ? 'disabled' : ''}>${escapeHtml(state.nginxConfigFile)}</textarea></div>${setupExplanation(
@@ -116,11 +114,10 @@ export function setup() {
     return `<header><div><h1>数据配置</h1></div></header>
     ${state.busy || state.sslBusy ? progressPanel() : ''}
     <form id="setup-form" novalidate class="${['environment', 'nginx'].includes(state.setupSection) ? 'environment-mode' : ''}">
-      <div class="setup-tabs">${tab('data', '数据服务')}${tab('storage', '数据存储')}${tab('network', '访问设置')}${tab('capacity', '运行容量')}${tab('backup', '地图备份')}${tab('security', '服主与安全')}${tab('environment', '原始 .env')}${nginxConfigAvailable ? tab('nginx', '原始 Nginx 配置') : ''}</div>
-      <div class="setup-panels">
+      ${setupNavigation(nginxConfigAvailable)}
+      <div class="setup-panels"><div class="setup-content-heading"><h2>${setupSectionLabel()}</h2></div>
         <section class="setup-panel ${state.setupSection === 'data' ? 'active' : ''}" data-setup-panel="data">
-          <div class="config-group"><div class="group-title"><div><h2>PostgreSQL</h2></div>${databaseMode === 'external' ? '<button type="button" class="text-button" data-test-connection="postgresql">测试连接</button>' : ''}</div><input name="databaseMode" type="hidden" value="${databaseMode}"/><div class="database-mode-choice"><button type="button" class="${databaseMode === 'managed' ? 'active' : ''}" data-database-mode="managed"><strong>内置数据库</strong><span>启动器自动配置和维护</span></button><button type="button" class="${databaseMode === 'external' ? 'active' : ''}" data-database-mode="external"><strong>外部数据库</strong><span>连接已有的 PostgreSQL</span></button></div>${databaseMode === 'managed' ? managedServicePanel('postgresql', state.managedDatabaseInfo) : `<div class="form-grid compact three">${input('databaseHost', '地址', config.databaseHost === 'managed-postgres' ? '' : config.databaseHost, 'text', 'IP 或域名', true)}${input('databasePort', '端口', config.databasePort || '5432', 'number', '', true, { min: 1, max: 65535 })}${input('databaseName', '数据库', config.databaseName || 'box', 'text', '', true)}${input('databaseUser', '账号', config.databaseUser || 'box', 'text', '', true)}${input('databasePassword', '密码', '', 'password', config.databasePassword ? '本次配置已输入，保存时会使用' : config.hasDatabasePassword ? '留空保留原密码' : '无密码认证可留空')}${input('databasePoolSize', '每运行时连接池', config.databasePoolSize ?? 10, 'number', '1–100', false, { min: 1, max: 100 })}<label class="check-field"><input name="databaseSsl" type="checkbox" ${config.databaseSsl ? 'checked' : ''}/><span>使用 SSL</span></label></div>`}</div>
-          <div class="config-group"><div class="group-title"><div><h2>Redis</h2></div>${redisMode === 'external' ? '<button type="button" class="text-button" data-test-connection="redis">测试连接</button>' : ''}</div><input name="redisMode" type="hidden" value="${redisMode}"/><div class="database-mode-choice redis-mode-choice"><button type="button" class="${redisMode === 'disabled' ? 'active' : ''}" data-redis-mode="disabled"><strong>不启用</strong><span>保持最少依赖</span></button><button type="button" class="${redisMode === 'managed' ? 'active' : ''}" data-redis-mode="managed"><strong>内置 Redis</strong><span>启动器自动维护</span></button><button type="button" class="${redisMode === 'external' ? 'active' : ''}" data-redis-mode="external"><strong>外部 Redis</strong><span>连接已有服务</span></button></div>${redisMode === 'managed' ? managedServicePanel('redis', state.managedRedisInfo) : redisMode === 'external' ? `<div class="form-grid compact three">${input('redisHost', '地址', config.redisHost === 'managed-redis' ? '' : config.redisHost, 'text', 'IP 或域名', true)}${input('redisPort', '端口', config.redisPort || '6379', 'number', '', true, { min: 1, max: 65535 })}${input('redisPassword', '密码', '', 'password', config.redisPassword ? '本次配置已输入，保存时会使用' : config.hasRedisPassword ? '留空保留原密码' : '外部 Redis 无密码时可留空')}${input('redisDb', '业务 DB', config.redisDb ?? 0, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisDb', '缓存 DB', config.storageCacheRedisDb ?? 1, 'number', '0–255', false, { min: 0, max: 255 })}${input('storageCacheRedisTtl', '构建缓存时间（秒）', config.storageCacheRedisTtl ?? 240, 'number', '0 表示关闭，最大 255', false, { min: 0, max: 255 })}</div>` : ''}</div>
+          ${dataServices()}
           ${nginxSetting()}
           ${setupExplanation('配置说明：这些服务用来做什么？', [
               [
@@ -294,37 +291,4 @@ export function setup() {
       </div>
       <div class="form-actions submit-actions">${state.setupSection === 'environment' ? `<button class="button primary" type="button" data-save-raw-environment ${state.environmentFileSaving ? 'disabled' : ''}>保存配置</button>` : state.setupSection === 'nginx' ? `<button class="button primary" type="button" data-save-raw-nginx ${state.nginxConfigSaving ? 'disabled' : ''}>保存并重载</button>` : `<button class="button primary" type="submit" ${state.busy ? 'disabled' : ''}>保存配置</button>`}</div>
     </form>`;
-}
-
-function managedServicePanel(service, info) {
-    const isDatabase = service === 'postgresql';
-    const label = isDatabase ? 'PostgreSQL 16' : 'Redis 7';
-    if (!info?.imageAvailable) {
-        return `<div class="managed-install-card"><strong>尚未安装 ${label}</strong><button type="button" class="button primary" data-install-managed="${service}" ${state.busy ? 'disabled' : ''}>立即下载</button></div>`;
-    }
-    if (!info?.configured) {
-        return `<div class="managed-install-card"><strong>内置 ${label} 已下载</strong><button type="button" class="button primary" data-install-managed="${service}" ${state.busy ? 'disabled' : ''}>启用并启动</button></div>`;
-    }
-    const fields = [
-        ['地址', info.host],
-        ['端口', info.port],
-        ...(isDatabase
-            ? [
-                  ['数据库', info.database],
-                  ['账号', info.user],
-              ]
-            : [
-                  ['业务 DB', info.database],
-                  ['缓存 DB', '1'],
-              ]),
-        ['密码', info.password],
-    ];
-    return `<div class="managed-connection-card"><div class="managed-connection-heading"><div><span class="managed-state ${info.running ? 'running' : 'stopped'}">${info.running ? '正在运行' : '当前未运行'}</span><strong>本机连接信息</strong><small>仅监听 127.0.0.1，不会暴露到局域网或公网。</small></div>${info.running ? '' : `<button type="button" class="button" data-install-managed="${service}" ${state.busy ? 'disabled' : ''}>启动服务</button>`}</div><dl class="managed-connection-grid">${fields
-        .map(
-            ([name, value]) =>
-                `<div><dt>${name}</dt><dd><code>${escapeHtml(value)}</code><button type="button" class="copy-connection" data-copy-managed="${escapeHtml(value)}" aria-label="复制${name}" title="复制${name}">${icon('copy')}</button></dd></div>`,
-        )
-        .join(
-            '',
-        )}<div class="connection-url"><dt>连接地址</dt><dd><code>${escapeHtml(info.connectionUrl)}</code><button type="button" class="copy-connection" data-copy-managed="${escapeHtml(info.connectionUrl)}" aria-label="复制连接地址" title="复制连接地址">${icon('copy')}</button></dd></div></dl></div>`;
 }

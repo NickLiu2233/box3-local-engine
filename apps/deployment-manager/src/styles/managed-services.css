@@ -1,13 +1,13 @@
 .managed-install-card,
 .managed-connection-card {
-    margin-bottom: 12px;
+    margin-bottom: 0;
     border: 1px solid var(--border);
     border-radius: 9px;
     background: var(--panel-soft);
 }
 
 .managed-install-card {
-    min-height: 86px;
+    min-height: 58px;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -67,13 +67,23 @@
 }
 
 .managed-connection-heading {
-    min-height: 76px;
+    min-height: 46px;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 16px;
     padding: 12px 14px;
-    border-bottom: 1px solid var(--border);
+}
+
+.managed-connection-details {
+    border-top: 1px solid var(--border);
+}
+
+.managed-connection-details summary {
+    padding: 12px 14px;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 12px;
 }
 
 .managed-connection-grid {

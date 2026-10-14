@@ -42,8 +42,8 @@ for (const required of ['MIT', 'npm run install:all', 'npm run verify', 'CONTRIB
 }
 const contributors = fs.readFileSync(path.join(root, 'CONTRIBUTING.md'), 'utf8');
 for (const required of [
-    'git clone https://github.com/<your-account>/box-local-engine.git',
-    'git remote add upstream https://github.com/box3lab/box-local-engine.git',
+    'git clone https://github.com/<your-account>/box3-local-engine.git',
+    'git remote add upstream https://github.com/box3lab/box3-local-engine.git',
     'git fetch upstream',
     'Pull Request',
 ]) {

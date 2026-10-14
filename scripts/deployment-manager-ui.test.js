@@ -69,7 +69,7 @@ test('SSL settings render expiry and escaped domains without exposing private ke
     assert.ok(!html.includes('<script>fixture'));
 });
 
-test('about cards use a single-column grid so their section spacing takes effect', async () => {
+test('about page keeps independent section spacing for its four cards', async () => {
     const css = require('node:fs').readFileSync(
         require('node:path').join(__dirname, '../apps/deployment-manager/src/styles/about.css'),
         'utf8',
@@ -392,7 +392,7 @@ test('Nginx belongs to data services and certificates follow existing public add
     app.api.state.sslDraft = { mode: 'managed' };
     const html = app.api.setup();
     assert.ok(html.indexOf('<h2>Nginx</h2>') < html.indexOf('data-setup-panel="network"'));
-    assert.ok(html.includes('连接已有服务'));
+    assert.match(html, /data-nginx-mode="external" aria-pressed="false"/);
     assert.ok(!html.includes('HTTPS 与证书管理'));
     assert.ok(!html.includes('ssl-domain-play'));
     const address = html.indexOf('name="playPublicAddressOverride"');
@@ -1258,3 +1258,77 @@ test('raw Nginx configuration stays hidden without a built-in config', async () 
     app.api.render();
     assert.ok(!app.html.includes('原始 Nginx 配置'));
 });
+
+test('about update button checks the release and opens the available update', async () => {
+    const app = await createFixture({
+        releaseResponse: {
+            schemaVersion: 1,
+            version: '0.4.0',
+            date: '2026-10-14',
+            summary: 'New release',
+            sections: [],
+        },
+    });
+    await new Promise((resolve) => setImmediate(resolve));
+    app.api.state.page = 'about';
+    app.api.state.updateRelease = null;
+    app.api.state.updateDialogOpen = false;
+    app.api.render();
+    const initialRequests = app.calls.filter((call) => call.command === 'fetch_release').length;
+    await app.document.querySelector('[data-check-version-updates]').click();
+    assert.ok(
+        app.calls.filter((call) => call.command === 'fetch_release').length > initialRequests,
+    );
+    assert.equal(app.api.state.updateRelease.version, '0.4.0');
+    assert.equal(app.api.state.updateDialogOpen, true);
+});
+
+test('about page hides management actions before Web login', async () => {
+    const app = await createFixture({ webManager: true });
+    app.api.state.page = 'about';
+    app.api.render();
+    assert.doesNotMatch(app.html, /data-check-version-updates/);
+    assert.doesNotMatch(app.html, /id="export-about-diagnostics"/);
+    assert.match(app.html, /data-open-legal-document="license"/);
+});
+
+for (const webManager of [false, true]) {
+    test(`${webManager ? 'Web' : 'desktop'}: sidebar update control appears only with an available release`, async () => {
+        const app = await createFixture({ webManager, token: 'fixture-token' });
+        await new Promise((resolve) => setImmediate(resolve));
+        app.api.state.page = 'about';
+        app.api.state.updateRelease = null;
+        for (const checking of [false, true]) {
+            app.api.state.updateChecking = checking;
+            app.api.render();
+            assert.doesNotMatch(app.html, /id="check-version-updates"/);
+            assert.match(app.html, /data-check-version-updates/);
+        }
+        app.api.state.updateChecking = false;
+        app.api.state.updateRelease = { version: '0.4.0' };
+        app.api.render();
+        assert.match(
+            app.html,
+            /class="icon-button update-check update-available" id="check-version-updates"/,
+        );
+        app.api.state.updateRelease = null;
+        app.api.render();
+        assert.doesNotMatch(app.html, /id="check-version-updates"/);
+    });
+}
+
+for (const webManager of [false, true]) {
+    test(`${webManager ? 'Web' : 'desktop'}: About repository shortcut uses the project repository opener`, async () => {
+        const app = await createFixture({ webManager, token: 'fixture-token' });
+        app.api.state.page = 'about';
+        app.api.render();
+        await app.document.querySelector('[data-open-project-repository]').click();
+        assert.ok(
+            app.calls.some(
+                (call) =>
+                    call.command === 'open_project_repository' &&
+                    call.payload.url === 'https://github.com/box3lab/box3-local-engine',
+            ),
+        );
+    });
+}

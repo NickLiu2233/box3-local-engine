@@ -200,15 +200,24 @@
     display: grid;
     align-content: center;
     justify-items: center;
-    gap: 22px;
+    gap: 24px;
     min-height: calc(100% - 60px);
     padding-top: 8px;
 }
 
+.overview-toolbar {
+    width: min(100%, 640px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-bottom: 4px;
+}
+
 .overview-status {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
+    align-items: center;
+    gap: 8px;
     min-height: 30px;
     color: var(--muted);
     font-size: 12px;
@@ -224,10 +233,12 @@
     width: min(100%, 640px);
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
     color: var(--muted);
-    font-size: 12px;
+    font-size: 11px;
 }
 
 .overview-owner-secret code {
@@ -375,7 +386,7 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: start;
-    gap: 10px;
+    gap: 20px;
 }
 
 .running-services {
@@ -409,40 +420,49 @@
 }
 
 .running-service-row {
-    min-height: 46px;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    min-height: 64px;
+    display: flex;
     align-items: center;
-    gap: 12px;
-    padding: 7px 10px;
+    gap: 14px;
+    padding: 12px 14px;
     border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--panel) 50%, transparent);
 }
 
 .running-service-row:last-child {
     border-bottom: 0;
 }
 
-.running-service-row strong {
+.running-service-identity {
+    flex: 1;
     min-width: 0;
-    overflow: hidden;
-    font-size: 12px;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    display: grid;
+    gap: 4px;
 }
 
-.running-service-row code {
+.running-service-identity strong {
     min-width: 0;
-    overflow: hidden;
+    font-size: 12px;
+    font-weight: 550;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.running-service-identity small {
     color: var(--muted);
-    font-family: 'SFMono-Regular', Consolas, monospace;
     font-size: 11px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    line-height: 1.4;
 }
 
 .running-service-row .button {
-    min-height: 28px;
-    padding: 0 9px;
+    flex: 0 0 auto;
+    min-height: 30px;
+    padding: 0 10px;
+    gap: 5px;
     font-size: 11px;
+}
+
+.running-service-row .button svg {
+    width: 12px;
+    height: 12px;
 }

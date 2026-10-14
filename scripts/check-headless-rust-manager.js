@@ -56,9 +56,9 @@ assert.match(consoleSource, /navItem\('web-login', 'device', '管理登录'\)/);
 assert.match(consoleSource, /<h1>Box Engine 管理界面<\/h1>/);
 assert.match(
     consoleSource,
-    /managementAvailable \? `<article class="about-card"><div class="about-card-heading"><h2>更新日志/,
+    /managementAvailable \? `<div class="about-content-layout"><article class="about-card"><div class="about-card-heading"><h2>更新日志/,
 );
-assert.match(consoleSource, /managementAvailable \? '社区与许可' : '许可证'/);
+assert.match(consoleSource, /const protectedDocuments = managementAvailable/);
 assert.match(serverManager, /if name != "get_legal_notices"/);
 assert.match(transport, /managerApi\(command !== 'get_legal_notices'\)/);
 assert.match(

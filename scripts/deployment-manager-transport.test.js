@@ -315,12 +315,17 @@ test('native file and external adapters preserve command names, payloads and can
     assert.equal(await api.exportDiagnosticsFile(), '/native/file');
     await api.openExternal('https://example.com');
     await api.openExternal('https://qm.qq.com/q/oMdzAAN49a', 'open_community_group');
+    await api.openExternal(
+        'https://github.com/box3lab/box3-local-engine',
+        'open_project_repository',
+    );
     assert.deepEqual(calls, [
         ['import_backup', {}],
         ['export_backup', { archive: 'archive' }],
         ['export_diagnostics', {}],
         ['open_service', { url: 'https://example.com' }],
         ['open_community_group', {}],
+        ['open_project_repository', {}],
     ]);
     assert.equal(api.dockerPlatform().canStart, true);
     globalThis.nativeInvoke = async () => null;

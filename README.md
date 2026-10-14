@@ -37,7 +37,7 @@ BOX3 本地引擎把地图创作、模型编辑、多人游玩和服务器管理
 
 先安装并启动 Docker，再下载启动器：Windows、macOS 请安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)；Linux 请安装并启动 Docker Engine。Windows 还需要启用 CPU 虚拟化并安装 WSL 2。建议电脑有 4 核 CPU、8 GB 内存和 30 GB 可用磁盘空间；Docker 镜像、地图和数据库会继续占用磁盘空间。
 
-前往 [GitHub Releases](https://github.com/box3lab/box-local-engine/releases) 下载最新版本，再按系统和处理器选择对应 ZIP：Windows x64/ARM64、macOS Apple 芯片（ARM64）、Linux x64/ARM64。
+前往 [GitHub Releases](https://github.com/box3lab/box3-local-engine/releases) 下载最新版本，再按系统和处理器选择对应 ZIP：Windows x64/ARM64、macOS Apple 芯片（ARM64）、Linux x64/ARM64。
 
 将 ZIP 完整解压到本地目录，再打开 BOX3 Engine Launcher。首次启动时保持 Docker 运行，并按界面提示配置服务；需要的服务镜像会在启动时下载。
 
@@ -100,8 +100,8 @@ cd /opt/box3-engine
 修改源码需要 Node.js `22.17.x` 和 Docker Compose v2。仓库脚本会准备锁定版本的 Rush 和 pnpm；原生管理器构建与完整验证还需要 Rust stable 和对应平台工具链。
 
 ```sh
-git clone https://github.com/box3lab/box-local-engine.git
-cd box-local-engine
+git clone https://github.com/box3lab/box3-local-engine.git
+cd box3-local-engine
 npm run install:all
 cp .env.docker.example .env
 npm run check:workspace
@@ -110,17 +110,17 @@ npm run dev:infra
 
 开发服务默认地址、数据库设置、命令说明和故障排查见[开发入门](docs/developer-guide.md)；代码约定见[代码规范](docs/code-style.md)。
 
-## 项目来源与许可证
-
-本项目基于 BOX3 UGC 平台的引擎研发基础拆分整理。平台（内部称为 `boxs`）不是本仓库的开源依赖，也不属于本仓库的发行内容；本项目聚焦本地创作、游玩、部署和服务管理。
-
-本仓库采用 [MIT License](LICENSE.md)。第三方组件、字体、图片、模型和其他资源可能受各自许可约束，不会仅因存放在本仓库中就自动获得 MIT 授权。BOX3 名称、品牌、图标及相关商标也不包含在 MIT 授权内。
-
 ## 参与贡献
 
 源码贡献流程、Fork 与分支、验证要求和 Pull Request 说明见[贡献指南](CONTRIBUTING.md)。提交前运行 `npm run verify`。
 
-问题反馈与讨论见 [GitHub Issues](https://github.com/box3lab/box-local-engine/issues)。
+问题反馈与讨论见 [GitHub Issues](https://github.com/box3lab/box3-local-engine/issues)。
+
+## 许可证
+
+本项目基于 BOX3 UGC 平台的引擎研发基础拆分整理。平台（内部称为 `boxs`）不是本仓库的开源依赖，也不属于本仓库的发行内容；本项目聚焦本地创作、游玩、部署和服务管理。
+
+本仓库采用 [MIT License](LICENSE.md)。第三方组件、字体、图片、模型和其他资源可能受各自许可约束，不会仅因存放在本仓库中就自动获得 MIT 授权。BOX3 名称、品牌、图标及相关商标也不包含在 MIT 授权内。
 
 ## 致谢
 
