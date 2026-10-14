@@ -53,10 +53,10 @@ curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 
 安装完成后保存终端显示的管理地址和两种密钥：
 
-| 密钥 | 用途 |
-| ---- | ---- |
-| `BOX_SERVER_MANAGER_TOKEN` | 登录 Linux Web 管理器 |
-| `BOX_PLAY_ADMIN_TOKEN` | 以 owner 身份登录玩家管理后台 |
+| 密钥                       | 用途                          |
+| -------------------------- | ----------------------------- |
+| `BOX_SERVER_MANAGER_TOKEN` | 登录 Linux Web 管理器         |
+| `BOX_PLAY_ADMIN_TOKEN`     | 以 owner 身份登录玩家管理后台 |
 
 两种密钥不可互换，也不要发到公开聊天、截图或日志中。管理端口默认为 TCP `3130`；需要从其他电脑访问时，在云安全组和系统防火墙放行该端口。登录 Web 管理器后，按[首次启动指南](https://docs.box3lab.com/local-engine/getting-started/first-start.html)配置数据库、访问范围并启动业务服务。
 
