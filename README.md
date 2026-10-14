@@ -45,7 +45,7 @@ BOX3 本地引擎把地图创作、模型编辑、多人游玩和服务器管理
 
 ### 在 Linux 服务器上安装
 
-适用于无桌面 Linux 服务器，支持 AMD64 和 ARM64。推荐 Ubuntu 24/26 或 Alibaba Cloud Linux 3/4。联网安装器会准备 Docker Engine 和 Compose v2，下载并校验发行包，然后启动 Web 管理器。
+适用于无桌面 Linux 服务器，支持 AMD64 和 ARM64。推荐 Ubuntu 或 Alibaba Cloud Linux 3/4 或 Debian。联网安装器会准备 Docker Engine 和 Compose v2，下载并校验发行包，然后启动 Web 管理器。
 
 ```bash
 curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
@@ -108,11 +108,11 @@ npm run check:workspace
 npm run dev:infra
 ```
 
-开发服务默认地址、数据库设置、命令说明和故障排查见[开发入门](docs/developer-guide.md)；代码约定见[代码规范](docs/code-style.md)。
+开发服务默认地址、数据库设置、平台工具链和故障排查见[开发入门](docs/developer-guide.md)。代码约定见[代码规范](docs/code-style.md)。
 
 ## 参与贡献
 
-源码贡献流程、Fork 与分支、验证要求和 Pull Request 说明见[贡献指南](CONTRIBUTING.md)。提交前运行 `npm run verify`。
+源码贡献流程、Fork 与分支、验证要求和 Pull Request 说明见[贡献指南](CONTRIBUTING.md)。社区贡献只向 `dev` 提交 PR；
 
 问题反馈与讨论见 [GitHub Issues](https://github.com/box3lab/box3-local-engine/issues)。
 
