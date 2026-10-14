@@ -256,12 +256,12 @@ assert.match(bootstrapInstaller, /latest\.txt/);
 assert.match(bootstrapInstaller, /无法从 CDN 下载服务器发行包/);
 assert.doesNotMatch(bootstrapInstaller, /REPOSITORY_URL|resolve_github_version|github_package_url/);
 assert.match(bootstrapInstaller, /BOX3-Engine-Server-\$version-linux-\$architecture/);
-assert.match(bootstrapInstaller, /get\.docker\.com/);
-assert.match(bootstrapInstaller, /distribution_id.*alinux/);
-assert.match(bootstrapInstaller, /3\|4\)/);
-assert.match(bootstrapInstaller, /alinux\$\{alinux_major\}-plus/);
-assert.match(bootstrapInstaller, /mirrors\.aliyun\.com\/docker-ce/);
-assert.match(bootstrapInstaller, /docker-compose-plugin/);
+assert.doesNotMatch(bootstrapInstaller, /get\.docker\.com|raw\.githubusercontent\.com/);
+assert.match(bootstrapInstaller, /mirrors\.aliyun\.com\/docker-ce\/linux/);
+assert.doesNotMatch(
+    bootstrapInstaller,
+    /install_alibaba_cloud_linux_docker|install_ubuntu_docker_from_aliyun_mirror|install_compose_plugin_binary/,
+);
 assert.match(bootstrapInstaller, /"\$package_directory\/verify\.sh"/);
 assert.match(bootstrapInstaller, /\.\/install\.sh/);
 assert.doesNotMatch(bootstrapInstaller, /rm -rf "?\/opt/);

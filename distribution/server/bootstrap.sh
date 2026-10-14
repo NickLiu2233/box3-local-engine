@@ -1,4 +1,6 @@
 #!/usr/bin/env sh
+# Isolate exits and shell options even when the installer is pasted or sourced.
+(
 set -eu
 
 # Public bootstrap installer for headless Linux hosts. This file is published
@@ -74,154 +76,125 @@ install_download_tools() {
   fi
 }
 
-install_compose_plugin_binary() {
-  case "$architecture" in
-    amd64) compose_architecture=x86_64 ;;
-    arm64) compose_architecture=aarch64 ;;
+install_debian_docker_from_aliyun() {
+  command -v apt-get >/dev/null 2>&1 || fail '缺少 apt-get，请先恢复系统包管理器。'
+  distribution_codename=$(sed -n 's/^VERSION_CODENAME=//p' "$OS_RELEASE_FILE" | tail -n 1 | tr -d '"')
+  case "$distribution_codename" in
+    ''|*[!a-z0-9-]*) fail '无法识别系统版本代号，请检查 /etc/os-release 中的 VERSION_CODENAME。' ;;
   esac
-  compose_directory=/usr/local/lib/docker/cli-plugins
-  mkdir -p "$compose_directory"
-  curl --proto '=https' --tlsv1.2 --fail --location --retry 3 \
-    "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${compose_architecture}" \
-    -o "$compose_directory/docker-compose"
-  chmod +x "$compose_directory/docker-compose"
-}
-
-install_alibaba_docker_ce() {
-  info '从阿里云 Docker CE 仓库安装 Docker Engine'
-  docker_repo=/etc/yum.repos.d/docker-ce.repo
+  info "直接使用阿里云 Docker CE 镜像安装 Docker 与 Compose（$distribution_id ${distribution_codename}）"
+  docker_key=$(mktemp "${TMPDIR:-/tmp}/box3-docker-key.XXXXXX")
   if ! curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-delay 2 \
-    https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo -o "$docker_repo"; then
-    rm -f "$docker_repo"
-    return 1
+    --connect-timeout 10 --max-time 60 \
+    "https://mirrors.aliyun.com/docker-ce/linux/$distribution_id/gpg" -o "$docker_key"; then
+    rm -f "$docker_key"
+    fail '无法从阿里云镜像下载 Docker 仓库签名密钥，请检查服务器到 mirrors.aliyun.com 的连接。'
   fi
-  if ! dnf install -y --nobest docker-ce docker-ce-cli containerd.io docker-buildx-plugin; then
-    rm -f "$docker_repo"
-    return 1
+  if [ ! -s "$docker_key" ]; then
+    rm -f "$docker_key"
+    fail '阿里云 Docker 仓库签名密钥为空。'
   fi
-}
-
-install_ubuntu_docker_from_aliyun_mirror() {
-  command -v apt-get >/dev/null 2>&1 || return 1
-  command -v dpkg >/dev/null 2>&1 || return 1
-
-  ubuntu_codename=$(sed -n 's/^VERSION_CODENAME=//p' "$OS_RELEASE_FILE" | tail -n 1 | tr -d '"')
-  case "$ubuntu_codename" in
-    ''|*[!a-z0-9-]*) return 1 ;;
-  esac
-
-  info '使用阿里云 Docker CE 镜像源安装 Docker Engine 与 Compose'
-  docker_keyring=/etc/apt/keyrings/docker.asc
-  docker_source=/etc/apt/sources.list.d/docker-ce.list
-  install -m 0755 -d /etc/apt/keyrings
-  if ! curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-delay 2 \
-    https://mirrors.aliyun.com/docker-ce/linux/ubuntu/gpg -o "$docker_keyring"; then
-    rm -f "$docker_keyring"
-    return 1
-  fi
-  chmod a+r "$docker_keyring"
+  mkdir -p /etc/apt/keyrings /etc/apt/sources.list.d
+  chmod 0755 /etc/apt/keyrings
+  chmod a+r "$docker_key"
+  mv "$docker_key" /etc/apt/keyrings/docker.asc
   printf '%s\n' \
-    "deb [arch=$(dpkg --print-architecture) signed-by=$docker_keyring] https://mirrors.aliyun.com/docker-ce/linux/ubuntu $ubuntu_codename stable" \
-    >"$docker_source"
-
-  if apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
-    docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-    return 0
+    "deb [arch=$architecture signed-by=/etc/apt/keyrings/docker.asc] https://mirrors.aliyun.com/docker-ce/linux/$distribution_id $distribution_codename stable" \
+    >/etc/apt/sources.list.d/docker.list
+  if ! apt-get update; then
+    fail '阿里云 Docker 镜像索引更新失败，请检查上方仓库日志。'
   fi
-
-  # Leave no broken third-party source behind before trying Docker's official
-  # installer. Existing OS sources remain untouched.
-  rm -f "$docker_source" "$docker_keyring"
-  apt-get update || true
-  return 1
+  if ! DEBIAN_FRONTEND=noninteractive apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+    fail '阿里云 Docker CE 安装失败，请检查上方依赖与软件包下载日志。'
+  fi
 }
 
-install_docker_from_official_source() {
-  info '阿里云 Docker CE 镜像源不可用，回退到 Docker 官方安装源'
-  docker_installer=$(mktemp)
-  if ! curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --retry-delay 2 \
-    https://get.docker.com -o "$docker_installer"; then
-    rm -f "$docker_installer"
-    fail '无法从阿里云或 Docker 官方源下载 Docker 安装器。请检查服务器网络后重试。'
+install_alinux_docker() {
+  distribution_major=${distribution_version%%.*}
+  case "$distribution_major" in
+    2) repository_suffix=''; repository_key='https://mirrors.aliyun.com/alinux/RPM-GPG-KEY-ALinux-7' ;;
+    3) repository_suffix=''; repository_key='https://mirrors.aliyun.com/alinux/3/RPM-GPG-KEY-ALINUX-3' ;;
+    4) repository_suffix='os/'; repository_key='https://mirrors.aliyun.com/alinux/4/RPM-GPG-KEY-ALINUX-4' ;;
+    *) fail "暂未配置阿里云 Linux $distribution_version 的原生仓库，请先手动安装 Docker Engine 和 Compose v2。" ;;
+  esac
+  if command -v dnf >/dev/null 2>&1; then
+    docker_package_manager=dnf
+  elif command -v yum >/dev/null 2>&1; then
+    docker_package_manager=yum
+  else
+    fail '阿里云 Linux 缺少 dnf 或 yum，请先恢复系统包管理器。'
   fi
-  sh "$docker_installer"
-  rm -f "$docker_installer"
+  case "$architecture" in
+    amd64) repository_architecture=x86_64 ;;
+    arm64) repository_architecture=aarch64 ;;
+  esac
+  if [ "$distribution_major" = '3' ]; then
+    info '使用阿里云 Docker CE 镜像安装 Docker 与 Compose，系统依赖使用阿里云 Linux 3 原生仓库'
+  else
+    info "使用阿里云 Linux $distribution_major 原生镜像仓库安装 Docker 与 Compose"
+  fi
+  # Temporary repo files work with both yum and dnf without extra plugins.
+  # Fixed version URLs avoid the releasever adapter and its configured EPEL lookup.
+  docker_repositories=$(mktemp -d "${TMPDIR:-/tmp}/box3-docker-repos.XXXXXX")
+  for repository in os updates plus; do
+    repository_id="box3-alinux$distribution_major-$repository"
+    repository_url="https://mirrors.aliyun.com/alinux/$distribution_major/$repository/$repository_architecture/$repository_suffix"
+    cat >"$docker_repositories/$repository_id.repo" <<EOF
+[$repository_id]
+name=BOX3 Alibaba Cloud Linux $distribution_major $repository
+baseurl=$repository_url
+enabled=1
+gpgcheck=1
+gpgkey=$repository_key
+EOF
+  done
+  if [ "$distribution_major" = '3' ]; then
+    cat >"$docker_repositories/box3-docker-ce.repo" <<EOF
+[box3-docker-ce]
+name=BOX3 Docker CE Aliyun Mirror
+baseurl=https://mirrors.aliyun.com/docker-ce/linux/centos/8/$repository_architecture/stable
+enabled=1
+gpgcheck=1
+gpgkey=https://mirrors.aliyun.com/docker-ce/linux/centos/gpg
+EOF
+    set -- docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  else
+    set -- docker docker-client containerd docker-compose-plugin
+  fi
+  # Plugins are skipped only for this temporary-repository invocation; package
+  # GPG verification remains enabled and system plugin configuration is unchanged.
+  if ! "$docker_package_manager" --noplugins "--setopt=reposdir=$docker_repositories" install -y "$@"; then
+    rm -rf "$docker_repositories"
+    fail "阿里云 Linux $distribution_major Docker 安装失败，请检查上方镜像仓库、依赖与包签名日志。"
+  fi
+  rm -rf "$docker_repositories"
 }
 
-install_alibaba_cloud_linux_docker() {
-  alinux_version=${VERSION_ID:-}
-  alinux_major=${alinux_version%%.*}
-  info "检测到 Alibaba Cloud Linux ${alinux_version:-未知版本}，使用专用 Docker 安装流程"
-
-  case "$alinux_major" in
-    3|4)
-      command -v dnf >/dev/null 2>&1 || fail "Alibaba Cloud Linux ${alinux_major} 缺少 dnf。"
-      # Alibaba Cloud Linux 3 and 4 use the release-version adapter when
-      # Docker CE packages from their matching alinuxN-plus repository resolve
-      # CentOS-compatible metadata.
-      alinux_repository="alinux${alinux_major}-plus"
-      dnf install -y dnf-plugin-releasever-adapter --repo "$alinux_repository"
-      if ! dnf install -y --nobest docker-ce; then
-        info "${alinux_repository} 未提供 docker-ce，改用阿里云 Docker CE 仓库"
-        if ! install_alibaba_docker_ce; then
-          info '阿里云 Docker CE 仓库不可用，回退到 Docker 官方安装源'
-          install_docker_from_official_source
-        fi
-      fi
-      if ! dnf install -y docker-compose-plugin; then
-        info '仓库未提供 Compose 插件，改用 Docker Compose 官方二进制'
-        install_compose_plugin_binary
-      fi
-      ;;
-    2)
-      command -v yum >/dev/null 2>&1 || fail 'Alibaba Cloud Linux 2 缺少 yum。'
-      yum install -y yum-utils device-mapper-persistent-data lvm2
-      yum-config-manager --add-repo \
-        https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-      if ! yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin; then
-        fail '无法从阿里云 Docker CE 镜像仓库安装 Docker。'
-      fi
-      if ! yum install -y docker-compose-plugin; then
-        info '仓库未提供 Compose 插件，改用 Docker Compose 官方二进制'
-        install_compose_plugin_binary
-      fi
-      ;;
-    *)
-      fail "暂不支持 Alibaba Cloud Linux ${alinux_version:-未知版本}，当前支持 2、3 和 4。"
-      ;;
+install_docker_packages() {
+  distribution_id=''
+  distribution_version=''
+  if [ -r "$OS_RELEASE_FILE" ]; then
+    distribution_id=$(sed -n 's/^ID=//p' "$OS_RELEASE_FILE" | tail -n 1 | tr -d '"')
+    distribution_version=$(sed -n 's/^VERSION_ID=//p' "$OS_RELEASE_FILE" | tail -n 1 | tr -d '"')
+  fi
+  case "$distribution_id" in
+    alinux) install_alinux_docker ;;
+    ubuntu|debian) install_debian_docker_from_aliyun ;;
+    *) fail "暂未配置 $distribution_id 的阿里云 Docker 镜像安装流程，请先手动安装 Docker Engine 和 Compose v2。" ;;
   esac
 }
 
 install_docker() {
-  docker_command=''
   if command -v docker >/dev/null 2>&1; then
     docker_command=$(docker --version 2>&1 || true)
-  fi
-  if ! command -v docker >/dev/null 2>&1 || printf '%s' "$docker_command" | grep -qi podman; then
     if printf '%s' "$docker_command" | grep -qi podman; then
-      info '检测到 podman-docker 兼容命令，BOX3 需要真实 Docker Engine，将重新安装 Docker'
-      if command -v dnf >/dev/null 2>&1; then
-        dnf remove -y podman-docker podman || true
-      elif command -v yum >/dev/null 2>&1; then
-        yum remove -y podman-docker podman || true
-      fi
+      fail '检测到 podman-docker 兼容命令，请先移除兼容包，再运行安装器安装真实 Docker Engine。'
     fi
-    info '安装 Docker Engine 与 Docker Compose'
-    distribution_id=''
-    VERSION_ID=''
-    if [ -r "$OS_RELEASE_FILE" ]; then
-      # os-release is a system-owned key/value file. Restrict the only values
-      # consumed below instead of evaluating arbitrary installer input.
-      distribution_id=$(sed -n 's/^ID=//p' "$OS_RELEASE_FILE" | tail -n 1 | tr -d '"')
-      VERSION_ID=$(sed -n 's/^VERSION_ID=//p' "$OS_RELEASE_FILE" | tail -n 1 | tr -d '"')
+    if ! docker compose version >/dev/null 2>&1; then
+      install_docker_packages
     fi
-    if [ "$distribution_id" = 'alinux' ]; then
-      install_alibaba_cloud_linux_docker
-    elif [ "$distribution_id" = 'ubuntu' ] && install_ubuntu_docker_from_aliyun_mirror; then
-      :
-    else
-      install_docker_from_official_source
-    fi
+  else
+    install_docker_packages
   fi
 
   if command -v systemctl >/dev/null 2>&1; then
@@ -521,3 +494,4 @@ printf '%s安装耗时：%s%d 分 %d 秒\n' \
 if [ -n "${BOX3_UPDATE_HELPER_NAME:-}" ]; then
   docker rm -f "$BOX3_UPDATE_HELPER_NAME" >/dev/null 2>&1 || true
 fi
+)
