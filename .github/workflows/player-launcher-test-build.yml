@@ -104,9 +104,7 @@ jobs:
         env:
           CSC_LINK: ${{ secrets.PLAYER_WINDOWS_CSC_LINK }}
           CSC_KEY_PASSWORD: ${{ secrets.PLAYER_WINDOWS_CSC_KEY_PASSWORD }}
-        run: >-
-          node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{
-          matrix.target }}
+        run: node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{ matrix.target }}
       - name: Build and verify macOS player installer
         if: runner.os == 'macOS'
         env:
@@ -115,16 +113,10 @@ jobs:
           APPLE_ID: ${{ secrets.PLAYER_APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.PLAYER_APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.PLAYER_APPLE_TEAM_ID }}
-        run: >-
-          node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{
-          matrix.target }}
+        run: node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{ matrix.target }}
       - name: Build and verify Linux player AppImage
         if: runner.os == 'Linux'
-        run: >-
-          xvfb-run -a node --experimental-strip-types apps/player-launcher/scripts/release.mts build
-          ${{ matrix.target }}
+        run: xvfb-run -a node --experimental-strip-types apps/player-launcher/scripts/release.mts build ${{ matrix.target }}
       - name: Upload verified player installer to Aliyun OSS
         timeout-minutes: 35
-        run: >-
-          node --experimental-strip-types apps/player-launcher/scripts/release.mts upload ${{
-          matrix.target }}
+        run: node --experimental-strip-types apps/player-launcher/scripts/release.mts upload ${{ matrix.target }}

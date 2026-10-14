@@ -12,6 +12,9 @@ on:
         default: false
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
 concurrency:
   group: test-build-${{ github.ref }}
   cancel-in-progress: false
@@ -63,7 +66,7 @@ jobs:
           node-version-file: .node-version
       - uses: docker/setup-buildx-action@v3
       - name: Validate staging configuration
-        run: |-
+        run: |
           node scripts/sync-root-version.js --check
           for variable_name in OSS_BUCKET OSS_ENDPOINT OSS_ACCESS_KEY_ID OSS_ACCESS_KEY_SECRET; do
             if [ -z "${!variable_name:-}" ]; then
@@ -74,7 +77,7 @@ jobs:
           case "$OSS_BUCKET" in oss://*|*/*) exit 1 ;; esac
           case "$OSS_ENDPOINT" in http://*|https://*|*/*) exit 1 ;; esac
       - name: Install OSS transfer client
-        run: |-
+        run: |
           curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
       - name: Check version-pinned test images
@@ -82,7 +85,7 @@ jobs:
         env:
           FORCE_REBUILD: ${{ inputs.rebuild_images || false }}
         shell: bash
-        run: >-
+        run: |
           set -euo pipefail
 
           mkdir -p test-build
@@ -91,8 +94,7 @@ jobs:
 
           cached=false
 
-          if [ "$FORCE_REBUILD" != 'true' ] && ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")"
-          "$catalog" && node scripts/staging-build-context.js validate "$catalog" "$ARCHITECTURE"; then
+          if [ "$FORCE_REBUILD" != 'true' ] && ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog" && node scripts/staging-build-context.js validate "$catalog" "$ARCHITECTURE"; then
             cached=true
             node -e 'for (const image of require("./"+process.argv[1]).images) console.log(image.archive)' "$catalog" > test-build/image-files.txt
             while IFS= read -r image; do
@@ -113,7 +115,7 @@ jobs:
       - name: Build test image archive
         if: steps.image-cache.outputs.cache-hit != 'true'
         shell: bash
-        run: >
+        run: |
           set -euo pipefail
 
           export BOX_BUILD_VERSION="$(node -p "require('./package.json').version")"
@@ -137,12 +139,11 @@ jobs:
             | gzip -1 > "test-build/box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz"
           (cd test-build && sha256sum *.tar.gz > SHA256SUMS)
 
-          node -e 'const fs=require("node:fs");const
-          e=process.env;fs.writeFileSync("test-build/BUILD-INFO.json",JSON.stringify({channel:"testing",version:e.BOX_BUILD_VERSION,commit:e.BOX_BUILD_COMMIT,ref:e.GITHUB_REF,imageTag:e.BOX_IMAGE_TAG,platform:e.BOX_PLAY_PLATFORM,date:e.BOX_BUILD_DATE},null,2)+"\n")'
+          node -e 'const fs=require("node:fs"); const e=process.env; fs.writeFileSync("test-build/BUILD-INFO.json", JSON.stringify({channel:"testing",version:e.BOX_BUILD_VERSION,commit:e.BOX_BUILD_COMMIT,ref:e.GITHUB_REF,imageTag:e.BOX_IMAGE_TAG,platform:e.BOX_PLAY_PLATFORM,date:e.BOX_BUILD_DATE}, null, 2)+"\n")'
       - name: Split and upload test images
         if: steps.image-cache.outputs.cache-hit != 'true'
         shell: bash
-        run: >-
+        run: |
           set -euo pipefail
 
           archive="test-build/box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz"
@@ -159,17 +160,15 @@ jobs:
 
           ossutil cp "$archive" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
 
-          ossutil cp test-build/BUILD-INFO.json "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/BUILD-INFO-$ARCHITECTURE.json"
-          --update
+          ossutil cp test-build/BUILD-INFO.json "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/BUILD-INFO-$ARCHITECTURE.json" --update
 
           ossutil cp test-build/SHA256SUMS "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/SHA256SUMS-$ARCHITECTURE" --update
 
           ossutil cp "$catalog" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
       - name: Report staging image source
         shell: bash
-        run: >-
-          printf '### Staging images\n\nOSS path: `oss://%s/%s/`\n\nTag: `%s`\n' "$OSS_BUCKET" "$OSS_BUILD_PREFIX"
-          "$BOX_IMAGE_TAG" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          printf '### Staging images\n\nOSS path: `oss://%s/%s/`\n\nTag: `%s`\n' "$OSS_BUCKET" "$OSS_BUILD_PREFIX" "$BOX_IMAGE_TAG" >> "$GITHUB_STEP_SUMMARY"
   desktop:
     env:
       BOX_RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
@@ -211,9 +210,9 @@ jobs:
         run: node common/scripts/install-run-rush.js install --to '@box/deployment-manager'
       - name: Install Linux desktop dependencies
         if: startsWith(matrix.target, 'linux-')
-        run: >-
-          sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
-          patchelf zip
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf zip
       - name: Download desktop image catalog from Aliyun OSS
         shell: bash
         run: |
@@ -244,12 +243,9 @@ jobs:
           fi
       - name: Build lightweight desktop launcher
         shell: bash
-        run: >
-          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{
-          matrix.architecture }}.json"
-
+        run: |
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
           test -f "$catalog"
-
           node common/scripts/install-run-rush.js package-desktop \
             --target '${{ matrix.target }}' \
             --archive "$catalog"

@@ -7,6 +7,27 @@ import test from 'node:test';
 
 import { prepareStandalone } from '../scripts/standalone-manifest.cjs';
 
+test('standalone lock matches direct runtime and build dependencies', () => {
+    const project = path.resolve(import.meta.dirname, '..');
+    const manifest = JSON.parse(fs.readFileSync(path.join(project, 'package.json'), 'utf8'));
+    const lock = JSON.parse(fs.readFileSync(path.join(project, 'package-lock.json'), 'utf8'));
+    for (const section of ['dependencies', 'devDependencies']) {
+        for (const [name, version] of Object.entries(manifest[section])) {
+            if (String(version).startsWith('workspace:')) {
+                continue;
+            }
+            assert.equal(lock.packages[''][section][name], version, `${name} lock spec drift`);
+            if (/^\d+\.\d+\.\d+$/.test(String(version))) {
+                assert.equal(
+                    lock.packages[`node_modules/${name}`].version,
+                    version,
+                    `${name} resolved version drift`,
+                );
+            }
+        }
+    }
+});
+
 test('standalone templates vendor routing and keep unrelated lock entries unchanged', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-portal-vendor-'));
     try {
