@@ -40,6 +40,10 @@ export class PortalApp extends Component<Record<string, never>, State> {
             .session()
             .then((data) => {
                 if (this.active) {
+                    if (data.player && data.returnUrl && this.client.navigation.transferState) {
+                        location.assign(data.returnUrl);
+                        return;
+                    }
                     this.setState({
                         kind: data.player ? 'account' : 'auth',
                         player: data.player,

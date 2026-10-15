@@ -681,6 +681,63 @@ fn same_public_port_with_a_changed_internal_listener_recreates_the_proxy() {
 }
 
 #[test]
+fn missing_service_images_do_not_block_path_settings() {
+    let mut settings = input().settings;
+    let template = settings.routes[0].clone();
+    settings.routes = ["play", "creator", "voxa", "player-service", "player-auth-portal"]
+        .into_iter()
+        .map(|service| Route {
+            service: service.into(),
+            path: format!("/{service}"),
+            ..template.clone()
+        })
+        .collect();
+    let environment = [("BOX_IMAGE_TAG".into(), "2026.1.4".into())].into_iter().collect();
+    let mut inspected = Vec::new();
+    validate_path_images(&settings, &environment, &mut |args| {
+        assert_eq!(&args[..2], ["image", "inspect"]);
+        inspected.push(args.last().unwrap().clone());
+        Err(format!("Error response from daemon: No such image: {}", args.last().unwrap()))
+    }).expect("uninstalled components must not prevent saving entry paths");
+    assert_eq!(inspected.len(), 5);
+    let root = fixture_root();
+    let mut desired = input();
+    desired.settings = settings.clone();
+    for route in &mut desired.settings.routes {
+        route.secure = false;
+    }
+    desired.certificate.clear();
+    desired.private_key.clear();
+    let mut transition = UpstreamTransition::new(&root, "fixture", &desired.settings).unwrap();
+    let mut calls = Vec::new();
+    apply_with_transition(&root, &root, "fixture", "", desired, &mut |args| {
+        calls.push(args.to_vec());
+        Ok(String::new())
+    }, &mut |rollback| {
+        assert!(!rollback);
+        transition.apply(&mut |_| Ok(String::new()), &mut |_| {
+            panic!("saving settings must not start uninstalled services")
+        })
+    }).unwrap();
+    let persisted = runtime::saved(&root).unwrap().unwrap();
+    assert_eq!(persisted.settings.routes.len(), 5);
+    assert!(persisted.settings.routes.iter().all(|route| !route.path.is_empty()));
+    assert!(!calls.iter().any(|args| args[0] == "pull"));
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
+fn path_settings_still_reject_incompatible_images_and_docker_errors() {
+    let mut settings = input().settings;
+    settings.routes[0].path = "/play".into();
+    let environment = [("BOX_IMAGE_TAG".into(), "2026.1.4".into())].into_iter().collect();
+    let error = validate_path_images(&settings, &environment, &mut |_| Ok("{}".into())).unwrap_err();
+    assert!(error.contains("暂不支持入口路径"));
+    let error = validate_path_images(&settings, &environment, &mut |_| Err("Cannot connect to the Docker daemon".into())).unwrap_err();
+    assert!(error.contains("Cannot connect to the Docker daemon"));
+}
+
+#[test]
 fn an_explicit_path_capable_image_does_not_require_a_default_image_tag() {
     let mut settings = input().settings;
     settings.routes[0].service = "player-auth-portal".into();

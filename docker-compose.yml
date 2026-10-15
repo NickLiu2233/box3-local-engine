@@ -239,6 +239,9 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    # Backups/restores access private files owned by the service user (UID 1000).
+    cap_add:
+      - DAC_OVERRIDE
     mem_limit: ${BOX_SERVER_MANAGER_MEMORY_LIMIT:-128m}
     cpus: ${BOX_SERVER_MANAGER_CPU_LIMIT:-0.5}
     pids_limit: 64

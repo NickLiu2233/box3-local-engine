@@ -2224,6 +2224,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/player-auth/transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 为已登录玩家签发短时单次登录码
+         * @description 此操作用于“为已登录玩家签发短时单次登录码”。该接口用于玩家账号注册、登录、退出和会话检查。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiPlayerAuthTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/player-internal/login-transfer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 兑换目标服务和浏览器绑定的登录码
+         * @description 此操作用于“兑换目标服务和浏览器绑定的登录码”。该接口仅供受信任的本地服务调用，不应直接暴露给普通客户端。 该操作可能创建资源、更新状态或触发后台任务。 需要本地服务之间约定的内部 Bearer Token。
+         */
+        post: operations["postApiPlayerInternalLoginTransfer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/player-internal/logout": {
         parameters: {
             query?: never;
@@ -2460,6 +2500,46 @@ export interface paths {
          * @description 此操作用于“下载接口数据”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
          */
         get: operations["getApiPlayerLauncherMapsMapIdDownloadPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/player-login/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 交换一次性登录码并设置本站会话
+         * @description 此操作用于“交换一次性登录码并设置本站会话”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        get: operations["getApiPlayerLoginCallback"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/player-login/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 发起独立公网地址的玩家登录
+         * @description 此操作用于“发起独立公网地址的玩家登录”。该接口提供本地引擎的公共状态、配置或开发文档能力。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        get: operations["getApiPlayerLoginStart"];
         put?: never;
         post?: never;
         delete?: never;
@@ -9020,6 +9100,88 @@ export interface operations {
             };
         };
     };
+    postApiPlayerAuthTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“为已登录玩家签发短时单次登录码”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    source: "play" | "creator";
+                    challenge: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“为已登录玩家签发短时单次登录码”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiPlayerInternalLoginTransfer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“兑换目标服务和浏览器绑定的登录码”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    /** @enum {string} */
+                    source: "play" | "creator";
+                    verifier: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“兑换目标服务和浏览器绑定的登录码”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        session: string;
+                        device: string;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postApiPlayerInternalLogout: {
         parameters: {
             query?: never;
@@ -9685,6 +9847,70 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PlayerLauncherDownloadPlan"];
                 };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getApiPlayerLoginCallback: {
+        parameters: {
+            query: {
+                /** @description 60 秒内有效的一次性登录码。 */
+                code: string;
+                /** @description 发起站点设置的浏览器校验状态。 */
+                state: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 浏览器顶层跳转；响应设置 HttpOnly Cookie，禁止缓存。 */
+            303: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getApiPlayerLoginStart: {
+        parameters: {
+            query?: {
+                /** @description 接口参数：returnUrl。 */
+                returnUrl?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 浏览器顶层跳转；响应设置 HttpOnly Cookie，禁止缓存。 */
+            302: {
+                headers: {
+                    Location?: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
             default: {

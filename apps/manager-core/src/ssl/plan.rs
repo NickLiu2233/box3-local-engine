@@ -319,11 +319,15 @@ pub fn validate_path_images(
             "{{json .Config.Labels}}".into(),
             image,
         ];
-        let metadata: serde_json::Value = serde_json::from_str(
-            &docker(&args)
-                .map_err(|_| format!("{} 的镜像尚未安装，无法设置入口路径", route.service))?,
-        )
-        .map_err(|_| "镜像路径能力记录无效")?;
+        let labels = match docker(&args) {
+            Ok(labels) => labels,
+            // Routes may be configured before optional components are installed.
+            // Inspect local images only; saving settings must not install them.
+            Err(error) if error.to_ascii_lowercase().contains("no such image") => continue,
+            Err(error) => return Err(format!("无法检查 {} 的镜像入口路径能力：{error}", route.service)),
+        };
+        let metadata: serde_json::Value = serde_json::from_str(&labels)
+            .map_err(|_| "镜像路径能力记录无效")?;
         if metadata["box.routing.base-path"].as_str() != Some("runtime-v1") {
             return Err(format!(
                 "{} 的镜像暂不支持入口路径，请先安装支持前缀的新镜像",

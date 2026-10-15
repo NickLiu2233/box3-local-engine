@@ -40,11 +40,14 @@ export class FileSystemContentServer implements ContentServer {
   }
 
   public async store(content: Uint8Array): Promise<Hash> {
-    const hash = contentHash(content);
+    // Callers may return serialization buffers to a pool before the async
+    // filesystem write finishes. Hash and persist the same owned snapshot.
+    const snapshot = Buffer.from(content);
+    const hash = contentHash(snapshot);
     const target = path.join(this.directory, hash);
 
     try {
-      await fs.writeFile(target, content, { flag: 'wx' });
+      await fs.writeFile(target, snapshot, { flag: 'wx' });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
         throw error;
