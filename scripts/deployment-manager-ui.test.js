@@ -91,7 +91,16 @@ test('about page lists the latest engine release first without player launcher n
     const notes = app.html.slice(app.html.indexOf('about-changelog-list'));
     const version = require('../package.json').version;
     assert.ok(notes.includes(`v${version}`));
-    assert.ok(notes.indexOf(`v${version}`) < notes.indexOf('v0.2.0'));
+    const versions = require('../distribution/release-notes.json').map(
+        (release) => release.version,
+    );
+    assert.equal(new Set(versions).size, versions.length);
+    let previous = -1;
+    for (const releaseVersion of versions) {
+        const position = notes.indexOf(`<strong>v${releaseVersion}</strong>`);
+        assert.ok(position > previous, `missing or unordered release: ${releaseVersion}`);
+        previous = position;
+    }
     for (const feature of ['玩家与地图', '反作弊', '登录页面', '速度缩放', '实时同步与体验']) {
         assert.ok(notes.includes(feature), `missing release note: ${feature}`);
     }
