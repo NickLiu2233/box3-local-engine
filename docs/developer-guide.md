@@ -4,15 +4,15 @@
 
 ## 1. 准备环境
 
-| 工具    | 要求                                | 使用场景                            |
-| ------- | ----------------------------------- | ----------------------------------- |
-| Git     | 2.31 及以上                         | 获取源码、同步、完整历史检查        |
-| Node.js | `22.17.x`，与 `.node-version` 一致  | 仓库脚本与 JS/TS 开发               |
-| Docker  | Docker Engine/Desktop 与 Compose v2 | `dev:infra`、镜像构建及部署         |
-| Rust    | stable 与对应平台原生工具链         | 管理器原生开发、Rust 检查与完整验证 |
-| Python  | Python 3，可从命令行访问            | 需要本机编译的 Node 原生依赖        |
+| 工具    | 要求                                | 使用场景                       |
+| ------- | ----------------------------------- | ------------------------------ |
+| Git     | 2.31 及以上                         | 获取源码、同步、完整历史检查   |
+| Node.js | `22.17.x`，与 `.node-version` 一致  | 仓库脚本与 JS/TS 开发          |
+| Docker  | Docker Engine/Desktop 与 Compose v2 | `dev:infra`、镜像构建及部署    |
+| Rust    | stable 与对应平台原生工具链         | 管理器原生开发与 Rust 专项测试 |
+| Python  | Python 3，可从命令行访问            | 需要本机编译的 Node 原生依赖   |
 
-macOS 原生构建需要 Xcode Command Line Tools；Windows 需要适用的 C++ 构建工具和 WebView2；Linux 原生管理器需要 Tauri 对应的系统开发库。具体原生依赖与命令见[部署管理器 README](../apps/deployment-manager/README.md)。只修改网页时可以先运行局部检查，但提交前的完整验证仍可能需要 Rust。
+macOS 原生构建需要 Xcode Command Line Tools；Windows 需要适用的 C++ 构建工具和 WebView2；Linux 原生管理器需要 Tauri 对应的系统开发库。具体原生依赖与命令见[部署管理器 README](../apps/deployment-manager/README.md)。基础 `npm run verify` 不编译 Rust；手动执行全套回归或 Rust 专项测试时才需要对应工具链。
 
 ```sh
 node --version
@@ -26,7 +26,7 @@ docker compose version
 
 Rush 登记的受维护项目使用 TypeScript `5.6.3`、React/React DOM `19.2.1`、`@types/react` `19.2.4` 与 `@types/react-dom` `19.2.3`。Rush `5.156.0` 与 pnpm `10.12.1` 固定在 `rush.json`；库的 React peer 范围用于声明兼容性，可以宽于实际开发依赖。
 
-共享依赖基线维护在 `common/config/rush/common-versions.json` 的 `preferredVersions`，各项目直接依赖使用相同的精确版本。`npm run check:workspace` 和完整验证会拒绝这些依赖的版本漂移。升级时同步修改基线、受影响项目清单与锁文件，再完成兼容性检查；不要只修改 README 徽章。
+共享依赖基线维护在 `common/config/rush/common-versions.json` 的 `preferredVersions`，各项目直接依赖使用相同的精确版本。`npm run check:workspace` 和按需执行的工程检查会拒绝这些依赖的版本漂移。升级时同步修改基线、受影响项目清单与锁文件，再完成兼容性检查；不要只修改 README 徽章。
 
 未登记到 Rush 的嵌套示例和第三方模块保留原版本，不参与主工程安装与版本统一。玩家后台使用 Ant Design 5，并在应用入口加载 React 19 兼容补丁，确保静态弹窗、消息和通知使用新的渲染 API。
 
@@ -134,19 +134,19 @@ docker compose --profile infra stop postgres redis
 
 ## 4. 修改、构建与验证
 
-| 任务                     | 根目录命令                                            | 说明                                           |
-| ------------------------ | ----------------------------------------------------- | ---------------------------------------------- |
-| 根据清单更新依赖与锁文件 | `npm run update:all`                                  | 修改依赖后执行，检查并提交锁文件差异           |
-| 构建指定项目及依赖       | `npm run build -- --to @box/player-admin`             | 使用 Rush 项目名，而非目录名                   |
-| 格式化 / 检查            | `npm run format` / `npm run format:check`             | 写入格式化会影响仓库范围，执行后检查差异       |
-| Lint / 类型 / 测试       | `npm run lint` / `npm run typecheck` / `npm run test` | 分阶段定位问题                                 |
-| 集成与分发检查           | `npm run check`                                       | 仓库级检查入口，不等同于启动完整业务栈         |
-| 完整验证                 | `npm run verify`                                      | 依次检查格式、Lint、类型与测试，测试含工程检查 |
-| API 文档                 | `npm run api:docs`                                    | 文档服务器地址以启动日志为准                   |
-| 更新 / 检查 API 契约     | `npm run api:generate` / `npm run api:check`          | 修改契约后生成，并检查产物同步                 |
-| 文档链接                 | `node scripts/check-documentation.js`                 | 检查本地文档链接与基础入口                     |
+| 任务                     | 根目录命令                                            | 说明                                       |
+| ------------------------ | ----------------------------------------------------- | ------------------------------------------ |
+| 根据清单更新依赖与锁文件 | `npm run update:all`                                  | 修改依赖后执行，检查并提交锁文件差异       |
+| 构建指定项目及依赖       | `npm run build -- --to @box/player-admin`             | 使用 Rush 项目名，而非目录名               |
+| 格式化 / 检查            | `npm run format` / `npm run format:check`             | 写入格式化会影响仓库范围，执行后检查差异   |
+| Lint / 类型 / 测试       | `npm run lint` / `npm run typecheck` / `npm run test` | 分阶段定位问题                             |
+| 集成与分发检查           | `npm run check`                                       | 仓库级检查入口，不等同于启动完整业务栈     |
+| 基础检查                 | `npm run verify`                                      | 检查格式、语法和代码风格，不构建或运行测试 |
+| API 文档                 | `npm run api:docs`                                    | 文档服务器地址以启动日志为准               |
+| 更新 / 检查 API 契约     | `npm run api:generate` / `npm run api:check`          | 修改契约后生成，并检查产物同步             |
+| 文档链接                 | `node scripts/check-documentation.js`                 | 检查本地文档链接与基础入口                 |
 
-单模块检查使用对应 `package.json` 的脚本。例如 `npm --prefix apps/player-launcher run check` 检查玩家启动器；局部成功不等于完整验证或目标平台安装验证通过。默认 CI、数据库条件测试、runner 选择与桌面 smoke 的具体边界见[测试指南](./testing.md)。公共包与权威运行时修改后可能需要重新构建并重启，不能假设所有修改都热更新。
+单模块检查使用对应 `package.json` 的脚本。例如 `npm --prefix apps/player-launcher run check` 检查玩家启动器；基础检查通过不代表相关功能或目标平台安装验证通过。默认 CI、数据库条件测试、runner 选择与桌面 smoke 的具体边界见[测试指南](./testing.md)。公共包与权威运行时修改后可能需要重新构建并重启，不能假设所有修改都热更新。
 
 新增项目登记到 `rush.json`，修改依赖后执行 `npm run update:all`，提交相关清单与 `common/config/rush/pnpm-lock.yaml`。HTTP 契约由 `@box/apis` 维护；不要手工修改生成客户端来绕过契约更新。
 

@@ -84,4 +84,4 @@ npm run tauri -- build --bundles app
 
 生成安装包请使用根目录的打包命令，支持 OSS 精简版与携带当前 Docker 镜像的本地测试版，命令以根 package.json 与脚本帮助为准。直接运行 Tauri build 不会自动生成完整镜像发行资源。打包流程见[发布说明](../../docs/release-and-version.md)。
 
-根验证编译测试 Rust 共享核心与 Web 管理器，并检查桌面接线；它不编译和运行这个 Tauri App。原生改动应在目标平台检查首次启动、Docker 连接、配置保存、服务启动/停止、备份恢复和更新。测试边界见[测试指南](../../docs/testing.md)。
+按需执行的 `npm run test` 会编译测试 Rust 共享核心与 Web 管理器，并检查桌面接线；基础 `npm run verify` 只检查格式、语法与代码风格。两者均不编译和运行这个 Tauri App。原生改动应在目标平台检查首次启动、Docker 连接、配置保存、服务启动/停止、备份恢复和更新。测试边界见[测试指南](../../docs/testing.md)。

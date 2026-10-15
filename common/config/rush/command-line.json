@@ -121,7 +121,7 @@
     {
       "commandKind": "global",
       "name": "verify",
-      "summary": "Run formatting, lint, type checks and all regressions.",
+      "summary": "Check formatting, syntax and code style without builds or regressions.",
       "shellCommand": "node scripts/repo-tasks.js verify"
     },
     {

@@ -1,6 +1,6 @@
 # 测试指南
 
-本文所有命令均从仓库根目录执行。先使用 Node.js `22.17.x` 运行 `npm run install:all`；完整验证还需要 Rust stable、编译工具链和可访问的 Python 3。测试退出码 `0` 表示该命令成功，不能据此推断没有执行的集成或平台检查也通过。
+本文所有命令均从仓库根目录执行。先使用 Node.js `22.17.x` 运行 `npm run install:all`；按需执行全套回归时还需要 Rust stable、编译工具链和可访问的 Python 3。测试退出码 `0` 表示该命令成功，不能据此推断没有执行的集成或平台检查也通过。
 
 ## 根验证与默认 CI
 
@@ -9,22 +9,26 @@ npm run verify
 git diff --check
 ```
 
-`verify` 由 `scripts/repo-tasks.js` 调度，依次运行格式、Lint、类型与测试；遇到首个失败会停止。`npm run test` 包含模块测试与 `npm run check` 的工程检查。普通 PR 的 Verify 工作流运行同一根验证，另有生产依赖审计和 Compose 模板检查；PR 不上传官方发行包。
+`verify` 由 `scripts/repo-tasks.js` 调度，只运行格式检查和 ESLint，检查语法与代码风格；遇到首个失败会停止。默认 CI 与本地执行范围一致，不构建应用、不执行类型检查、业务测试、依赖漏洞审计或 Compose 校验，也不上传发行包。基础检查不需要启动 Docker、数据库或 Rust 编译。
 
-联网依赖审计使用 `node scripts/audit-dependencies.js`，拒绝生产依赖中的全部 high 与 critical，不需要例外配置文件。仅用于编译、开发和代码检查的工具应放在 `devDependencies`。审计成功不等于零漏洞，也不覆盖开发工具链的风险。网络审计由 CI 独立运行，本地根验证只测试安全门槛逻辑，不要求 registry 在线。依赖升级后应重新运行联网审计。
+## 按需执行详细检查
 
-| 层次       | 默认验证中的内容                                                                                               | 仍需额外验证的内容                                           |
+类型检查使用 `npm run typecheck`，全套回归使用 `npm run test`，工程与分发检查使用 `npm run check`。这些命令不属于默认 Verify 流水线，由开发者按改动范围手动执行。
+
+联网依赖审计使用 `node scripts/audit-dependencies.js`，拒绝生产依赖中的全部 high 与 critical，不需要例外配置文件。仅用于编译、开发和代码检查的工具应放在 `devDependencies`。审计成功不等于零漏洞，也不覆盖开发工具链的风险。网络审计独立于 Verify，按需手动执行时需要 registry 在线。依赖升级后应重新运行联网审计。
+
+| 层次       | 手动全套回归中的内容                                                                                           | 仍需额外验证的内容                                           |
 | ---------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
 | JS/TS      | game Jest、local-engine 与 game-server 回归、反作弊、VOXA 指定回归、登录门户、公共包/API、工作区与发行结构检查 | 全部应用的完整类型覆盖、真实业务栈、所有未加入调度的专用脚本 |
 | 玩家启动器 | `check`：类型、Vite 构建、Node/tsx 测试、Electron 主进程打包                                                   | 真正启动 Electron、菜单/缓存 smoke、安装签名与更新           |
 | Rust       | manager-core 测试，server-manager-rust 实际二进制编译检查与测试                                                | Tauri 原生 App 编译、桌面交互、目标 OS 安装验收              |
 | 数据与部署 | 临时文件、内存/模拟数据库、部署契约与配置检查                                                                  | 真实 PostgreSQL、Redis、Docker 镜像启动、多人运行和备份恢复  |
 
-Jest 的 PostgreSQL 条件测试在未设置 `MODERATION_TEST_DATABASE_URL` 时会显示 skipped。看到 skipped 需要记录；默认 PR 没有这个变量时，不能声称完成数据库授权持久化回归。根类型检查也不是对所有 TS 项目执行一遍 `tsc`；准确范围以调度与各项目脚本为准。
+Jest 的 PostgreSQL 条件测试在未设置 `MODERATION_TEST_DATABASE_URL` 时会显示 skipped。看到 skipped 需要记录；手动回归没有这个变量时，不能声称完成数据库授权持久化回归。根类型检查也不是对所有 TS 项目执行一遍 `tsc`；准确范围以调度与各项目脚本为准。
 
 Rush 会读取仓库及用户配置中的环境设置。game 的 Jest 在业务模块导入前清除继承的 `BOX_*` 部署变量和内部传输密钥，避免开发数据库、服务器名称和代理配置影响自动测试；测试自行设置需要的夹具。此隔离只发生在测试进程，保留明确的 `MODERATION_TEST_DATABASE_URL`，不改写本机 `.env`。真实数据库回归必须使用下面的专用测试库入口。
 
-开发中可分别运行 `npm run format:check`、`npm run lint`、`npm run typecheck`、`npm run test` 和 `npm run check` 定位失败。根任务会先准备所需公共包，再运行 local-engine 的 `prepare-assets`，生成 API、纹理和模型等运行资源后检查资源闭包。`apps/local-engine/data/blobs/` 整个目录纳入源码与 Docker 构建输入，最终镜像按运行引用复制资源，因此源码目录与镜像内的资源数量可以不同。直接执行局部测试若提示找不到 `dist` 或运行资源，先运行根 `npm run typecheck`，或按 Rush 依赖顺序构建项目并运行 `npm --prefix apps/local-engine run prepare-assets`。
+开发中可分别运行 `npm run format:check`、`npm run lint`、`npm run typecheck`、`npm run test` 和 `npm run check` 定位失败。`typecheck`、`test` 和 `check` 会先准备所需公共包，再运行 local-engine 的 `prepare-assets`，生成 API、纹理和模型等运行资源后检查资源闭包。`apps/local-engine/data/blobs/` 整个目录纳入源码与 Docker 构建输入，最终镜像按运行引用复制资源，因此源码目录与镜像内的资源数量可以不同。直接执行局部测试若提示找不到 `dist` 或运行资源，先运行根 `npm run typecheck`，或按 Rush 依赖顺序构建项目并运行 `npm --prefix apps/local-engine run prepare-assets`。
 
 `npm run check:public` 检查当前源码中的秘密与私密数据。当前文件扫描不清理 Git 历史或已经下载的副本。
 
@@ -51,7 +55,7 @@ Rush 会读取仓库及用户配置中的环境设置。game 的 Jest 在业务�
 
 不要把 Jest 测试直接交给 `node --test`，也不要用 Jest 扫描 Node test 文件。`package.json` 中的脚本选择了所需注册器和运行器。game Jest 默认输出终端报告；如需 HTML 报告，在 POSIX shell 中使用 `JEST_HTML_REPORT=1 npm --prefix apps/game test -- --runInBand`，报告路径以日志为准，不自动打开浏览器。PowerShell 先设置 `$env:JEST_HTML_REPORT='1'`，执行后用 `Remove-Item Env:JEST_HTML_REPORT` 清除。
 
-VOXA 的默认工程检查仅执行模型库范围、模型工程包、本地 CORS 和模型管理权限四项；另有 `check:default-skin-scope`、`check:parent-storage-url` 可按修改范围追加。不要把根验证中的选定脚本称为 VOXA 全量测试。
+VOXA 的默认工程检查仅执行模型库范围、模型工程包、本地 CORS 和模型管理权限四项；另有 `check:default-skin-scope`、`check:parent-storage-url` 可按修改范围追加。这些按需工程检查中的选定脚本不代表 VOXA 全量测试。
 
 ## 修改行为时选择回归
 

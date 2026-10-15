@@ -44,7 +44,7 @@ npm run check:workspace
 npm run dev:infra
 ```
 
-使用 Node.js `22.17.x`，先启动 Docker。Windows PowerShell 用 `Copy-Item .env.docker.example .env`；已有本地配置时跳过复制。已有 PostgreSQL 的开发者可配置 `BOX_DATABASE_URL` 后使用 `npm run dev`。原生开发与完整验证需要 Rust 和平台工具链，详细步骤见[开发入门](docs/developer-guide.md)。
+使用 Node.js `22.17.x`，先启动 Docker。Windows PowerShell 用 `Copy-Item .env.docker.example .env`；已有本地配置时跳过复制。已有 PostgreSQL 的开发者可配置 `BOX_DATABASE_URL` 后使用 `npm run dev`。原生开发与 Rust 专项测试需要 Rust 和平台工具链，详细步骤见[开发入门](docs/developer-guide.md)。
 
 遵循[代码规范](docs/code-style.md)，先复用现有组件与公共包。修改依赖或新增 Rush 项目后执行 `npm run update:all`，检查并提交相关 `package.json`、`rush.json` 与锁文件差异。普通依赖安装使用 `install:all`，不为了安装失败而随意更新整个锁文件。
 
@@ -52,14 +52,14 @@ npm run dev:infra
 
 ## 4. 提交前验证
 
-代码修改完成后，在根目录执行完整验证：
+代码修改完成后，在根目录执行基础检查：
 
 ```sh
 npm run verify
 git diff --check
 ```
 
-`verify` 依次运行格式、Lint、类型与测试，测试包含 game Jest、玩家启动器检查、权威运行时回归、工程检查。它也编译并测试 Rust 共享核心和 Web 管理器，需要 Rust 工具链。局部模块测试便于开发时定位问题，但不能代替完整验证；真实 PostgreSQL 专项、Docker 业务部署、Tauri/Electron 图形运行和各平台安装包仍需要额外检查。验证失败时先判断是否由本次修改引起，PR 中明确说明原因与影响，不能将未执行或跳过的检查写成通过。
+`verify` 只运行格式与 ESLint，检查语法和代码风格，不构建应用、不运行类型检查或业务测试，也不要求 Rust、Docker 和数据库运行环境。需要验证具体实现时，按[测试指南](docs/testing.md)手动运行相关模块命令；全套回归使用 `npm run test`，类型检查使用 `npm run typecheck`。PR 中如实说明实际执行项和结果。
 
 ## 5. 暂存、提交与推送
 
@@ -89,7 +89,7 @@ PR 说明至少包含：
 - **用户可见变化**：界面截图或操作步骤；发行改动说明目标平台与产物来源。
 - **风险与回滚**：涉及权限、持久数据、部署或迁移时说明备份与恢复方案。
 
-PR 创建、更新、重新打开和标记为可评审时，Verify 自动运行质量检查，包括格式、Lint、类型、测试、生产依赖审计和 Compose 模板校验。生产依赖审计拒绝全部 high 与 critical，不依赖例外配置文件。PR 本身不打包、不上传 OSS，Fork 贡献者无需配置官方发布密钥。自动检查通过是评审依据之一，不代表完成所有平台的实际安装与业务验收。
+PR 创建、更新、重新打开和标记为可评审时，Verify 只运行格式、语法和代码风格检查，不运行业务回归、依赖漏洞审计、Compose 校验或安装包检查。PR 本身不打包、不上传 OSS，Fork 贡献者无需配置官方发布密钥。具体功能和目标平台的验证由维护者按改动范围另行执行。
 
 评审要求修改时，继续提交到同一个主题分支即可更新 PR；说明关键调整并重新运行受影响检查。合并由维护者决定，合并后可以删除自己的主题分支，下次贡献重新从最新 dev 创建。
 

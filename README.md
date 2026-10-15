@@ -103,7 +103,7 @@ Play 展示已导入的发布地图，Creator 中正在编辑的工程不会自�
 
 ## 源码开发
 
-使用 Node.js `22.17.x`，并提前启动 Docker。工作区由 Rush 管理，仓库脚本会准备锁定版本的 Rush 和 pnpm。原生管理器开发与完整验证还需要 Rust stable 及平台工具链，详见[开发入门](docs/developer-guide.md)。
+使用 Node.js `22.17.x`，并提前启动 Docker。工作区由 Rush 管理，仓库脚本会准备锁定版本的 Rush 和 pnpm。原生管理器开发与 Rust 专项测试还需要 Rust stable 及平台工具链，详见[开发入门](docs/developer-guide.md)。
 
 在终端执行：
 
@@ -136,7 +136,7 @@ Windows PowerShell 使用 `Copy-Item .env.docker.example .env`；已有 `.env` �
 | ------------------------------------- | -------------------------------------- |
 | `npm run dev:creator:infra`           | 启动创作栈与开发基础服务，缩小调试范围 |
 | `npm run dev:manager`                 | 调试部署管理器网页界面                 |
-| `npm run verify`                      | 检查格式、Lint、类型、测试和工程约束   |
+| `npm run verify`                      | 检查格式、语法和代码风格               |
 | `node scripts/check-documentation.js` | 检查本地文档链接与基础入口             |
 
 目录职责见[架构指南](docs/architecture.md)，局部验证、数据库测试和平台验收见[测试指南](docs/testing.md)。镜像与安装包构建见[发布与版本说明](docs/release-and-version.md)。

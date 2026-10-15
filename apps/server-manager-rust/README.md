@@ -39,4 +39,4 @@ cargo test --manifest-path apps/server-manager-rust/Cargo.toml
 node scripts/check-headless-rust-manager.js
 ```
 
-根验证包含这些编译/测试或接线检查，不会自动启动完整 Docker 业务栈。修改命令、Token 校验、镜像或备份逻辑后，额外在独立数据目录验收安装、登录、服务启动/停止、进度、断线和恢复，见[测试指南](../../docs/testing.md)。不要把部署 `.env`、管理令牌或诊断归档提交仓库。
+按需执行的 `npm run test` / `npm run check` 包含这些编译、测试和接线检查；基础 `npm run verify` 不执行它们。测试命令不会自动启动完整 Docker 业务栈。修改命令、Token 校验、镜像或备份逻辑后，额外在独立数据目录验收安装、登录、服务启动/停止、进度、断线和恢复，见[测试指南](../../docs/testing.md)。不要把部署 `.env`、管理令牌或诊断归档提交仓库。

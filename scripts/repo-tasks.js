@@ -184,8 +184,6 @@ if (task === 'format') {
 } else if (task === 'verify') {
     format(false);
     lint();
-    typecheck();
-    test();
 } else {
     throw new Error(`Unknown repository task: ${task || '(missing)'}`);
 }

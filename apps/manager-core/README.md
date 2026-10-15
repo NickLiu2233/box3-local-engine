@@ -32,4 +32,4 @@ node scripts/check-desktop-deployment-manager.js
 node scripts/check-headless-rust-manager.js
 ```
 
-这些检查进入根验证。它们覆盖共享行为与两端接线，仍需实际备份/恢复和目标平台验收；Tauri 编译依赖见[部署管理器](../deployment-manager/README.md)，覆盖边界见[测试指南](../../docs/testing.md)。
+这些检查由按需执行的 `npm run test` / `npm run check` 调度，不属于基础 `npm run verify`。它们覆盖共享行为与两端接线，仍需实际备份/恢复和目标平台验收；Tauri 编译依赖见[部署管理器](../deployment-manager/README.md)，覆盖边界见[测试指南](../../docs/testing.md)。

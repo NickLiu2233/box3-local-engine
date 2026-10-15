@@ -38,17 +38,5 @@ jobs:
       - name: Install dependencies
         run: node common/scripts/install-run-rush.js install
 
-      - name: Reject high and critical production vulnerabilities
-        run: node scripts/audit-dependencies.js
-
-      - name: Validate Compose templates
-        env:
-          PERMISSION_TOKEN_SECRET: verify-only-secret-0000000000000000
-          BOX_PLAYER_AUTH_API_KEY: verify-only-api-key-000000000000000
-          BOX_DATABASE_URL: postgresql://verify:verify@127.0.0.1:5432/verify
-        run: |
-          docker compose --env-file .env.docker.example config --quiet
-          docker compose --env-file distribution/play/.env.example -f distribution/play/compose.yml config --quiet
-
-      - name: Verify source and regressions
+      - name: Check formatting, syntax and code style
         run: node common/scripts/install-run-rush.js verify

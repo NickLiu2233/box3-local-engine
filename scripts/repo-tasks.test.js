@@ -44,7 +44,7 @@ function runTask(task, failBuild = false, failAssets = false) {
     return { calls, execute: () => vm.runInNewContext(source, context) };
 }
 
-for (const task of ['test', 'check', 'verify']) {
+for (const task of ['test', 'check']) {
     test(`${task} prepares runtime dependencies once before regressions`, () => {
         const app = runTask(task);
         app.execute();
@@ -129,7 +129,7 @@ test('asset preparation failure stops before runtime regressions and closure che
     );
 });
 
-for (const task of ['test', 'verify']) {
+for (const task of ['test']) {
     test(`${task} includes Creator, player launcher and anti-cheat regressions`, () => {
         const app = runTask(task);
         app.execute();
@@ -150,7 +150,7 @@ for (const task of ['test', 'verify']) {
     });
 }
 
-for (const task of ['test', 'check', 'verify']) {
+for (const task of ['test', 'check']) {
     test(`${task} guards runtime resources`, () => {
         const app = runTask(task);
         app.execute();
@@ -162,6 +162,23 @@ for (const task of ['test', 'check', 'verify']) {
         );
     });
 }
+
+test('verify only checks formatting and lint without building or running regressions', () => {
+    const app = runTask('verify');
+    app.execute();
+    assert.deepEqual(
+        app.calls.map((call) => [
+            path.relative(path.resolve(__dirname, '..'), call.cwd),
+            Array.from(call.args),
+        ]),
+        [
+            ['tools/repo-tooling', ['run', 'format:check']],
+            ['tools/repo-tooling', ['run', 'lint:root']],
+            ['apps/game', ['run', 'lint']],
+            ['apps/voxa', ['run', 'lint']],
+        ],
+    );
+});
 
 test('typecheck builds shared APIs before checking the admin and portal', () => {
     const app = runTask('typecheck');

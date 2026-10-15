@@ -144,6 +144,29 @@ function runDockerBootstrap({
         const keyFixture = path.join(temporaryRoot, 'signing-key');
         fs.writeFileSync(keyFixture, '-----BEGIN PGP PUBLIC KEY BLOCK-----\nfixture\n');
         fs.mkdirSync(bin);
+        // CI runners already provide Docker. Expose only the core utilities and
+        // our stubs so "missing Docker" never falls through to the host binary.
+        for (const command of [
+            'cat',
+            'chmod',
+            'cp',
+            'grep',
+            'mkdir',
+            'mktemp',
+            'mv',
+            'rm',
+            'sed',
+            'sh',
+            'tail',
+            'touch',
+            'tr',
+        ]) {
+            const binary = ['/usr/bin', '/bin']
+                .map((directory) => path.join(directory, command))
+                .find((file) => fs.existsSync(file));
+            assert.ok(binary, `Required bootstrap test utility is missing: ${command}`);
+            fs.symlinkSync(binary, path.join(bin, command));
+        }
         executable(path.join(bin, 'sleep'), '#!/bin/sh\nexit 0\n');
         const osRelease = path.join(temporaryRoot, 'os-release');
         fs.writeFileSync(
@@ -238,7 +261,7 @@ install_docker
         const result = spawnSync('sh', [script], {
             env: {
                 ...process.env,
-                PATH: `${bin}:/usr/bin:/bin`,
+                PATH: bin,
                 TMPDIR: temporaryRoot,
                 CALL_LOG: calls,
                 READY_FILE: ready,
