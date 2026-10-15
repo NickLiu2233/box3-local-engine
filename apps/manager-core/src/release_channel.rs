@@ -2,6 +2,10 @@
 pub const PRODUCTION_BASE: &str = "https://assets.box3.fun/local-engine";
 pub const STAGING_BASE: &str = "https://assets.box3.fun/local-engine-staging";
 
+pub fn is_dev(version: &str) -> bool {
+    version.ends_with("-dev") || version.ends_with(".dev")
+}
+
 pub fn is_staging(version: &str) -> bool {
     version.ends_with("-staging") || version.ends_with(".staging")
 }
@@ -53,6 +57,9 @@ pub fn image_download_url(base: Option<&str>, archive: &str) -> Result<String, S
 }
 
 pub fn valid_installer_url(url: &str, current_version: &str) -> bool {
+    if is_dev(current_version) {
+        return false;
+    }
     let Some(name) = url.strip_prefix(&format!(
         "{}/BOX-Local-Engine-",
         release_base(current_version)
@@ -78,6 +85,20 @@ pub fn valid_installer_url(url: &str, current_version: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn dev_installers_cannot_download_online_updates() {
+        for version in ["2026.1.4-dev", "2026.1.4-beta.1.dev"] {
+            assert!(is_dev(version));
+            assert!(!valid_installer_url(
+                &format!("{PRODUCTION_BASE}/BOX-Local-Engine-2026.1.5-macos-arm64.zip"),
+                version,
+            ));
+            assert!(!valid_installer_url(
+                &format!("{STAGING_BASE}/BOX-Local-Engine-2026.1.5-staging-macos-arm64.zip"),
+                version,
+            ));
+        }
+    }
     #[test]
     fn channels_cannot_download_each_others_installers() {
         let stable = format!("{PRODUCTION_BASE}/BOX-Local-Engine-0.4.0-macos-arm64.zip");

@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { packagingContext } = require('./packaging-context');
 const { generateDistributionMetadata } = require('../apps/local-engine/src/distribution-metadata');
 
 const repoRoot = path.resolve(__dirname, '..');
@@ -43,8 +44,11 @@ function fail(message) {
 }
 
 function validateDesktopCatalog(catalog, version, architecture, channel = 'production') {
-    const { validateCatalog } = require('./build-image-downloads');
+    const { validateCatalog, validateDevCatalog } = require('./build-image-downloads');
     validateCatalog(catalog, architecture);
+    if (channel === 'dev') {
+        return validateDevCatalog(catalog, version, architecture);
+    }
     if (channel === 'staging') {
         if (version !== catalog.version) {
             throw new Error('Prepare the staging application version before packaging');
@@ -57,7 +61,8 @@ function validateDesktopCatalog(catalog, version, architecture, channel = 'produ
     }
     if (
         channel !== 'production' ||
-        catalog.channel === 'staging' ||
+        ['dev', 'staging'].includes(catalog.channel) ||
+        catalog.images.some((image) => /(?:-|\.)dev-linux-/.test(image.imageTag)) ||
         catalog.images.some((image) => image.downloadBaseUrl?.includes('/local-engine-staging/'))
     ) {
         throw new Error(
@@ -261,12 +266,17 @@ function tauriBuildFailure(result) {
 }
 
 function main() {
-    const local = process.argv.includes('--local');
+    const { channel, version } = packagingContext(
+        process.env,
+        require(path.join(managerRoot, 'package.json')).version,
+    );
+    const local = process.argv.includes('--local') || channel === 'dev';
+    process.env.BOX_BUILD_CHANNEL = channel;
+    process.env.BOX_BUILD_VERSION = version;
     if (local) {
         process.env.BOX_ALLOW_DIRTY_RELEASE = 'true';
     }
     prepareReleaseMetadata();
-    const version = require(path.join(managerRoot, 'package.json')).version;
     const platform = process.argv[2];
     const archive = process.argv[3] ? path.resolve(process.argv[3]) : '';
     const spec = supported.get(platform);
@@ -315,7 +325,7 @@ function main() {
         JSON.parse(fs.readFileSync(catalogPath, 'utf8')),
         version,
         expectedArchitecture,
-        process.env.BOX_BUILD_CHANNEL || 'production',
+        channel,
     );
     const imageDetails = imageManifest.images;
     const imageTag = local ? localImageTag(imageManifest) : imageManifest.imageTag;
@@ -336,7 +346,7 @@ function main() {
     }
     const packageMode = {
         mode: local ? 'local' : 'slim',
-        ...(imageManifest.channel === 'staging' ? { channel: 'staging' } : {}),
+        ...(channel !== 'production' ? { channel } : {}),
         imageTag,
         platform: imageManifest.platform,
     };
@@ -382,17 +392,17 @@ function main() {
         });
     }
     fs.writeFileSync(payloadImageInfo, `${JSON.stringify(imageInfo, null, 2)}\n`);
-    let stagingConfiguration;
+    let channelConfiguration;
     try {
         const tauriArgs = ['build'];
-        if (imageManifest.channel === 'staging') {
+        if (channel !== 'production') {
             // A relative file avoids Windows cmd consuming inline JSON quotes
             // or splitting a checkout path that contains spaces.
-            stagingConfiguration = fs.mkdtempSync(path.join(managerRoot, 'src-tauri/.staging-'));
-            const configurationFile = path.join(stagingConfiguration, 'config.json');
+            channelConfiguration = fs.mkdtempSync(path.join(managerRoot, `src-tauri/.${channel}-`));
+            const configurationFile = path.join(channelConfiguration, 'config.json');
             fs.writeFileSync(
                 configurationFile,
-                JSON.stringify({ identifier: 'com.box.engine.manager.staging' }),
+                JSON.stringify({ version, identifier: `com.box.engine.manager.${channel}` }),
             );
             tauriArgs.push('--config', path.relative(managerRoot, configurationFile));
         }
@@ -416,8 +426,8 @@ function main() {
             throw new Error(tauriBuildFailure(result));
         }
     } finally {
-        if (stagingConfiguration) {
-            fs.rmSync(stagingConfiguration, { recursive: true, force: true });
+        if (channelConfiguration) {
+            fs.rmSync(channelConfiguration, { recursive: true, force: true });
         }
         fs.writeFileSync(payloadImageInfo, originalImageInfo);
         if (local && spec.bundle) {

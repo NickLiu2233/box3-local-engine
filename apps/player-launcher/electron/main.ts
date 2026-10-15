@@ -36,8 +36,10 @@ let mainWindow:Electron.BrowserWindow | undefined;
 let devServer:ViteDevServer | undefined;
 const publicImageTransport = createPublicImageTransport();
 
-const staging = /(?:-|\.)staging$/.test(app.getVersion());
-app.setName(staging ? 'BOX3 Player Launcher Staging' : 'BOX3 Player Launcher');
+const channel = /(?:-|\.)(dev|staging)$/.exec(app.getVersion())?.[1];
+app.setName(
+    `BOX3 Player Launcher${channel === 'dev' ? ' Dev' : channel === 'staging' ? ' Staging' : ''}`,
+);
 nativeTheme.themeSource = 'dark';
 const dataRoot =
     process.platform === 'linux'
@@ -45,7 +47,7 @@ const dataRoot =
         : app.getPath('appData');
 app.setPath(
     'userData',
-    path.join(dataRoot, staging ? 'com.box.player.launcher.staging' : 'com.box.player.launcher'),
+    path.join(dataRoot, `com.box.player.launcher${channel ? `.${channel}` : ''}`),
 );
 const apiTransport = createApiTransport({
     sessionStore: createPlayerSessionStore(

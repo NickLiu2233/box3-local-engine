@@ -20,7 +20,7 @@
     "dev:electron": "npm run build:electron-main && electron . --dev",
     "build:electron-main": "esbuild electron/main.ts electron/preload.ts electron/build/after-pack.ts --bundle --platform=node --target=node22 --format=cjs --outdir=dist-electron --out-extension:.js=.cjs --external:electron --external:vite",
     "build:electron": "npm run typecheck && npm run build && npm run build:electron-main",
-    "bundle:electron": "npm run build:electron && electron-builder"
+    "bundle:electron": "npm run build:electron && electron-builder --config scripts/electron-builder.cjs"
   },
   "devDependencies": {
     "@box/apis": "workspace:0.2.0",

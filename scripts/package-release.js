@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { packagingContext } = require('./packaging-context');
 
 const root = path.resolve(__dirname, '..');
 const outputDirectory = path.join(root, 'apps/local-engine/dist/images');
@@ -118,7 +119,12 @@ function main() {
     // of trying to build Linux containers themselves.
     run(process.execPath, [path.join('scripts', 'sync-root-version.js')]);
 
-    const version = require(path.join(root, 'package.json')).version;
+    const { channel, version } = packagingContext(
+        process.env,
+        require(path.join(root, 'package.json')).version,
+    );
+    process.env.BOX_BUILD_CHANNEL = channel;
+    process.env.BOX_BUILD_VERSION = version;
     const plan = createReleasePlan(
         kind,
         target,

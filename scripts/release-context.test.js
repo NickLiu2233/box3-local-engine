@@ -135,6 +135,7 @@ test(
         fs.mkdirSync(path.join(temporary, 'scripts'));
         for (const file of [
             'build-headless-server-package.js',
+            'packaging-context.js',
             'build-image-downloads.js',
             'verify-headless-server-package.js',
         ]) {
@@ -179,7 +180,15 @@ test(
                 '--catalog',
                 catalogFile,
             ],
-            { encoding: 'utf8' },
+            {
+                encoding: 'utf8',
+                env: {
+                    ...process.env,
+                    GITHUB_ACTIONS: 'true',
+                    BOX_BUILD_CHANNEL: 'staging',
+                    GITHUB_REF: 'refs/heads/staging',
+                },
+            },
         );
         assert.equal(result.status, 0, result.stderr);
         const directory = path.join(

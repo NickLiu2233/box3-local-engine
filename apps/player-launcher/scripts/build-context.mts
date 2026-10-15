@@ -5,8 +5,8 @@ export function playerBuildContext(env:NodeJS.ProcessEnv, packageVersion:string)
     const channel = env.PLAYER_BUILD_CHANNEL || 'production';
     const commit = env.PLAYER_RELEASE_COMMIT || env.GITHUB_SHA || '';
     if (channel === 'production') {
-        if (/(?:-|\.)staging$/.test(packageVersion)) {
-            throw new Error('A staging version cannot enter production');
+        if (/(?:-|\.)(dev|staging)$/.test(packageVersion)) {
+            throw new Error('Development and staging versions cannot enter production');
         }
         const info = releaseInfo(
             env.PLAYER_RELEASE_TAG ||

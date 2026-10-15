@@ -27,7 +27,21 @@ const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const repositoryRoot = path.resolve(appRoot, '../..');
 const require = createRequire(import.meta.url);
 const packageInfo = JSON.parse(await readFile(path.join(appRoot, 'package.json'), 'utf8'));
-const { channel, info, prefix } = playerBuildContext(process.env, packageInfo.version);
+const { packagingContext } = require('../../../scripts/packaging-context.js');
+const local = packagingContext(process.env, packageInfo.version, 'PLAYER_BUILD_CHANNEL');
+const { channel, info, prefix } =
+    process.argv[2] === 'build' && local.channel === 'dev'
+        ? {
+              channel: 'dev',
+              info: {
+                  version: local.version,
+                  tag: `player-v${local.version}`,
+                  commit: process.env.PLAYER_RELEASE_COMMIT || process.env.GITHUB_SHA || 'unknown',
+                  prerelease: true,
+              },
+              prefix: '',
+          }
+        : playerBuildContext(process.env, packageInfo.version);
 const outputDirectory = path.join(appRoot, 'release-electron');
 
 async function output(values:Record<string, string>):Promise<void> {
@@ -121,10 +135,10 @@ async function build(target:PlayerTarget):Promise<void> {
         `--config.artifactName=${filename}`,
     ];
     const signingEnv = builderEnvironment(process.env);
-    if (channel === 'staging') {
+    if (channel !== 'production') {
         args.push(
             `--config.extraMetadata.version=${info.version}`,
-            '--config.appId=com.box.player.launcher.staging',
+            `--config.appId=com.box.player.launcher.${channel}`,
         );
     }
     if (mac) {
@@ -195,6 +209,9 @@ async function build(target:PlayerTarget):Promise<void> {
 async function withOss(
     action:(client:Awaited<ReturnType<typeof createOssClient>>) => Promise<void>,
 ):Promise<void> {
+    if (channel === 'dev') {
+        throw new Error('Development installers cannot access release storage');
+    }
     const client = await createOssClient(ossConfiguration(process.env), undefined, `${prefix}/`);
     try {
         await action(client);

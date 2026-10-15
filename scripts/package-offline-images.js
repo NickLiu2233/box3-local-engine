@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
+const { packagingContext } = require('./packaging-context');
 
 const root = path.resolve(__dirname, '..');
 const architectureByNode = { x64: 'amd64', arm64: 'arm64' };
@@ -31,7 +32,10 @@ if (selectedService && !services.includes(selectedService)) {
     fail(`未知服务：${selectedService}；可选值：${services.join('、')}`);
 }
 
-const version = require(path.join(root, 'package.json')).version;
+const { channel, version } = packagingContext(
+    process.env,
+    require(path.join(root, 'package.json')).version,
+);
 const tag = `v${version}-linux-${architecture}`;
 const outputDirectory =
     local && process.env.BOX_LOCAL_IMAGE_DIRECTORY
@@ -50,7 +54,8 @@ const environment = {
     BOX_IMAGE_TAG: tag,
     BOX_PLAY_PLATFORM: `linux/${architecture}`,
     DOCKER_DEFAULT_PLATFORM: `linux/${architecture}`,
-    BOX_BUILD_VERSION: process.env.BOX_BUILD_VERSION || `v${version}`,
+    BOX_BUILD_CHANNEL: channel,
+    BOX_BUILD_VERSION: channel === 'dev' ? version : process.env.BOX_BUILD_VERSION || `v${version}`,
     BOX_BUILD_DATE: process.env.BOX_BUILD_DATE || new Date().toISOString(),
     BOX_BUILD_SOURCE: process.env.BOX_BUILD_SOURCE || 'local',
 };

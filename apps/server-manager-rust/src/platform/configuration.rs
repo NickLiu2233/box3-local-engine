@@ -488,6 +488,9 @@ pub(crate) fn start_server_update(app: &App, requested_version: &str) -> Result<
     let requested = requested_version.trim().trim_start_matches('v');
     let target_version = stable_version(requested.trim_end_matches("-staging")).ok_or("更新版本格式无效")?;
     let current_version = option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+    if box_manager_core::release_channel::is_dev(current_version) {
+        return Err("开发版本请重新打包更新".into());
+    }
     if box_manager_core::release_channel::is_staging(requested) != box_manager_core::release_channel::is_staging(current_version) {
         return Err("更新渠道与当前管理器不一致".into());
     }

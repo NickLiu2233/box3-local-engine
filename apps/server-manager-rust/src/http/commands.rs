@@ -462,6 +462,9 @@ pub(crate) async fn command(
                 "serviceImages": service_images()
             })),
             "get_latest_release" => {
+                if box_manager_core::release_channel::is_dev(option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"))) {
+                    return Err("开发版本不检查线上更新，请重新打包".into());
+                }
                 let client = reqwest::blocking::Client::builder()
                     .timeout(std::time::Duration::from_secs(10))
                     .build()

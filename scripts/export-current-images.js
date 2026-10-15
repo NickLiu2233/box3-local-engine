@@ -1,7 +1,7 @@
 'use strict';
 
 // Export images that already exist in the local Docker daemon. This is kept
-// separate from package:images: that command is a release build, while this
+// separate from package:images: that command builds images, while this
 // command is the quick hand-off path for a launcher after maintainers have
 // rebuilt one or more services locally.
 
@@ -24,7 +24,7 @@ const hostArchitecture = process.arch === 'arm64' ? 'arm64' : process.arch === '
 if (!hostArchitecture) {
     fail(`不支持当前主机架构：${process.arch}`);
 }
-// Keep this release tag in sync with package-images. BOX_IMAGE_TAG configures
+// Keep this channel tag in sync with package-images. BOX_IMAGE_TAG configures
 // runtime Compose deployments and may legitimately point at an older image;
 // it must not change which freshly built release images this command exports.
 const imageTag = defaultExportImageTag(packageVersion, hostArchitecture);

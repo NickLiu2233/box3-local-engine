@@ -2,6 +2,8 @@
 
 分支总流程见[发布与版本](../../../docs/release-and-version.md)。玩家版本独立取自本模块 `package.json`，不由 `sync-root-version.js` 同步。staging 在打包时追加 `-staging`，使用独立应用标识和本机数据目录。
 
+本机执行 `npm run package:player-launcher:macos-arm64` 等打包命令，或在本模块执行 `npm run bundle:electron`，实际应用版本自动追加 `-dev`（当前为 `2026.1.2-dev`），使用 `com.box.player.launcher.dev` 和独立数据目录。GitHub Actions 继续按 staging / 正式渠道打包。
+
 ## 触发与产物
 
 | 入口                      | 行为                                                                     |

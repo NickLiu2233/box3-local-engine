@@ -79,7 +79,8 @@ function localImageTag(catalog) {
 }
 
 function splitArchive(archive, architecture, destination) {
-    const version = require('../package.json').version;
+    const { packagingContext } = require('./packaging-context');
+    const { channel, version } = packagingContext(process.env, require('../package.json').version);
     const result = spawnSync(
         process.platform === 'win32' ? 'python' : 'python3',
         [
@@ -94,7 +95,29 @@ function splitArchive(archive, architecture, destination) {
     if (result.error || result.status !== 0) {
         throw new Error(result.error?.message || 'Unable to split source image archive');
     }
-    return validateCatalog(JSON.parse(fs.readFileSync(destination, 'utf8')), architecture);
+    const catalog = validateCatalog(JSON.parse(fs.readFileSync(destination, 'utf8')), architecture);
+    if (
+        channel === 'dev' &&
+        catalog.images.every((image) => image.imageTag === `v${version}-linux-${architecture}`)
+    ) {
+        catalog.channel = 'dev';
+        catalog.version = version;
+        fs.writeFileSync(destination, `${JSON.stringify(catalog, null, 2)}\n`);
+    }
+    return catalog;
+}
+
+function validateDevCatalog(catalog, version, architecture) {
+    validateCatalog(catalog, architecture);
+    const tag = `v${version}-linux-${architecture}`;
+    if (
+        catalog.channel === 'staging' ||
+        catalog.imageTag !== tag ||
+        !catalog.images.every((image) => image.imageTag === tag && !image.downloadBaseUrl)
+    ) {
+        throw new Error('开发包需要同版本的 dev 镜像归档，不能使用正式或 staging 镜像');
+    }
+    return catalog;
 }
 
 if (require.main === module) {
@@ -113,4 +136,10 @@ if (require.main === module) {
     }
 }
 
-module.exports = { splitArchive, validateCatalog, localImageTag, validDownloadBase };
+module.exports = {
+    splitArchive,
+    validateCatalog,
+    validateDevCatalog,
+    localImageTag,
+    validDownloadBase,
+};

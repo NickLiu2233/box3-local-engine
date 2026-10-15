@@ -32,7 +32,10 @@ with tarfile.open(sys.argv[1],'w') as archive:
     data=json.dumps(manifest).encode();entry=tarfile.TarInfo('manifest.json');entry.size=len(data);archive.addfile(entry,io.BytesIO(data))
 `,
                     raw,
-                    require('../package.json').version,
+                    require('./packaging-context').versionForChannel(
+                        require('../package.json').version,
+                        'dev',
+                    ),
                 ],
                 { encoding: 'utf8' },
             );
@@ -59,6 +62,7 @@ else process.exit(2);
                     cwd: repo,
                     env: {
                         ...process.env,
+                        GITHUB_ACTIONS: '',
                         PATH: bin + path.delimiter + process.env.PATH,
                         BOX_FIXTURE_TRACE: trace,
                         BOX_FIXTURE_ARCHIVE: raw,
@@ -82,7 +86,11 @@ else process.exit(2);
                 ['scripts/build-headless-server-package.js', 'arm64', archive, '--local'],
                 {
                     cwd: repo,
-                    env: { ...process.env, BOX_LAUNCHER_OUTPUT_DIRECTORY: packages },
+                    env: {
+                        ...process.env,
+                        GITHUB_ACTIONS: '',
+                        BOX_LAUNCHER_OUTPUT_DIRECTORY: packages,
+                    },
                     encoding: 'utf8',
                 },
             );
@@ -115,28 +123,23 @@ else process.exit(2);
                 ],
                 {
                     cwd: repo,
-                    env: { ...process.env, BOX_LAUNCHER_OUTPUT_DIRECTORY: slimOutput },
+                    env: {
+                        ...process.env,
+                        GITHUB_ACTIONS: '',
+                        BOX_LAUNCHER_OUTPUT_DIRECTORY: slimOutput,
+                    },
                     encoding: 'utf8',
                 },
             );
-            assert.equal(slim.status, 0, slim.stderr);
-            const slimRoot = path.join(
-                slimOutput,
-                fs.readdirSync(slimOutput).find((file) => !file.endsWith('.zip')),
+            assert.notEqual(slim.status, 0);
+            assert.match(slim.stderr, /开发包需要完整 dev 镜像归档/);
+            const mode = JSON.parse(
+                fs.readFileSync(path.join(packageRoot, 'BOX3-PACKAGE-MODE.json')),
             );
-            assert.equal(
-                JSON.parse(fs.readFileSync(path.join(slimRoot, 'BOX3-PACKAGE-MODE.json'))).mode,
-                'slim',
-            );
-            assert.ok(!fs.existsSync(path.join(slimRoot, 'cache/engine-images')));
-            assert.equal(
-                spawnSync(
-                    process.execPath,
-                    ['scripts/verify-headless-server-package.js', slimRoot],
-                    { encoding: 'utf8' },
-                ).status,
-                0,
-            );
+            assert.equal(mode.channel, 'dev');
+            assert.match(mode.version, /-dev$/);
+            assert.match(mode.imageTag, /-dev-linux-arm64$/);
+            assert.ok(path.basename(packageRoot).includes('-dev-'));
             fs.appendFileSync(
                 path.join(
                     packageRoot,

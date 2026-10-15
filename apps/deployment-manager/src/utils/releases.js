@@ -22,6 +22,9 @@ export function parseVersion(value) {
 }
 
 export function releaseBase(version) {
+    if (/(?:-|\.)dev$/.test(String(version))) {
+        throw new Error('开发版不使用线上更新渠道');
+    }
     return `https://assets.box3.fun/local-engine${
         String(version)
             .replace(/\+[\w.-]+$/, '')

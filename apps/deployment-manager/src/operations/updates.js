@@ -32,6 +32,9 @@ export async function checkForUpdates(manual = false) {
         state.updateChecking = true;
         pending = invoke('get_about_info')
             .then(async (info) => {
+                if (/(?:-|\.)dev$/.test(info.applicationVersion)) {
+                    return { info, release: null, newer: false, development: true };
+                }
                 if (info.imageTag?.startsWith('test-')) {
                     return { info, release: null, newer: false, testing: true };
                 }
@@ -63,9 +66,11 @@ export async function checkForUpdates(manual = false) {
             state.updateDownloadTarget = null;
             state.updateDialogOpen = false;
             if (manual) {
-                state.notice = result.testing
-                    ? '测试启动器请下载新的预发布包更新。'
-                    : '当前已是最新版本。';
+                state.notice = result.development
+                    ? '开发版请重新打包更新。'
+                    : result.testing
+                      ? '测试启动器请下载新的预发布包更新。'
+                      : '当前已是最新版本。';
             }
         }
     } catch (error) {

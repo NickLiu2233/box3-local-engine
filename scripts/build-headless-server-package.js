@@ -4,6 +4,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { packagingContext } = require('./packaging-context');
 
 const repoRoot = path.resolve(__dirname, '..');
 const outputRoot =
@@ -87,10 +88,14 @@ function headlessCompose() {
 }
 
 function main() {
-    const local = process.argv.includes('--local');
+    const { channel, version } = packagingContext(process.env, require('../package.json').version);
+    const local = process.argv.includes('--local') || channel === 'dev';
     const args = process.argv.slice(2).filter((value) => value !== '--local');
     const architecture = args[0];
     const catalogOnly = args[1] === '--catalog';
+    if (channel === 'dev' && catalogOnly) {
+        fail('开发包需要完整 dev 镜像归档，不能仅提供下载清单');
+    }
     const archive = !catalogOnly && args[1] ? path.resolve(args[1]) : '';
     const suppliedCatalogPath = args[2] ? path.resolve(args[2]) : '';
     if (!supportedArchitectures.has(architecture)) {
@@ -111,7 +116,6 @@ function main() {
         fail(`镜像归档名称与目标架构 ${architecture} 不一致`);
     }
 
-    const version = require(path.join(repoRoot, 'package.json')).version;
     const packageName = `BOX3-Engine-Server-${version}-linux-${architecture}${local ? '-local' : ''}`;
     const packageRoot = path.join(outputRoot, packageName);
     let imageTag = `v${version}-linux-${architecture}`;
@@ -141,6 +145,9 @@ function main() {
         fail('镜像清单中缺少 Server Manager');
     }
     if (local) {
+        if (channel === 'dev') {
+            require('./build-image-downloads').validateDevCatalog(catalog, version, architecture);
+        }
         imageTag = localImageTag(catalog);
         catalog.imageTag = imageTag;
     }
@@ -158,7 +165,13 @@ function main() {
     fs.writeFileSync(
         path.join(packageRoot, 'BOX3-PACKAGE-MODE.json'),
         JSON.stringify(
-            { mode: local ? 'local' : 'slim', imageTag, platform: catalog.platform },
+            {
+                mode: local ? 'local' : 'slim',
+                channel,
+                version,
+                imageTag,
+                platform: catalog.platform,
+            },
             null,
             2,
         ) + '\n',

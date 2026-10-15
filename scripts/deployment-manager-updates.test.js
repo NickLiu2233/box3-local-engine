@@ -12,6 +12,33 @@ const release = {
     sections: [{ title: 'New features', items: ['<img src=x onerror=alert(1)>'] }],
 };
 
+test('dev launchers do not request staging or production update manifests', async () => {
+    for (const webManager of [false, true]) {
+        const app = await createFixture({
+            webManager,
+            releaseResponse: release,
+            responses: {
+                get_about_info: {
+                    applicationVersion: '2026.1.4-dev',
+                    imageTag: 'v2026.1.4-dev-linux-arm64',
+                    platform: 'macos',
+                    architecture: 'aarch64',
+                },
+            },
+        });
+        await app.api.checkForUpdates(true);
+        assert.equal(
+            app.calls.some((call) =>
+                ['fetch_release', 'get_latest_release'].includes(call.command),
+            ),
+            false,
+        );
+        assert.equal(app.api.state.updateDialogOpen, false);
+        assert.match(app.api.state.notice, /开发版请重新打包/);
+        assert.throws(() => app.api.isNewerVersion('2026.1.5', '2026.1.4-dev'), /开发版/);
+    }
+});
+
 test('testing launcher never requests the production update manifest', async () => {
     const app = await createFixture({
         releaseResponse: release,

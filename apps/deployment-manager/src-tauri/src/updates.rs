@@ -46,7 +46,7 @@ mod tests {
     fn download_urls_are_limited_to_the_compiled_channel() {
         let current = option_env!("BOX_ROOT_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
         let suffix = if box_manager_core::release_channel::is_staging(current) { "-staging" } else { "" };
-        assert!(valid_download_url(&format!("{}/BOX-Local-Engine-0.4.0{suffix}-macos-arm64.zip", box_manager_core::release_channel::release_base(current))));
+        assert_eq!(valid_download_url(&format!("{}/BOX-Local-Engine-0.4.0{suffix}-macos-arm64.zip", box_manager_core::release_channel::release_base(current))), !box_manager_core::release_channel::is_dev(current));
         for url in [
             "https://evil.test/BOX-Local-Engine-0.4.0-macos-arm64.zip",
             "https://assets.box3.fun/local-engine/BOX-Local-Engine-0.4.0-macos-arm64.zip?next=evil",

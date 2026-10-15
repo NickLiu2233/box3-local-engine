@@ -21,6 +21,14 @@ flowchart TD
 
 两条产品流水线独立完成汇总；上图展示共同阶段。PR、`dev` 和 `main` 的 Verify 只检查格式、语法和代码风格，不打包。正式发布要求通过 PR 合入 `release`，成功后由维护者同步 `main`。
 
+## 本地开发包
+
+本机执行 `package:images`、`export:images`、`package:desktop`、`package:web`、`package:player-launcher`（含平台后缀）统一生成 `dev` 包，与当前检出的分支无关。引擎版本为 `2026.1.4-dev`，玩家版本为 `2026.1.2-dev`，镜像标签如 `v2026.1.4-dev-linux-arm64`；源码中的发布版本保持不变。
+
+开发部署包内置 dev 镜像，使用独立应用标识、数据目录和桌面容器项目，不检查线上更新；更新时重新打包。已有正式或 staging 镜像归档不能作为 dev 包输入，需先重新执行 `package:images`。`--mode local` 继续表示复用本机已构建的 dev 镜像。
+
+只有 GitHub Actions 的发布流程使用 `staging` / 正式渠道；本机设置同名渠道变量也仍生成 dev 包。
+
 ## 版本与文件名
 
 | 内容       | 正式示例                                          | 预发布示例                                                |

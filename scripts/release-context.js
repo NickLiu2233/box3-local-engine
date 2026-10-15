@@ -28,8 +28,8 @@ function engineReleaseContext(env, packageVersion) {
     if (!versionPattern.test(packageVersion) || !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA || '')) {
         throw new Error('Release requires a valid version and source commit');
     }
-    if (channel === 'production' && /(?:-|\.)staging$/.test(packageVersion)) {
-        throw new Error('A staging version cannot enter production');
+    if (channel === 'production' && /(?:-|\.)(dev|staging)$/.test(packageVersion)) {
+        throw new Error('Development and staging versions cannot enter production');
     }
     const version = channel === 'staging' ? stagingVersion(packageVersion) : packageVersion;
     const releasePrefix = channel === 'staging' ? 'local-engine-staging' : 'local-engine';

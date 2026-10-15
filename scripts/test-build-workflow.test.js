@@ -74,6 +74,7 @@ for (const architecture of ['amd64', 'arm64']) {
             fs.mkdirSync(path.join(fixture, 'scripts'));
             for (const file of [
                 'release-context.js',
+                'packaging-context.js',
                 'staging-build-context.js',
                 'build-image-downloads.js',
                 'split-image-archive.py',
@@ -87,6 +88,7 @@ for (const architecture of ['amd64', 'arm64']) {
             const context = stagingContext('0.3.0', architecture, 'a'.repeat(40));
             const env = {
                 ...process.env,
+                GITHUB_ACTIONS: 'true',
                 PATH: `${bin}${path.delimiter}${process.env.PATH}`,
                 COMMAND_LOG: path.join(fixture, 'commands.jsonl'),
                 OSS_STORE: path.join(fixture, 'oss'),
