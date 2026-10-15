@@ -20,7 +20,14 @@ fn main() {
         .filter(|value| !value.is_empty())
         .expect("root package.json has no version");
     println!("cargo:rustc-env=BOX_ROOT_VERSION={version}");
+    let project = if version.ends_with("-staging") {
+        "box-local-engine-desktop-staging"
+    } else {
+        "box-local-engine-desktop"
+    };
+    println!("cargo:rustc-env=BOX_MANAGER_PROJECT_NAME={project}");
     for key in [
+        "BOX_BUILD_CHANNEL",
         "BOX_MANAGER_IMAGE_TAG",
         "BOX_MANAGER_REMOTE_IMAGE",
     ] {

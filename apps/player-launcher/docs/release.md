@@ -1,16 +1,16 @@
 # 玩家启动器发布
 
-分支总流程见[发布与版本](../../../docs/release-and-version.md)。玩家版本独立取自本模块 `package.json`，不由 `sync-root-version.js` 同步。
+分支总流程见[发布与版本](../../../docs/release-and-version.md)。玩家版本独立取自本模块 `package.json`，不由 `sync-root-version.js` 同步。staging 在打包时追加 `-staging`，使用独立应用标识和本机数据目录。
 
 ## 触发与产物
 
 | 入口                      | 行为                                                                     |
 | ------------------------- | ------------------------------------------------------------------------ |
-| 更新 `staging` / 手动测试 | 五平台测试包，版本带 `dev.<run-id>.<attempt>`，仅上传测试 OSS            |
+| 更新 `staging` / 手动测试 | 与正式流程相同的五平台预发布包，实际版本带 `-staging`，仅上传测试 OSS    |
 | PR 合入 `release`         | 固定 `player-v<版本>` 标签，构建或复用安装包，发布 OSS 和 GitHub Release |
 | `dev`、`main`、普通 PR    | 不打包玩家启动器；Verify 只做基础检查                                    |
 
-正式流水线会核对合并提交和版本，同版本不允许指向另一提交，不需要手动打 Tag。玩家 Release 设置 `make_latest: false`，不覆盖引擎的 latest；预发布版本会标记 prerelease。
+两种渠道共用 `player-launcher-release.yml` 的缓存、检查、签名、打包和汇总步骤；正式渠道额外核对合并提交和版本，同版本不允许指向另一提交，不需要手动打 Tag。玩家 Release 设置 `make_latest: false`，不覆盖引擎的 latest；预发布版本会标记 prerelease。
 
 | 目标          | Runner             | 安装包后缀             |
 | ------------- | ------------------ | ---------------------- |
@@ -50,7 +50,7 @@ OSS 仅保存安装包；单文件 `.sha256`、`.build.json` 和 `SHA256SUMS.txt
 
 ## 配置与签名
 
-OSS 密钥统一见[发布配置](../../../docs/release-and-version.md)。正式目录为 `box-player-launcher/player-v<版本>/`，测试目录为 `box-player-launcher-testing/<commit>/<run-id>-<attempt>/`。
+OSS 密钥统一见[发布配置](../../../docs/release-and-version.md)。正式目录为 `box-player-launcher/player-v<版本>/`，测试目录为 `box-player-launcher-staging/player-v<版本>-staging/<commit>/`。
 
 | 可选 Secrets                                                                      | 用途                    |
 | --------------------------------------------------------------------------------- | ----------------------- |

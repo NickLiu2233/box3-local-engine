@@ -1,30 +1,10 @@
 use std::process::Command;
 
 pub(crate) fn valid_download_url(url: &str) -> bool {
-    let Some(name) = url.strip_prefix("https://assets.box3.fun/local-engine/BOX-Local-Engine-")
-    else {
-        return false;
-    };
-    let targets = [
-        "windows-amd64",
-        "windows-arm64",
-        "macos-arm64",
-        "linux-amd64",
-        "linux-arm64",
-    ];
-    targets.iter().any(|target| {
-        let Some(version) = name.strip_suffix(&format!("-{target}.zip")) else {
-            return false;
-        };
-        let parts: Vec<_> = version.split('.').collect();
-        parts.len() == 3
-            && parts.iter().all(|part| {
-                !part.is_empty()
-                    && part.len() <= 9
-                    && (part.len() == 1 || !part.starts_with('0'))
-                    && part.bytes().all(|byte| byte.is_ascii_digit())
-            })
-    })
+    box_manager_core::release_channel::valid_installer_url(
+        url,
+        option_env!("BOX_ROOT_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+    )
 }
 
 #[tauri::command]
@@ -63,10 +43,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn download_urls_are_limited_to_official_stable_installers() {
-        assert!(valid_download_url(
-            "https://assets.box3.fun/local-engine/BOX-Local-Engine-0.4.0-macos-arm64.zip"
-        ));
+    fn download_urls_are_limited_to_the_compiled_channel() {
+        let current = option_env!("BOX_ROOT_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
+        let suffix = if box_manager_core::release_channel::is_staging(current) { "-staging" } else { "" };
+        assert!(valid_download_url(&format!("{}/BOX-Local-Engine-0.4.0{suffix}-macos-arm64.zip", box_manager_core::release_channel::release_base(current))));
         for url in [
             "https://evil.test/BOX-Local-Engine-0.4.0-macos-arm64.zip",
             "https://assets.box3.fun/local-engine/BOX-Local-Engine-0.4.0-macos-arm64.zip?next=evil",

@@ -3,36 +3,42 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { validateCatalog } = require('./build-image-downloads');
+const { engineReleaseContext } = require('./release-context');
 
-function stagingContext(version, architecture) {
-    if (
-        !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/.test(
-            version,
-        ) ||
-        (architecture !== undefined && !['amd64', 'arm64'].includes(architecture))
-    ) {
-        throw new Error('Invalid staging version or architecture');
+function stagingContext(version, architecture, commit = process.env.GITHUB_SHA) {
+    if (architecture !== undefined && !['amd64', 'arm64'].includes(architecture)) {
+        throw new Error('Invalid staging architecture');
     }
-    const prefix = `local-engine-testing/v${version}`;
-    return {
+    const context = engineReleaseContext(
+        {
+            BOX_BUILD_CHANNEL: 'staging',
+            GITHUB_REF: 'refs/heads/staging',
+            GITHUB_SHA: commit,
+        },
         version,
-        tag: `test-v${version}`,
-        prefix,
-        downloadBaseUrl: `https://assets.box3.fun/${prefix}`,
-        ...(architecture ? { imageTag: `test-v${version}-linux-${architecture}` } : {}),
+    );
+    return {
+        ...context,
+        ...(architecture ? { imageTag: `${context.tag}-linux-${architecture}` } : {}),
     };
 }
 
 function prepareCatalog(catalog, version, architecture) {
     const context = stagingContext(version, architecture);
     validateCatalog(catalog, architecture);
-    if (!catalog.images.every((image) => image.imageTag === context.imageTag)) {
+    if (
+        !catalog.images.every(
+            (image) =>
+                image.imageTag === context.imageTag &&
+                image.sourceRevision === process.env.GITHUB_SHA,
+        )
+    ) {
         throw new Error('Staging catalog contains images from another version or channel');
     }
     return {
         ...catalog,
-        channel: 'testing',
-        version,
+        channel: 'staging',
+        version: context.version,
         imageTag: context.imageTag,
         images: catalog.images.map((image) => ({
             ...image,
@@ -42,11 +48,11 @@ function prepareCatalog(catalog, version, architecture) {
 }
 
 function validateStagingCatalog(catalog, version, architecture) {
-    const expected = stagingContext(version, architecture);
+    const expected = stagingContext(version, architecture, catalog.images?.[0]?.sourceRevision);
     validateCatalog(catalog, architecture);
     if (
-        catalog.channel !== 'testing' ||
-        catalog.version !== version ||
+        catalog.channel !== 'staging' ||
+        catalog.version !== expected.version ||
         catalog.imageTag !== expected.imageTag ||
         !catalog.images.every(
             (image) =>
@@ -55,7 +61,7 @@ function validateStagingCatalog(catalog, version, architecture) {
         )
     ) {
         throw new Error(
-            'Cached staging catalog does not match this version, architecture and test download source',
+            'Cached staging catalog does not match this version, architecture and staging download source',
         );
     }
     return catalog;
@@ -68,7 +74,7 @@ function main() {
     ).version;
     if (command === 'context') {
         if (process.env.GITHUB_REF && process.env.GITHUB_REF !== 'refs/heads/staging') {
-            throw new Error('Test builds require the staging branch');
+            throw new Error('Staging builds require the staging branch');
         }
         const context = stagingContext(version);
         if (process.env.GITHUB_OUTPUT) {

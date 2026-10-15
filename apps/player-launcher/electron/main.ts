@@ -36,13 +36,17 @@ let mainWindow:Electron.BrowserWindow | undefined;
 let devServer:ViteDevServer | undefined;
 const publicImageTransport = createPublicImageTransport();
 
-app.setName('BOX3 Player Launcher');
+const staging = /(?:-|\.)staging$/.test(app.getVersion());
+app.setName(staging ? 'BOX3 Player Launcher Staging' : 'BOX3 Player Launcher');
 nativeTheme.themeSource = 'dark';
 const dataRoot =
     process.platform === 'linux'
         ? process.env.XDG_DATA_HOME || path.join(os.homedir(), '.local', 'share')
         : app.getPath('appData');
-app.setPath('userData', path.join(dataRoot, 'com.box.player.launcher'));
+app.setPath(
+    'userData',
+    path.join(dataRoot, staging ? 'com.box.player.launcher.staging' : 'com.box.player.launcher'),
+);
 const apiTransport = createApiTransport({
     sessionStore: createPlayerSessionStore(
         path.join(app.getPath('userData'), 'player-sessions'),

@@ -52,6 +52,30 @@ test('startup checks CDN and newer releases display escaped changelog, version a
     assert.doesNotMatch(app.html, /id="update-title"/);
 });
 
+test('staging checks and downloads updates only from the staging channel', async () => {
+    const app = await createFixture({
+        releaseResponse: { ...release, version: '0.4.0-staging' },
+        responses: {
+            get_about_info: {
+                applicationVersion: '0.3.0-staging',
+                imageTag: 'v0.3.0-staging-linux-arm64',
+                platform: 'macos',
+                architecture: 'aarch64',
+            },
+        },
+    });
+    assert.equal(
+        app.calls.find((call) => call.command === 'fetch_release').url,
+        'https://assets.box3.fun/local-engine-staging/latest.json',
+    );
+    assert.equal(app.api.state.updateDialogOpen, true);
+    await app.api.downloadUpdate();
+    assert.equal(
+        app.calls.find((call) => call.command === 'download_launcher_update').payload.url,
+        'https://assets.box3.fun/local-engine-staging/BOX-Local-Engine-0.4.0-staging-macos-arm64.zip',
+    );
+});
+
 test('download uses native system and architecture for every supported installer', async () => {
     for (const [platform, architecture, target] of [
         ['macos', 'aarch64', 'macos-arm64'],

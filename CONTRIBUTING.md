@@ -72,6 +72,6 @@ PR 创建或更新时自动运行基础 Verify，不打包或上传 OSS，Fork �
 
 ## 发布与反馈
 
-源码合并不会自动替换已有容器。发布路径为 `dev → staging → release → main`；测试镜像复用、正式版本和重跑规则见[发布与版本](docs/release-and-version.md)。
+源码合并不会自动替换已有容器。发布路径为 `dev → staging → release → main`；预发布与正式共用流程、版本后缀和重跑规则见[发布与版本](docs/release-and-version.md)。
 
 通过 [Issues](https://github.com/box3lab/box3-local-engine/issues)报告问题，附系统/架构、版本或提交、复现步骤和脱敏日志。保留原作者及第三方许可声明，品牌与商标不属于 MIT 授权范围。

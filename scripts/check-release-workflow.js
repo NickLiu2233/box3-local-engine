@@ -10,7 +10,8 @@ const yaml = require(
     require.resolve('js-yaml', { paths: [path.join(root, 'tools/repo-tooling')] }),
 );
 const release = yaml.load(workflow);
-assert.deepEqual(release.on.push, { branches: ['release'] });
+assert.deepEqual(release.on.push, { branches: ['staging', 'release'] });
+assert.ok(Object.hasOwn(release.on, 'workflow_dispatch'));
 assert.equal(release.jobs['validate-release'].needs, 'merge-gate');
 assert.equal(release.jobs['validate-release'].if, "needs.merge-gate.outputs.merged == 'true'");
 assert.ok(
@@ -19,8 +20,8 @@ assert.ok(
     ),
 );
 assert.ok(
-    release.jobs['validate-release'].steps.some(
-        (step) => step.run === 'node scripts/github-build-gate.js release engine',
+    release.jobs['validate-release'].steps.some((step) =>
+        step.run?.includes('node scripts/github-build-gate.js release engine'),
     ),
 );
 for (const job of ['images', 'desktop', 'headless-server', 'publish']) {
@@ -187,7 +188,11 @@ assert.match(
     workflow,
     /OSS_ACCESS_KEY_SECRET:\s*\$\{\{\s*secrets\.ALIYUN_OSS_ACCESS_KEY_SECRET\s*\}\}/,
 );
-assert.match(workflow, /OSS_SERVER_RELEASE_PREFIX: local-engine/);
+assert.equal(
+    release.jobs.publish.env.OSS_SERVER_RELEASE_PREFIX,
+    '${{ needs.validate-release.outputs.releasePrefix }}',
+);
+assert.equal(publication.if, "github.ref == 'refs/heads/release'");
 assert.match(workflow, /ALIYUN_OSS_BUCKET must contain only the bucket name/);
 assert.match(workflow, /ALIYUN_OSS_ENDPOINT must be an OSS endpoint hostname/);
 assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/);
@@ -197,7 +202,7 @@ assert.doesNotMatch(
 );
 assert.match(workflow, /release-files\/BOX-Local-Engine-\*\.zip/);
 assert.match(workflow, /release-files\/BOX3-Engine-Server-\*\.zip/);
-assert.match(workflow, /distribution\/server\/bootstrap\.sh release-files\/install\.sh/);
+assert.match(workflow, /render-bootstrap-installer\.js release-files\/install\.sh/);
 assert.match(workflow, /release-files\/install\.sh/);
 assert.match(workflow, /for architecture in amd64 arm64/);
 assert.match(
@@ -227,7 +232,7 @@ assert.ok(
 );
 assert.ok(
     workflow.indexOf('name: Publish GitHub Release') <
-        workflow.indexOf('name: Publish stable Linux installer to OSS'),
+        workflow.indexOf('name: Publish channel packages and latest pointers to OSS'),
     'GitHub Release must exist before the CDN latest pointer is updated',
 );
 for (const requiredTemplateFile of [

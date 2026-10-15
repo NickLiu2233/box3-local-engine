@@ -29,6 +29,10 @@ pub(crate) struct ImageRelease {
 
 impl ImageRelease {
     pub fn download_url(&self) -> Result<String, String> {
+        let staging = self.image_tag.contains("-staging-linux-");
+        if staging != self.download_base_url.as_deref().is_some_and(|base| base.starts_with("https://assets.box3.fun/local-engine-staging/")) {
+            return Err("镜像下载渠道与版本不一致".into());
+        }
         crate::image_source::download_url(self.download_base_url.as_deref(), &self.archive)
     }
     pub fn accepts(&self, id: &str) -> bool {
@@ -319,7 +323,7 @@ mod tests {
     use super::*;
     #[test]
     fn testing_download_source_survives_installer_json_deserialization() {
-        let source = "https://assets.box3.fun/local-engine-testing/v0.3.0";
+        let source = "https://assets.box3.fun/local-engine-staging/v0.3.0-staging/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
         let image: ImageRelease = serde_json::from_value(serde_json::json!({
             "formatVersion": 1,
             "image": "box-local-engine-play",
@@ -327,7 +331,7 @@ mod tests {
             "imageIds": [format!("sha256:{}", "a".repeat(64))],
             "archive": "test-image.tar.gz",
             "sha256": "b".repeat(64),
-            "imageTag": "test-v0.3.0-linux-arm64",
+            "imageTag": "v0.3.0-staging-linux-arm64",
             "platform": "linux/arm64",
             "size": 5,
             "downloadBaseUrl": source

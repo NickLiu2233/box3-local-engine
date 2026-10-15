@@ -30,6 +30,8 @@ struct RemoteImage {
     image_tag: String,
     platform: String,
     size: u64,
+    #[serde(default)]
+    download_base_url: Option<String>,
 }
 
 fn valid_sha256(value: &str) -> bool {
@@ -101,7 +103,10 @@ fn download_image_archive(
     service: &str,
     progress: &mut dyn FnMut(u64, u64),
 ) -> Result<PathBuf, String> {
-    let url = format!("https://assets.box3.fun/local-engine/{}", image.archive);
+    if image.image_tag.contains("-staging-linux-") != image.download_base_url.as_deref().is_some_and(|base| base.starts_with("https://assets.box3.fun/local-engine-staging/")) {
+        return Err("镜像下载渠道与版本不一致".into());
+    }
+    let url = box_manager_core::release_channel::image_download_url(image.download_base_url.as_deref(), &image.archive)?;
     download_image_archive_from(app, image, service, progress, &url)
 }
 
@@ -481,9 +486,12 @@ fn stable_version(value: &str) -> Option<[u64; 3]> {
 
 pub(crate) fn start_server_update(app: &App, requested_version: &str) -> Result<String, String> {
     let requested = requested_version.trim().trim_start_matches('v');
-    let target_version = stable_version(requested).ok_or("更新版本格式无效")?;
+    let target_version = stable_version(requested.trim_end_matches("-staging")).ok_or("更新版本格式无效")?;
     let current_version = option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION"));
-    let current = stable_version(current_version).ok_or("当前管理器版本格式无效")?;
+    if box_manager_core::release_channel::is_staging(requested) != box_manager_core::release_channel::is_staging(current_version) {
+        return Err("更新渠道与当前管理器不一致".into());
+    }
+    let current = stable_version(current_version.trim_end_matches("-staging")).ok_or("当前管理器版本格式无效")?;
     if target_version <= current {
         return Err("当前 Web 管理器已经是该版本或更新版本".into());
     }
@@ -521,6 +529,7 @@ pub(crate) fn start_server_update(app: &App, requested_version: &str) -> Result<
     let bind = format!("BOX3_MANAGER_BIND_IP={bind_ip}");
     let helper_name = format!("BOX3_UPDATE_HELPER_NAME={updater_name}");
     let web_update = "BOX3_WEB_UPDATE=1";
+    let release_cdn = format!("BOX3_RELEASE_CDN_URL={}", box_manager_core::release_channel::release_base(current_version));
     let output = Command::new("docker")
         .args([
             "run",
@@ -543,6 +552,8 @@ pub(crate) fn start_server_update(app: &App, requested_version: &str) -> Result<
             &helper_name,
             "--env",
             web_update,
+            "--env",
+            &release_cdn,
             &manager_image,
             "/bin/sh",
             "/app/bootstrap.sh",

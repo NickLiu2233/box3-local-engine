@@ -2,7 +2,12 @@ import { state } from '../core/state.js';
 import { render } from '../core/render-request.js';
 import { invoke, isWebManager, listen } from '../infrastructure/transport.js';
 import { fetchLatestRelease } from '../infrastructure/releases.js';
-import { installerTarget, isNewerVersion, validateRelease } from '../utils/releases.js';
+import {
+    installerTarget,
+    isNewerVersion,
+    releaseBase,
+    validateRelease,
+} from '../utils/releases.js';
 import { captureSetupForm } from '../configuration/form.js';
 import { updateDownloadProgress } from '../ui/update-dialog.js';
 
@@ -32,7 +37,7 @@ export async function checkForUpdates(manual = false) {
                 }
                 const release = await (isWebManager()
                     ? invoke('get_latest_release').then(validateRelease)
-                    : fetchLatestRelease());
+                    : fetchLatestRelease(info.applicationVersion));
                 return {
                     info,
                     release,
@@ -135,7 +140,7 @@ export async function downloadUpdate() {
             updateDownloadProgress();
         });
         await invoke('download_launcher_update', {
-            url: `https://assets.box3.fun/local-engine/BOX-Local-Engine-${state.updateRelease.version.replace(/^v/, '')}-${state.updateDownloadTarget}.zip`,
+            url: `${releaseBase(state.updateRelease.version)}/BOX-Local-Engine-${state.updateRelease.version.replace(/^v/, '')}-${state.updateDownloadTarget}.zip`,
         });
         state.updateReady = true;
     } catch (error) {

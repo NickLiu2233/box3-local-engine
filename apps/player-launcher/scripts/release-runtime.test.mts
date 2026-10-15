@@ -10,7 +10,7 @@ test('player test validate runs without a Git tag and main is rejected', async (
         ...process.env,
         NODE_OPTIONS: '',
         GITHUB_OUTPUT: '',
-        PLAYER_BUILD_CHANNEL: 'testing',
+        PLAYER_BUILD_CHANNEL: 'staging',
         PLAYER_RELEASE_COMMIT: '',
         GITHUB_REF: 'refs/heads/staging',
         GITHUB_SHA: 'a'.repeat(40),
@@ -28,18 +28,16 @@ test('player test validate runs without a Git tag and main is rejected', async (
     ];
     const run = promisify(execFile);
     const { stdout } = await run(process.execPath, args, { timeout: 10_000, env });
-    assert.match(stdout, /Player test build validated: .*dev\.123\.1/);
-    assert.ok(stdout.includes(`box-player-launcher-testing/${env.GITHUB_SHA}/123-1`));
+    assert.match(stdout, /Player staging build validated: .*-staging/);
+    assert.ok(
+        stdout.includes(`box-player-launcher-staging/player-v0.1.0-staging/${env.GITHUB_SHA}`),
+    );
     await assert.rejects(
         run(process.execPath, args, {
             timeout: 10_000,
             env: { ...env, GITHUB_REF: 'refs/heads/main' },
         }),
-        /Player test builds require/,
-    );
-    await assert.rejects(
-        run(process.execPath, [...args.slice(0, -1), 'download'], { timeout: 10_000, env }),
-        /do not collect a GitHub Release/,
+        /Player staging builds require/,
     );
 });
 

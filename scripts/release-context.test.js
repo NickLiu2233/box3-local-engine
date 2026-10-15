@@ -1,0 +1,206 @@
+'use strict';
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+const { spawnSync } = require('node:child_process');
+const { engineReleaseContext, stagingVersion, prepareBuildChannel } = require('./release-context');
+const { renderBootstrapInstaller } = require('./render-bootstrap-installer');
+const root = path.resolve(__dirname, '..');
+const commit = 'a'.repeat(40);
+
+test('channel identities keep production unchanged and pin staging caches to the source commit', () => {
+    const production = engineReleaseContext(
+        { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit },
+        '0.3.0',
+    );
+    assert.equal(production.tag, 'v0.3.0');
+    assert.equal(production.prefix, 'local-engine/v0.3.0');
+    assert.equal(production.releasePrefix, 'local-engine');
+    const staging = engineReleaseContext(
+        { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: commit },
+        '0.3.0',
+    );
+    assert.equal(staging.version, '0.3.0-staging');
+    assert.equal(staging.tag, 'v0.3.0-staging');
+    assert.equal(staging.prefix, `local-engine-staging/v0.3.0-staging/${commit}`);
+    assert.equal(staging.releasePrefix, 'local-engine-staging');
+    assert.equal(stagingVersion(staging.version), staging.version);
+    assert.notEqual(
+        engineReleaseContext(
+            { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: 'b'.repeat(40) },
+            '0.3.0',
+        ).prefix,
+        staging.prefix,
+    );
+    for (const env of [
+        { GITHUB_REF: 'refs/heads/main', GITHUB_SHA: commit },
+        { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit, BOX_BUILD_CHANNEL: 'staging' },
+        { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: '../invalid' },
+    ]) {
+        assert.throws(() => engineReleaseContext(env, '0.3.0'));
+    }
+    assert.throws(() =>
+        engineReleaseContext(
+            { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit },
+            '0.3.0-staging',
+        ),
+    );
+});
+
+test('staging prepares the actual Node, Cargo, Tauri and Compose versions before the common build', (t) => {
+    const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'box-channel-version-'));
+    t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+    const files = [
+        'package.json',
+        'scripts/sync-root-version.js',
+        'apps/deployment-manager/package.json',
+        'apps/local-engine/package.json',
+        'apps/player-admin/package.json',
+        'apps/player-auth-portal/package.json',
+        'apps/server-manager/package.json',
+        'apps/deployment-manager/src-tauri/tauri.conf.json',
+        'apps/deployment-manager/src-tauri/Cargo.toml',
+        'apps/manager-core/Cargo.toml',
+        'apps/server-manager-rust/Cargo.toml',
+        'docker-compose.yml',
+        'distribution/play/compose.yml',
+    ];
+    for (const name of files) {
+        const file = path.join(temporary, name);
+        fs.mkdirSync(path.dirname(file), { recursive: true });
+        fs.copyFileSync(path.join(root, name), file);
+    }
+    const version = JSON.parse(fs.readFileSync(path.join(temporary, 'package.json'))).version;
+    prepareBuildChannel({ GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit }, temporary);
+    assert.equal(
+        JSON.parse(fs.readFileSync(path.join(temporary, 'package.json'))).version,
+        version,
+    );
+    prepareBuildChannel({ GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: commit }, temporary);
+    assert.equal(
+        JSON.parse(
+            fs.readFileSync(
+                path.join(temporary, 'apps/deployment-manager/src-tauri/tauri.conf.json'),
+            ),
+        ).version,
+        stagingVersion(version),
+    );
+    assert.ok(
+        fs
+            .readFileSync(path.join(temporary, 'apps/server-manager-rust/Cargo.toml'), 'utf8')
+            .includes(`version = "${stagingVersion(version)}"`),
+    );
+    assert.ok(
+        fs
+            .readFileSync(path.join(temporary, 'docker-compose.yml'), 'utf8')
+            .includes(`BOX_IMAGE_TAG:-${stagingVersion(version)}`),
+    );
+});
+
+test('rendering a staging installer cannot update the production bootstrap defaults', () => {
+    const source = fs.readFileSync(path.join(root, 'distribution/server/bootstrap.sh'), 'utf8');
+    assert.equal(renderBootstrapInstaller(source, 'production'), source);
+    const staging = renderBootstrapInstaller(source, 'staging');
+    assert.ok(
+        staging.includes('BOX3_RELEASE_CDN_URL:-https://assets.box3.fun/local-engine-staging}'),
+    );
+    assert.ok(staging.includes('BOX3_INSTALL_DIRECTORY:-/opt/box3-engine-staging}'));
+});
+
+test(
+    'a staging Linux server package keeps its version and pinned image source',
+    { skip: process.platform === 'win32' },
+    (t) => {
+        const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'box-staging-server-'));
+        t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
+        const context = engineReleaseContext(
+            { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: commit },
+            '0.3.0',
+        );
+        fs.writeFileSync(
+            path.join(temporary, 'package.json'),
+            JSON.stringify({ version: context.version }),
+        );
+        fs.cpSync(
+            path.join(root, 'distribution/server'),
+            path.join(temporary, 'distribution/server'),
+            { recursive: true },
+        );
+        fs.copyFileSync(
+            path.join(root, 'docker-compose.yml'),
+            path.join(temporary, 'docker-compose.yml'),
+        );
+        fs.mkdirSync(path.join(temporary, 'scripts'));
+        for (const file of [
+            'build-headless-server-package.js',
+            'build-image-downloads.js',
+            'verify-headless-server-package.js',
+        ]) {
+            fs.copyFileSync(
+                path.join(root, 'scripts', file),
+                path.join(temporary, 'scripts', file),
+            );
+        }
+        const sha = 'b'.repeat(64);
+        const imageTag = `${context.tag}-linux-arm64`;
+        const catalog = {
+            formatVersion: 2,
+            platform: 'linux/arm64',
+            imageTag,
+            images: [
+                'creator',
+                'voxa',
+                'play',
+                'player-service',
+                'player-auth-portal',
+                'server-manager',
+            ].map((service) => ({
+                formatVersion: 1,
+                image: `box-local-engine-${service}`,
+                imageId: `sha256:${sha}`,
+                imageIds: [`sha256:${sha}`],
+                imageTag,
+                platform: 'linux/arm64',
+                sha256: sha,
+                size: 1,
+                archive: `box-local-engine-image-${service}-arm64-${sha}.tar.gz`,
+                downloadBaseUrl: context.downloadBaseUrl,
+            })),
+        };
+        const catalogFile = path.join(temporary, 'catalog.json');
+        fs.writeFileSync(catalogFile, JSON.stringify(catalog));
+        const result = spawnSync(
+            process.execPath,
+            [
+                path.join(temporary, 'scripts/build-headless-server-package.js'),
+                'arm64',
+                '--catalog',
+                catalogFile,
+            ],
+            { encoding: 'utf8' },
+        );
+        assert.equal(result.status, 0, result.stderr);
+        const directory = path.join(
+            temporary,
+            'apps/local-engine/dist/server-packages/BOX3-Engine-Server-0.3.0-staging-linux-arm64',
+        );
+        assert.ok(
+            fs
+                .readFileSync(path.join(directory, 'install.sh'), 'utf8')
+                .includes(`${context.downloadBaseUrl}/$archive`),
+        );
+        assert.ok(
+            fs
+                .readFileSync(path.join(directory, '.env.example'), 'utf8')
+                .includes(`BOX_IMAGE_TAG=${imageTag}`),
+        );
+        const verify = spawnSync(
+            process.execPath,
+            [path.join(temporary, 'scripts/verify-headless-server-package.js'), directory],
+            { encoding: 'utf8' },
+        );
+        assert.equal(verify.status, 0, verify.stderr);
+    },
+);

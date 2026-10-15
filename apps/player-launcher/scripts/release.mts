@@ -121,8 +121,11 @@ async function build(target:PlayerTarget):Promise<void> {
         `--config.artifactName=${filename}`,
     ];
     const signingEnv = builderEnvironment(process.env);
-    if (channel === 'testing') {
-        args.push(`--config.extraMetadata.version=${info.version}`);
+    if (channel === 'staging') {
+        args.push(
+            `--config.extraMetadata.version=${info.version}`,
+            '--config.appId=com.box.player.launcher.staging',
+        );
     }
     if (mac) {
         args.push(...macSigningArguments(signingEnv));
@@ -307,10 +310,10 @@ async function downloadAll():Promise<void> {
 const [command, targetValue] = process.argv.slice(2);
 if (command === 'validate') {
     ossConfiguration(process.env);
-    await output({ version: info.version, prerelease: String(info.prerelease) });
+    await output({ version: info.version, prerelease: String(info.prerelease), tag: info.tag });
     console.log(
-        channel === 'testing'
-            ? `Player test build validated: ${info.version} (${prefix})`
+        channel === 'staging'
+            ? `Player staging build validated: ${info.version} (${prefix})`
             : `Independent player release validated: ${info.tag}`,
     );
 } else if (command === 'probe') {
@@ -320,9 +323,6 @@ if (command === 'validate') {
 } else if (command === 'upload') {
     await upload(playerTarget(targetValue || ''));
 } else if (command === 'download') {
-    if (channel !== 'production') {
-        throw new Error('Test builds do not collect a GitHub Release');
-    }
     await downloadAll();
 } else {
     throw new Error(

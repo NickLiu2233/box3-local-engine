@@ -9,6 +9,7 @@ pub mod configuration_migration;
 pub mod environment;
 pub mod map_runtime_profiles;
 pub mod operation;
+pub mod release_channel;
 pub mod services;
 pub mod ssl;
 

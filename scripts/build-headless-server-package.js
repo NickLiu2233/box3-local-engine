@@ -153,7 +153,7 @@ function main() {
     );
     fs.writeFileSync(
         path.join(packageRoot, 'BOX3-MANAGER-IMAGE.json'),
-        `${JSON.stringify({ image: manager.image, imageTag: manager.imageTag, platform: manager.platform, archive: manager.archive, sha256: manager.sha256, size: manager.size, contentTag: `${manager.image}:launcher-content-${manager.imageId.slice(7)}` }, null, 2)}\n`,
+        `${JSON.stringify({ image: manager.image, imageTag: manager.imageTag, platform: manager.platform, archive: manager.archive, sha256: manager.sha256, size: manager.size, contentTag: `${manager.image}:launcher-content-${manager.imageId.slice(7)}`, downloadBaseUrl: manager.downloadBaseUrl }, null, 2)}\n`,
     );
     fs.writeFileSync(
         path.join(packageRoot, 'BOX3-PACKAGE-MODE.json'),
@@ -190,7 +190,11 @@ function main() {
     fs.writeFileSync(path.join(packageRoot, '.env.example'), envTemplate);
     const installer = fs
         .readFileSync(path.join(packageRoot, 'install.sh'), 'utf8')
-        .replaceAll('__MANAGER_IMAGE_ARCHIVE__', manager.archive);
+        .replaceAll('__MANAGER_IMAGE_ARCHIVE__', manager.archive)
+        .replaceAll(
+            'https://assets.box3.fun/local-engine/$archive',
+            `${manager.downloadBaseUrl || 'https://assets.box3.fun/local-engine'}/$archive`,
+        );
     fs.writeFileSync(path.join(packageRoot, 'install.sh'), installer, { mode: 0o755 });
     // The template copies keep their committed mode (0644), and writeFileSync
     // only applies `mode` when it creates the file. Set the executable bit

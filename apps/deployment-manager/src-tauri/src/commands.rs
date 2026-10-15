@@ -58,7 +58,7 @@ const IMAGE_INFO: &str = include_str!("../payload/IMAGE-INFO.json");
 // products generate their managed database credentials independently; sharing
 // `box-local-engine_*` volumes makes PostgreSQL retain the other product's
 // password and causes Player Service authentication to fail.
-const PROJECT_NAME: &str = "box-local-engine-desktop";
+const PROJECT_NAME: &str = env!("BOX_MANAGER_PROJECT_NAME");
 const MANAGED_DATABASE_IMAGE: &str = "docker.m.daocloud.io/library/postgres:16-alpine";
 const MANAGED_REDIS_IMAGE: &str = "docker.m.daocloud.io/library/redis:7-alpine";
 use box_manager_core::services::{

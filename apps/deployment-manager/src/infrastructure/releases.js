@@ -1,12 +1,10 @@
-import { validateRelease } from '../utils/releases.js';
+import { releaseBase, validateRelease } from '../utils/releases.js';
 
-export const RELEASE_MANIFEST_URL = 'https://assets.box3.fun/local-engine/latest.json';
-
-export async function fetchLatestRelease() {
+export async function fetchLatestRelease(version) {
     const controller = new AbortController();
     const deadline = setTimeout(() => controller.abort(), 10_000);
     try {
-        const response = await fetch(RELEASE_MANIFEST_URL, {
+        const response = await fetch(`${releaseBase(version)}/latest.json`, {
             signal: controller.signal,
             cache: 'no-store',
             credentials: 'omit',

@@ -12,14 +12,29 @@ export function installerTarget(info) {
 }
 
 export function parseVersion(value) {
-    const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:\+[\w.-]+)?$/.exec(String(value));
+    const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-staging)?(?:\+[\w.-]+)?$/.exec(
+        String(value),
+    );
     if (!match) {
         throw new Error('版本信息格式无效');
     }
     return match.slice(1).map(Number);
 }
 
+export function releaseBase(version) {
+    return `https://assets.box3.fun/local-engine${
+        String(version)
+            .replace(/\+[\w.-]+$/, '')
+            .endsWith('-staging')
+            ? '-staging'
+            : ''
+    }`;
+}
+
 export function isNewerVersion(latest, current) {
+    if (releaseBase(latest) !== releaseBase(current)) {
+        throw new Error('更新清单渠道与当前启动器不一致');
+    }
     const a = parseVersion(latest),
         b = parseVersion(current);
     for (let i = 0; i < 3; i++) {

@@ -1,27 +1,24 @@
-name: Release BOX3 Player Launcher
-
-on:
+name: Build and Release BOX3 Player Launcher
+'on':
   push:
     branches:
+      - staging
       - release
-
+  workflow_dispatch: {}
 permissions:
   contents: read
-
 defaults:
   run:
     shell: bash
-
 concurrency:
   group: player-release-${{ github.ref }}
   cancel-in-progress: false
-
 env:
   OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
   OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
   OSS_ACCESS_KEY_ID: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_ID }}
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
-
+  PLAYER_BUILD_CHANNEL: ${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
 jobs:
   merge-gate:
     runs-on: ubuntu-latest
@@ -29,7 +26,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      merged: ${{ steps.merge.outputs.merged }}
+      merged: ${{ steps.merge.outputs.merged || steps.staging.outputs.merged }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,7 +37,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/github-build-gate.js merge release
-
+        if: github.ref == 'refs/heads/release'
+      - name: Accept the staging build entry
+        id: staging
+        if: github.ref == 'refs/heads/staging'
+        run: echo "merged=true" >> "$GITHUB_OUTPUT"
   validate:
     needs: merge-gate
     if: needs.merge-gate.outputs.merged == 'true'
@@ -50,7 +51,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
-      tag: ${{ steps.identity.outputs.tag }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -60,17 +61,15 @@ jobs:
           node-version-file: .node-version
       - name: Require a clean public source history
         run: node scripts/check-public-history.js
-
       - name: Validate player version and OSS configuration
         id: version
         run: node --experimental-strip-types apps/player-launcher/scripts/release.mts validate
-
       - name: Guard immutable player version
         id: identity
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/github-build-gate.js release player
-
+        if: github.ref == 'refs/heads/release'
   installers:
     needs: validate
     name: Package (${{ matrix.target }})
@@ -164,9 +163,10 @@ jobs:
         timeout-minutes: 35
         if: steps.cache.outputs.cache-hit != 'true'
         run: node --experimental-strip-types apps/player-launcher/scripts/release.mts upload ${{ matrix.target }}
-
   publish:
-    needs: [validate, installers]
+    needs:
+      - validate
+      - installers
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -191,7 +191,6 @@ jobs:
           name: BOX3 Player Launcher v${{ needs.validate.outputs.version }}
           body_path: player-release-files/release-notes.md
           prerelease: ${{ needs.validate.outputs.prerelease == 'true' }}
-          # The engine's bootstrap uses releases/latest; player tags must not take it over.
           make_latest: false
           fail_on_unmatched_files: true
           files: |
@@ -201,3 +200,4 @@ jobs:
             player-release-files/*.sha256
             player-release-files/*.build.json
             player-release-files/SHA256SUMS.txt
+        if: github.ref == 'refs/heads/release'

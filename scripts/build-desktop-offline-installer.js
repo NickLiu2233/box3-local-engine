@@ -45,7 +45,10 @@ function fail(message) {
 function validateDesktopCatalog(catalog, version, architecture, channel = 'production') {
     const { validateCatalog } = require('./build-image-downloads');
     validateCatalog(catalog, architecture);
-    if (channel === 'testing') {
+    if (channel === 'staging') {
+        if (version !== catalog.version) {
+            throw new Error('Prepare the staging application version before packaging');
+        }
         return require('./staging-build-context').validateStagingCatalog(
             catalog,
             version,
@@ -54,11 +57,11 @@ function validateDesktopCatalog(catalog, version, architecture, channel = 'produ
     }
     if (
         channel !== 'production' ||
-        catalog.channel === 'testing' ||
-        catalog.images.some((image) => image.downloadBaseUrl?.includes('/local-engine-testing/'))
+        catalog.channel === 'staging' ||
+        catalog.images.some((image) => image.downloadBaseUrl?.includes('/local-engine-staging/'))
     ) {
         throw new Error(
-            'Testing catalogs require BOX_BUILD_CHANNEL=testing; production sources must stay isolated',
+            'Staging catalogs require BOX_BUILD_CHANNEL=staging; production sources must stay isolated',
         );
     }
     return catalog;
@@ -333,7 +336,7 @@ function main() {
     }
     const packageMode = {
         mode: local ? 'local' : 'slim',
-        ...(imageManifest.channel === 'testing' ? { channel: 'testing' } : {}),
+        ...(imageManifest.channel === 'staging' ? { channel: 'staging' } : {}),
         imageTag,
         platform: imageManifest.platform,
     };
@@ -379,8 +382,20 @@ function main() {
         });
     }
     fs.writeFileSync(payloadImageInfo, `${JSON.stringify(imageInfo, null, 2)}\n`);
+    let stagingConfiguration;
     try {
         const tauriArgs = ['build'];
+        if (imageManifest.channel === 'staging') {
+            // A relative file avoids Windows cmd consuming inline JSON quotes
+            // or splitting a checkout path that contains spaces.
+            stagingConfiguration = fs.mkdtempSync(path.join(managerRoot, 'src-tauri/.staging-'));
+            const configurationFile = path.join(stagingConfiguration, 'config.json');
+            fs.writeFileSync(
+                configurationFile,
+                JSON.stringify({ identifier: 'com.box.engine.manager.staging' }),
+            );
+            tauriArgs.push('--config', path.relative(managerRoot, configurationFile));
+        }
         if (spec.bundle) {
             tauriArgs.push('--bundles', spec.bundle);
         } else {
@@ -401,6 +416,9 @@ function main() {
             throw new Error(tauriBuildFailure(result));
         }
     } finally {
+        if (stagingConfiguration) {
+            fs.rmSync(stagingConfiguration, { recursive: true, force: true });
+        }
         fs.writeFileSync(payloadImageInfo, originalImageInfo);
         if (local && spec.bundle) {
             fs.rmSync(path.join(path.dirname(payloadImageInfo), offline.archive));
@@ -420,7 +438,7 @@ function main() {
     }
 
     fs.mkdirSync(outputRoot, { recursive: true });
-    const packageName = `BOX-Local-Engine-${version}-${platform}${imageManifest.channel === 'testing' ? '-test' : local ? '-local' : ''}`;
+    const packageName = `BOX-Local-Engine-${version}-${platform}${local ? '-local' : ''}`;
     const packageRoot = path.join(outputRoot, packageName);
     fs.rmSync(packageRoot, { recursive: true, force: true });
     fs.mkdirSync(packageRoot, { recursive: true });

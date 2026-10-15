@@ -1,21 +1,24 @@
-name: Release BOX3 Local Engine
-
-on:
+name: Build and Release BOX3 Local Engine
+'on':
   push:
     branches:
+      - staging
       - release
-
+  workflow_dispatch:
+    inputs:
+      rebuild_images:
+        description: Rebuild staging images and installers instead of reusing this commit
+        type: boolean
+        required: false
+        default: false
 permissions:
   contents: read
-
 defaults:
   run:
     shell: bash
-
 concurrency:
-  group: release-${{ github.ref }}
+  group: engine-release-${{ github.ref }}
   cancel-in-progress: false
-
 env:
   OSS_BUCKET: ${{ secrets.ALIYUN_OSS_BUCKET }}
   OSS_ENDPOINT: ${{ secrets.ALIYUN_OSS_ENDPOINT }}
@@ -23,11 +26,7 @@ env:
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
   AWS_REQUEST_CHECKSUM_CALCULATION: when_required
   AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
-  # Intermediate build artifacts use a version subdirectory. Stable releases
-  # use OSS_SERVER_RELEASE_PREFIX below, which is the origin directory behind
-  # https://assets.box3.fun/local-engine/.
-  OSS_SERVER_RELEASE_PREFIX: local-engine
-
+  BOX_BUILD_CHANNEL: ${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
 jobs:
   merge-gate:
     runs-on: ubuntu-latest
@@ -35,7 +34,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      merged: ${{ steps.merge.outputs.merged }}
+      merged: ${{ steps.merge.outputs.merged || steps.staging.outputs.merged }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -46,7 +45,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/github-build-gate.js merge release
-
+        if: github.ref == 'refs/heads/release'
+      - name: Accept the staging build entry
+        id: staging
+        if: github.ref == 'refs/heads/staging'
+        run: echo "merged=true" >> "$GITHUB_OUTPUT"
   validate-release:
     needs: merge-gate
     if: needs.merge-gate.outputs.merged == 'true'
@@ -57,6 +60,9 @@ jobs:
       version: ${{ steps.identity.outputs.version }}
       tag: ${{ steps.identity.outputs.tag }}
       prefix: ${{ steps.identity.outputs.prefix }}
+      channel: ${{ steps.identity.outputs.channel }}
+      releasePrefix: ${{ steps.identity.outputs.releasePrefix }}
+      downloadBaseUrl: ${{ steps.identity.outputs.downloadBaseUrl }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -66,7 +72,6 @@ jobs:
           node-version-file: .node-version
       - name: Require a clean public source history
         run: node scripts/check-public-history.js
-
       - name: Validate release version and OSS configuration
         run: |
           node scripts/sync-root-version.js --check
@@ -88,24 +93,30 @@ jobs:
               exit 1
               ;;
           esac
-
-      - name: Resolve and guard immutable release version
+      - name: Resolve build channel and immutable production identity
         id: identity
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/github-build-gate.js release engine
-
+        run: |
+          if [ "$BOX_BUILD_CHANNEL" = production ]; then
+            node scripts/github-build-gate.js release engine
+          fi
+          node scripts/release-context.js engine
   images:
     env:
       BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
       OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
+      BOX_BUILD_CHANNEL: ${{ needs.validate-release.outputs.channel }}
+      BOX_BUILD_VERSION: ${{ needs.validate-release.outputs.version }}
+      BOX_BUILD_COMMIT: ${{ github.sha }}
+      BOX_BUILD_SOURCE: github-actions
+      BOX_ALLOW_DIRTY_RELEASE: ${{ github.ref == 'refs/heads/staging' && 'true' || 'false' }}
+      FORCE_REBUILD: ${{ github.ref == 'refs/heads/staging' && inputs.rebuild_images || false }}
     needs: validate-release
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Docker application images are Linux images. Build each CPU variant
-          # on its native runner once; desktop OS only affects the launcher.
           - architecture: amd64
             runner: ubuntu-latest
           - architecture: arm64
@@ -113,6 +124,11 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Prepare the channel version
+        run: node scripts/release-context.js prepare
       - uses: docker/setup-buildx-action@v3
       - name: Free temporary runner disk space
         run: |
@@ -129,6 +145,10 @@ jobs:
       - name: Check cached image archive in Aliyun OSS
         id: image-cache
         run: |
+          if [ "$FORCE_REBUILD" = true ]; then
+            echo "cache-hit=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if ! command -v ossutil >/dev/null 2>&1; then
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
@@ -189,6 +209,9 @@ jobs:
           fi
           catalog="box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
           node scripts/build-image-downloads.js "$archive" '${{ matrix.architecture }}' "$catalog"
+          if [ "$BOX_BUILD_CHANNEL" = staging ]; then
+            node scripts/staging-build-context.js prepare "$catalog" '${{ matrix.architecture }}'
+          fi
           for image in box-local-engine-image-*.tar.gz; do
             ossutil cp "$image" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
           done
@@ -202,12 +225,19 @@ jobs:
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp "box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.tar.gz" \
             "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
-
   desktop:
     env:
       BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
       OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
-    needs: [images, validate-release]
+      BOX_BUILD_CHANNEL: ${{ needs.validate-release.outputs.channel }}
+      BOX_BUILD_VERSION: ${{ needs.validate-release.outputs.version }}
+      BOX_BUILD_COMMIT: ${{ github.sha }}
+      BOX_BUILD_SOURCE: github-actions
+      BOX_ALLOW_DIRTY_RELEASE: ${{ github.ref == 'refs/heads/staging' && 'true' || 'false' }}
+      FORCE_REBUILD: ${{ github.ref == 'refs/heads/staging' && inputs.rebuild_images || false }}
+    needs:
+      - images
+      - validate-release
     strategy:
       fail-fast: false
       matrix:
@@ -233,10 +263,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
+      - name: Prepare the channel version
+        run: node scripts/release-context.js prepare
       - name: Check cached desktop installer in Aliyun OSS
         id: desktop-cache
         shell: bash
         run: |
+          if [ "$FORCE_REBUILD" = true ]; then
+            echo "cache-hit=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           if ! command -v ossutil >/dev/null 2>&1; then
             if [[ "${{ matrix.target }}" == windows-* ]]; then
               aws --version
@@ -348,12 +384,18 @@ jobs:
             ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
             ossutil cp apps/local-engine/dist/desktop-installers/ "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/desktop-lightweight-${{ github.sha }}/" --recursive --update
           fi
-
   headless-server:
     env:
       BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
       OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
-    needs: [images, validate-release]
+      BOX_BUILD_CHANNEL: ${{ needs.validate-release.outputs.channel }}
+      BOX_BUILD_VERSION: ${{ needs.validate-release.outputs.version }}
+      BOX_BUILD_COMMIT: ${{ github.sha }}
+      BOX_BUILD_SOURCE: github-actions
+      BOX_ALLOW_DIRTY_RELEASE: ${{ github.ref == 'refs/heads/staging' && 'true' || 'false' }}
+    needs:
+      - images
+      - validate-release
     strategy:
       fail-fast: false
       matrix:
@@ -368,6 +410,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
+      - name: Prepare the channel version
+        run: node scripts/release-context.js prepare
       - name: Download Server Manager image catalog from Aliyun OSS
         run: |
           mkdir -p apps/local-engine/dist/images
@@ -397,17 +441,30 @@ jobs:
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
           ossutil cp apps/local-engine/dist/server-packages/ "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --recursive --update
-
   publish:
     env:
       BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
       OSS_BUILD_PREFIX: ${{ needs.validate-release.outputs.prefix }}
-    needs: [desktop, headless-server, validate-release]
+      BOX_BUILD_CHANNEL: ${{ needs.validate-release.outputs.channel }}
+      BOX_BUILD_VERSION: ${{ needs.validate-release.outputs.version }}
+      BOX_BUILD_COMMIT: ${{ github.sha }}
+      BOX_BUILD_SOURCE: github-actions
+      BOX_ALLOW_DIRTY_RELEASE: ${{ github.ref == 'refs/heads/staging' && 'true' || 'false' }}
+      OSS_SERVER_RELEASE_PREFIX: ${{ needs.validate-release.outputs.releasePrefix }}
+    needs:
+      - desktop
+      - headless-server
+      - validate-release
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Prepare the channel version
+        run: node scripts/release-context.js prepare
       - name: Download release packages from Aliyun OSS
         run: |
           if ! command -v ossutil >/dev/null 2>&1; then
@@ -430,9 +487,9 @@ jobs:
               ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$image" "release-files/$image"
             done < /tmp/image-downloads.txt
           done
-      - name: Add stable Linux bootstrap installer
+      - name: Render the channel bootstrap installer and release notes
         run: |
-          cp distribution/server/bootstrap.sh release-files/install.sh
+          node scripts/render-bootstrap-installer.js release-files/install.sh
           chmod +x release-files/install.sh
           node scripts/render-release-notes.js "${BOX_RELEASE_TAG#v}" release-files/RELEASE-NOTES.md "$(TZ=Asia/Shanghai date +'%Y-%m-%d')"
       - name: Publish GitHub Release
@@ -446,7 +503,8 @@ jobs:
             release-files/install.sh
             release-files/BOX-Local-Engine-*.zip
             release-files/BOX3-Engine-Server-*.zip
-      - name: Publish stable Linux installer to OSS
+        if: github.ref == 'refs/heads/release'
+      - name: Publish channel packages and latest pointers to OSS
         run: |
           version="${BOX_RELEASE_TAG#v}"
           node scripts/build-release-manifest.js "$version" release-files/latest.json "$(TZ=Asia/Shanghai date +'%Y-%m-%d')"

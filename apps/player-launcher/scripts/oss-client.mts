@@ -54,7 +54,9 @@ export async function createOssClient(
     if (
         !(
             keyPrefix.startsWith('box-player-launcher/player-v') ||
-            /^box-player-launcher-testing\/[a-f0-9]{40}\/[1-9]\d*-[1-9]\d*\/$/.test(keyPrefix)
+            /^box-player-launcher-staging\/player-v[0-9A-Za-z.-]+staging\/[a-f0-9]{40}\/$/.test(
+                keyPrefix,
+            )
         ) ||
         keyPrefix.includes('..') ||
         keyPrefix.includes('\\')

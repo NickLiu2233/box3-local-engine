@@ -467,12 +467,12 @@ pub(crate) async fn command(
                     .build()
                     .map_err(|error| error.to_string())?;
                 let mut response = client
-                    .get("https://assets.box3.fun/local-engine/latest-server.json")
+                    .get(format!("{}/latest-server.json", box_manager_core::release_channel::release_base(option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")))))
                     .header(reqwest::header::CACHE_CONTROL, "no-cache")
                     .send()
                     .map_err(|error| format!("无法读取更新清单：{error}"))?;
                 if response.status() == reqwest::StatusCode::NOT_FOUND {
-                    response = client.get("https://assets.box3.fun/local-engine/latest.json")
+                    response = client.get(format!("{}/latest.json", box_manager_core::release_channel::release_base(option_env!("BOX_BUILD_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")))))
                         .header(reqwest::header::CACHE_CONTROL, "no-cache").send()
                         .map_err(|error| format!("无法读取更新清单：{error}"))?;
                 }

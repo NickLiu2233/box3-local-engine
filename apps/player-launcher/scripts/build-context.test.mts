@@ -8,31 +8,28 @@ import { createOssClient } from './oss-client.mts';
 
 const commit = 'a'.repeat(40);
 const testing = {
-    PLAYER_BUILD_CHANNEL: 'testing',
+    PLAYER_BUILD_CHANNEL: 'staging',
     GITHUB_REF: 'refs/heads/staging',
     GITHUB_SHA: commit,
     GITHUB_RUN_ID: '123',
     GITHUB_RUN_ATTEMPT: '1',
 };
 
-test('player test builds use dev versions and an isolated immutable upload namespace', async () => {
+test('player test builds use staging versions and an isolated immutable upload namespace', async () => {
     const context = playerBuildContext(testing, '0.1.0');
-    assert.equal(context.channel, 'testing');
-    assert.equal(context.info.version, '0.1.0-dev.123.1');
-    assert.equal(context.info.tag, 'player-test-v0.1.0-dev.123.1');
-    assert.equal(context.prefix, `box-player-launcher-testing/${commit}/123-1`);
+    assert.equal(context.channel, 'staging');
+    assert.equal(context.info.version, '0.1.0-staging');
+    assert.equal(context.info.tag, 'player-v0.1.0-staging');
+    assert.equal(context.prefix, `box-player-launcher-staging/player-v0.1.0-staging/${commit}`);
     const file = artifactName(context.info, 'windows-amd64');
-    assert.ok(file.includes('-dev.123.1-'));
+    assert.ok(file.includes('-staging-'));
     assert.equal(
         playerBuildContext({ ...testing, GITHUB_RUN_ATTEMPT: '2' }, '0.1.0').prefix.endsWith(
-            '/123-2',
+            commit,
         ),
         true,
     );
-    assert.equal(
-        playerBuildContext(testing, '0.2.0-beta.1').info.version,
-        '0.2.0-beta.1.dev.123.1',
-    );
+    assert.equal(playerBuildContext(testing, '0.2.0-beta.1').info.version, '0.2.0-beta.1.staging');
     const keys:string[] = [];
     await cachedInstaller(
         {
@@ -76,16 +73,6 @@ test('main, tags, unknown channels and invalid run identities cannot enter the p
             /require the staging/,
         );
     }
-    for (const value of ['', '0', '../production', '123\nunsafe']) {
-        assert.throws(
-            () => playerBuildContext({ ...testing, GITHUB_RUN_ID: value }, '0.1.0'),
-            /numeric/,
-        );
-        assert.throws(
-            () => playerBuildContext({ ...testing, GITHUB_RUN_ATTEMPT: value }, '0.1.0'),
-            /numeric/,
-        );
-    }
     assert.throws(
         () => playerBuildContext({ ...testing, PLAYER_BUILD_CHANNEL: 'other' }, '0.1.0'),
         /Unknown/,
@@ -114,7 +101,7 @@ test('production player tags keep their existing namespace and exact version val
     );
 });
 
-test('a test-scoped OSS client uploads only to its own run and rejects production destinations', async () => {
+test('a test-scoped OSS client uploads only to its own commit and rejects production destinations', async () => {
     const { prefix } = playerBuildContext(testing, '0.1.0');
     const calls:string[][] = [];
     const client = await createOssClient(
@@ -135,7 +122,7 @@ test('a test-scoped OSS client uploads only to its own run and rejects productio
         assert.ok(calls[0].includes(`s3://fixture-bucket/${prefix}/installer.exe`));
         for (const key of [
             'box-player-launcher/player-v0.1.0/installer.exe',
-            `box-player-launcher-testing/${commit}/123-2/installer.exe`,
+            `box-player-launcher-staging/player-v0.1.0-staging/${'b'.repeat(40)}/installer.exe`,
             `${prefix}/../installer.exe`,
         ]) {
             await assert.rejects(client.upload(key, 'fixture.exe'), /OSS key/);

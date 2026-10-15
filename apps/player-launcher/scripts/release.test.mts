@@ -236,10 +236,11 @@ test('player release workflow requires a merge, checks OSS before installing and
         } // The ordinary CI workflow is optional.
         throw error;
     });
-    assert.match(release, /branches:\s*\n\s*- release/);
+    assert.match(release, /branches:\s*\n\s*- staging\s*\n\s*- release/);
     assert.match(release, /github-build-gate\.js merge release/);
     assert.match(release, /github-build-gate\.js release player/);
-    assert.doesNotMatch(release, /workflow_dispatch|tags:|package-images|package-desktop|docker/);
+    assert.match(release, /workflow_dispatch/);
+    assert.doesNotMatch(release, /tags:|package-images|package-desktop|docker/);
     assert.ok(
         release.indexOf('release.mts probe') < release.indexOf('install --to @box/player-launcher'),
     );

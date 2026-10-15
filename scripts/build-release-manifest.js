@@ -7,17 +7,17 @@ const targets = ['windows-amd64', 'windows-arm64', 'macos-arm64', 'linux-amd64',
 
 function buildReleaseManifest(version, date) {
     version = String(version).replace(/^v/, '');
-    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) {
+    if (!/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-staging)?$/.test(version)) {
         throw new Error('Stable release version required');
     }
-    const release = notes.find((note) => note.version === version);
+    const release = notes.find((note) => note.version === version.replace(/-staging$/, ''));
     if (!release) {
         throw new Error(`Missing release notes for ${version}`);
     }
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || new Date(date).toISOString().slice(0, 10) !== date) {
         throw new Error('Invalid release date');
     }
-    return { schemaVersion: 1, ...release, date };
+    return { schemaVersion: 1, ...release, version, date };
 }
 
 if (require.main === module) {

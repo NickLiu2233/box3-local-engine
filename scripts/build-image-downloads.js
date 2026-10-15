@@ -17,7 +17,7 @@ function validDownloadBase(value) {
         value === undefined ||
         value === null ||
         value === 'https://assets.box3.fun/local-engine' ||
-        /^https:\/\/assets\.box3\.fun\/local-engine-testing\/v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$/.test(
+        /^https:\/\/assets\.box3\.fun\/local-engine-staging\/v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)-(?:[0-9A-Za-z.-]*[.-])?staging\/[a-f0-9]{40}$/.test(
             value,
         )
     );
