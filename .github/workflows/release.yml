@@ -53,8 +53,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Require a clean public source history
-        run: node scripts/check-public-history.js
+      - name: Check current release source
+        run: node scripts/check-public-repository.js
       - name: Validate release version and OSS configuration
         run: |
           node scripts/sync-root-version.js --check
