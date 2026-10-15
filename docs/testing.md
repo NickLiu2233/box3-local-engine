@@ -86,4 +86,6 @@ npm --prefix apps/player-launcher run test:cache
 
 记录执行命令、退出码、失败与 skipped 原因，以及测试的提交、镜像版本和平台。清理仅限测试创建的临时目录/schema，不删除开发数据或 Docker 卷。日志与截图移除 Token、Cookie、数据库凭据和玩家资料。
 
-Git 历史检查与日常基础检查独立；隔离候选可使用 `node scripts/check-public-history.js /absolute/path/to/public-candidate.git`。脚本扫描全部可达正常引用；二进制及大于 8 MiB 的 blob 不做内容扫描。该检查不会改写历史或发布仓库。
+发布流水线使用 `node scripts/check-public-repository.js` 检查当前源码中的内部文件、凭据和运行数据；已删除的历史文件不属于本次打包输入。该检查也可在本机单独运行，检测结果不输出凭据明文。
+
+Git 全历史审计单独运行：`node scripts/check-public-history.js /absolute/path/to/public-candidate.git`。脚本扫描完整克隆中全部可达引用；二进制及大于 8 MiB 的 blob 不做内容扫描。当前源码检查通过，不代表旧历史已经清理；公开源码时还需处理历史中的敏感记录。该检查不会改写历史或发布仓库。
