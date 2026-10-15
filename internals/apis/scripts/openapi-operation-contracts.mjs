@@ -14,6 +14,8 @@ const moderationRecord = object({
 })
 
 const contracts = {
+  'post /api/player-auth/transfer': object({ code: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } }),
+  'post /api/player-internal/login-transfer': object({ session: { type: 'string' }, device: { type: 'string' } }),
   'post /api/player-internal/script-metadata':object({observed:{type:'boolean'}}),
   'post /api/player-internal/script-moderation': {oneOf:[
     object({ban:{anyOf:[moderationRecord,{type:'null'}]},replayed:{type:'boolean'}}),
@@ -78,6 +80,8 @@ const contracts = {
 }
 
 const requestContracts = {
+  'post /api/player-auth/transfer': object({ source: { type: 'string', enum: ['play', 'creator'] }, challenge: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } }),
+  'post /api/player-internal/login-transfer': object({ code: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' }, source: { type: 'string', enum: ['play', 'creator'] }, verifier: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } }),
   'post /api/player-internal/script-metadata':{...object({mapId:{type:'string'},groupId:{type:'string'},mode:{type:'string',enum:['edit','play']},name:{type:'string',minLength:1,maxLength:64},projectId:{type:'string'},publicId:{type:'string',maxLength:128},description:{type:'string',maxLength:2000},version:{type:'string',maxLength:64},},['mapId','mode','name']),additionalProperties:false},
   'post /api/player-internal/map-admission': {oneOf:[
     {...object({mapId:{type:'string'},userId:{type:'string'},ipAddress:{type:'string'},deviceHash:{type:'string',pattern:'^[0-9a-f]{64}$'}},['mapId','userId','ipAddress']),additionalProperties:false},
@@ -136,6 +140,13 @@ const requestContracts = {
 }
 
 export function applyOperationContracts(paths) {
+  for (const [path, status] of [['/api/player-login/start', 302], ['/api/player-login/callback', 303]]) {
+    const operation = paths[path]?.get
+    if (!operation) continue
+    delete operation.responses[200]
+    operation.responses[status] = { description: '浏览器顶层跳转；响应设置 HttpOnly Cookie，禁止缓存。', headers: { Location: { schema: { type: 'string', format: 'uri' } } } }
+    if (path.endsWith('/callback')) operation.parameters = ['code', 'state'].map(name => ({ name, description: name === 'code' ? '60 秒内有效的一次性登录码。' : '发起站点设置的浏览器校验状态。', in: 'query', required: true, schema: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$' } }))
+  }
   for (const apiPath of ['/api/auth/profile', '/api/player-auth/profile', '/api/auth/password', '/api/player-auth/password']) {
     const password = apiPath.endsWith('/password')
     const operation = paths[apiPath]?.[password ? 'post' : 'patch']

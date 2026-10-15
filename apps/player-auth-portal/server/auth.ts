@@ -3,7 +3,14 @@ import { Http, HttpError, JsonBody } from './http';
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-type OperationName = 'login' | 'register' | 'session' | 'logout' | 'profile' | 'password';
+type OperationName =
+    | 'login'
+    | 'register'
+    | 'session'
+    | 'logout'
+    | 'profile'
+    | 'password'
+    | 'transfer';
 type Body = Record<string, unknown>;
 type Headers = Record<string, string | string[]>;
 interface Reply {
@@ -191,7 +198,9 @@ export class AuthProxy {
     private readonly body = new JsonBody();
     private readonly policy:AuthPolicy;
     private readonly client:PlayerServiceClient;
+    private readonly config:PortalConfig;
     public constructor(config:PortalConfig) {
+        this.config = config;
         this.policy = new AuthPolicy(config);
         this.client = new PlayerServiceClient(config);
     }
@@ -208,7 +217,89 @@ export class AuthProxy {
         const body = operation.hasBody ? await this.body.read(request) : {};
         const reply = await this.client.send(operation, request, operation.payload(body));
         this.policy.decorate(reply, operation, body, url.searchParams);
+        await this.transfer(reply, operation, request, body, url.searchParams);
         Http.json(response, reply.status, reply.data, reply.headers);
         return true;
+    }
+
+    private async transfer(
+        reply:Reply,
+        operation:AuthOperation,
+        request:IncomingMessage,
+        body:Body,
+        query:URLSearchParams,
+    ):Promise<void> {
+        if (
+            !['login', 'register', 'session'].includes(operation.name) ||
+            reply.status >= 400 ||
+            !reply.data.player
+        ) {
+            return;
+        }
+        const state = String(body.transferState || query.get('transferState') || '');
+        const challenge = String(body.transferChallenge || query.get('transferChallenge') || '');
+        if (!state && !challenge) {
+            return;
+        }
+        const source = String(body.source || query.get('source') || '');
+        const target =
+            source === 'play'
+                ? this.config.playURL
+                : source === 'creator'
+                  ? this.config.creatorURL
+                  : null;
+        if (
+            !target ||
+            !/^[A-Za-z0-9_-]{43}$/.test(state) ||
+            !/^[A-Za-z0-9_-]{43}$/.test(challenge)
+        ) {
+            throw new HttpError(400, 'INVALID_LOGIN_TRANSFER', '登录请求已失效，请从应用重新登录');
+        }
+        // Login/register just set these cookies; the browser has not sent them
+        // back yet. Merge them before asking Player Service to issue a code.
+        const cookies = new Map<string, string>();
+        const merge = (value:string) => {
+            const pair = value.split(';')[0];
+            const separator = pair.indexOf('=');
+            if (separator > 0) {
+                cookies.set(pair.slice(0, separator).trim(), pair.slice(separator + 1));
+            }
+        };
+        for (const cookie of String(request.headers.cookie || '').split(';')) {
+            merge(cookie);
+        }
+        const setCookies = reply.headers['Set-Cookie'];
+        for (const cookie of Array.isArray(setCookies)
+            ? setCookies
+            : setCookies
+              ? [setCookies]
+              : []) {
+            merge(cookie);
+        }
+        const authenticated = Object.assign(Object.create(request), {
+            headers: {
+                ...request.headers,
+                cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; '),
+            },
+        }) as IncomingMessage;
+        const transfer = await this.client.send(
+            new AuthOperation('transfer', 'POST'),
+            authenticated,
+            { source, challenge },
+        );
+        if (
+            transfer.status >= 400 ||
+            typeof transfer.data.code !== 'string' ||
+            !/^[A-Za-z0-9_-]{43}$/.test(transfer.data.code)
+        ) {
+            throw new HttpError(502, 'LOGIN_TRANSFER_FAILED', '无法同步登录状态，请从应用重新登录');
+        }
+        const callback = new URL(target);
+        callback.pathname = `${callback.pathname.replace(/\/$/, '')}/api/player-login/callback`;
+        callback.search = '';
+        callback.hash = '';
+        callback.searchParams.set('code', transfer.data.code);
+        callback.searchParams.set('state', state);
+        reply.data.returnUrl = callback.href;
     }
 }
