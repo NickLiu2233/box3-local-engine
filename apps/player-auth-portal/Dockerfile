@@ -17,7 +17,7 @@ RUN npm run build
 FROM ${NODE_IMAGE}
 LABEL box.routing.base-path="runtime-v1"
 
-ARG BOX_BUILD_VERSION=0.3.0
+ARG BOX_BUILD_VERSION=2026.1.4
 ARG BOX_BUILD_COMMIT=unknown
 ARG BOX_BUILD_DATE=unknown
 ARG BOX_BUILD_SOURCE=local

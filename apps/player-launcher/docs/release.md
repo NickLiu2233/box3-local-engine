@@ -27,7 +27,7 @@
 在仓库根目录执行，示例版本按实际替换：
 
 ```sh
-npm --prefix apps/player-launcher version 0.1.1 --no-git-tag-version
+npm --prefix apps/player-launcher version 2026.1.2 --no-git-tag-version
 npm --prefix apps/player-launcher run check
 npm run verify
 ```

@@ -1,6 +1,6 @@
 {
   "name": "box-local-engine",
-  "version": "0.3.0",
+  "version": "2026.1.4",
   "private": true,
   "description": "Standalone local-first voxel engine developer preview",
   "license": "MIT",

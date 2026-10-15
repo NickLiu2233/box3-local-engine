@@ -110,13 +110,13 @@ fn nginx_acceptance(switch_protocols: bool) {
             "play",
             "--entrypoint",
             "node",
-            "box-local-engine-creator:v0.3.0-linux-arm64",
+            "box-local-engine-creator:v2026.1.4-linux-arm64",
             "-e",
             upstream,
         ],
     );
     let creator_server = "require('http').createServer((req,res)=>res.end(JSON.stringify({proto:req.headers['x-forwarded-proto'],service:'creator'}))).listen(3000,'0.0.0.0');";
-    run("docker", &["run", "-d", "--name", &cleanup.creator, "--network", &network, "--network-alias", "creator", "--entrypoint", "node", "box-local-engine-creator:v0.3.0-linux-arm64", "-e", creator_server]);
+    run("docker", &["run", "-d", "--name", &cleanup.creator, "--network", &network, "--network-alias", "creator", "--entrypoint", "node", "box-local-engine-creator:v2026.1.4-linux-arm64", "-e", creator_server]);
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener.local_addr().unwrap().port();
     drop(listener);

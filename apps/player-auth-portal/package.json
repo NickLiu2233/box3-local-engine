@@ -1,6 +1,6 @@
 {
   "name": "@box/player-auth-portal",
-  "version": "0.3.0",
+  "version": "2026.1.4",
   "private": true,
   "description": "Player login and registration portal for BOX Local Engine",
   "license": "MIT",

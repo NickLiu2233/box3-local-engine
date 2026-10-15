@@ -1,6 +1,6 @@
 {
   "name": "@box/player-launcher",
-  "version": "0.1.0",
+  "version": "2026.1.2",
   "private": true,
   "description": "Standalone BOX3 player launcher for locally prepared online maps",
   "license": "MIT",

@@ -23,14 +23,14 @@ flowchart TD
 
 ## 版本与文件名
 
-| 内容       | 正式示例                                       | 预发布示例                                             |
-| ---------- | ---------------------------------------------- | ------------------------------------------------------ |
-| 引擎版本   | `0.3.0`                                        | `0.3.0-staging`                                        |
-| 部署启动器 | `BOX-Local-Engine-0.3.0-macos-arm64.zip`       | `BOX-Local-Engine-0.3.0-staging-macos-arm64.zip`       |
-| Linux 包   | `BOX3-Engine-Server-0.3.0-linux-arm64.zip`     | `BOX3-Engine-Server-0.3.0-staging-linux-arm64.zip`     |
-| 镜像标签   | `v0.3.0-linux-arm64`                           | `v0.3.0-staging-linux-arm64`                           |
-| 玩家版本   | `0.1.0`                                        | `0.1.0-staging`                                        |
-| 玩家安装包 | `BOX3-Player-Launcher-0.1.0-windows-amd64.exe` | `BOX3-Player-Launcher-0.1.0-staging-windows-amd64.exe` |
+| 内容       | 正式示例                                          | 预发布示例                                                |
+| ---------- | ------------------------------------------------- | --------------------------------------------------------- |
+| 引擎版本   | `2026.1.4`                                        | `2026.1.4-staging`                                        |
+| 部署启动器 | `BOX-Local-Engine-2026.1.4-macos-arm64.zip`       | `BOX-Local-Engine-2026.1.4-staging-macos-arm64.zip`       |
+| Linux 包   | `BOX3-Engine-Server-2026.1.4-linux-arm64.zip`     | `BOX3-Engine-Server-2026.1.4-staging-linux-arm64.zip`     |
+| 镜像标签   | `v2026.1.4-linux-arm64`                           | `v2026.1.4-staging-linux-arm64`                           |
+| 玩家版本   | `2026.1.2`                                        | `2026.1.2-staging`                                        |
+| 玩家安装包 | `BOX3-Player-Launcher-2026.1.2-windows-amd64.exe` | `BOX3-Player-Launcher-2026.1.2-staging-windows-amd64.exe` |
 
 预发布后缀属于实际应用版本，不只是 ZIP 名称。流水线在临时构建工作区准备版本，无需把源码版本手工改成 staging，也不创建 staging Git Tag。正式 Tag 仍由流水线固定为 `v<引擎版本>` / `player-v<玩家版本>`。
 
@@ -62,9 +62,9 @@ flowchart TD
 版本更新示例，仓库根目录执行，数字按本次发行替换：
 
 ```sh
-npm version 2026.1.0 --no-git-tag-version
+npm version 2026.1.4 --no-git-tag-version
 node scripts/sync-root-version.js
-npm --prefix apps/player-launcher version 0.1.1 --no-git-tag-version
+npm --prefix apps/player-launcher version 2026.1.2 --no-git-tag-version
 npm run version:check
 npm run verify
 ```

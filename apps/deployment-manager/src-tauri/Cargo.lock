@@ -202,7 +202,7 @@ dependencies = [
 
 [[package]]
 name = "box-local-engine-manager"
-version = "0.3.0"
+version = "2026.1.4"
 dependencies = [
  "box-manager-core",
  "chrono",
@@ -221,7 +221,7 @@ dependencies = [
 
 [[package]]
 name = "box-manager-core"
-version = "0.3.0"
+version = "2026.1.4"
 dependencies = [
  "chrono",
  "flate2",

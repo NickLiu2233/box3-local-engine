@@ -320,13 +320,14 @@ test('overlapping startup and manual checks share one request', async () => {
 
 test('manifest selects version logs, retains history and rejects unpublished versions', () => {
     const notes = require('../distribution/release-notes.json');
+    const version = require('../package.json').version;
     assert.ok(notes.some((note) => note.version === '0.1.0'));
-    const manifest = buildReleaseManifest('v0.3.0', '2026-10-09');
+    const manifest = buildReleaseManifest(`v${version}`, '2026-10-09');
     assert.equal(manifest.schemaVersion, 1);
     assert.equal(manifest.date, '2026-10-09');
     assert.deepEqual(manifest.sections, notes[0].sections);
     assert.throws(() => buildReleaseManifest('0.4.0', '2026-10-09'), /Missing release notes/);
-    assert.throws(() => buildReleaseManifest('0.3.0', '2026-02-31'), /Invalid release date/);
+    assert.throws(() => buildReleaseManifest(version, '2026-02-31'), /Invalid release date/);
 });
 
 test('missing CDN manifest reports the publication problem instead of blaming connectivity', async () => {

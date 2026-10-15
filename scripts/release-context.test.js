@@ -13,24 +13,24 @@ const commit = 'a'.repeat(40);
 test('channel identities keep production unchanged and pin staging caches to the source commit', () => {
     const production = engineReleaseContext(
         { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit },
-        '0.3.0',
+        '2026.1.4',
     );
-    assert.equal(production.tag, 'v0.3.0');
-    assert.equal(production.prefix, 'local-engine/v0.3.0');
+    assert.equal(production.tag, 'v2026.1.4');
+    assert.equal(production.prefix, 'local-engine/v2026.1.4');
     assert.equal(production.releasePrefix, 'local-engine');
     const staging = engineReleaseContext(
         { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: commit },
-        '0.3.0',
+        '2026.1.4',
     );
-    assert.equal(staging.version, '0.3.0-staging');
-    assert.equal(staging.tag, 'v0.3.0-staging');
-    assert.equal(staging.prefix, `local-engine-staging/v0.3.0-staging/${commit}`);
+    assert.equal(staging.version, '2026.1.4-staging');
+    assert.equal(staging.tag, 'v2026.1.4-staging');
+    assert.equal(staging.prefix, `local-engine-staging/v2026.1.4-staging/${commit}`);
     assert.equal(staging.releasePrefix, 'local-engine-staging');
     assert.equal(stagingVersion(staging.version), staging.version);
     assert.notEqual(
         engineReleaseContext(
             { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: 'b'.repeat(40) },
-            '0.3.0',
+            '2026.1.4',
         ).prefix,
         staging.prefix,
     );
@@ -39,12 +39,12 @@ test('channel identities keep production unchanged and pin staging caches to the
         { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit, BOX_BUILD_CHANNEL: 'staging' },
         { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: '../invalid' },
     ]) {
-        assert.throws(() => engineReleaseContext(env, '0.3.0'));
+        assert.throws(() => engineReleaseContext(env, '2026.1.4'));
     }
     assert.throws(() =>
         engineReleaseContext(
             { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit },
-            '0.3.0-staging',
+            '2026.1.4-staging',
         ),
     );
 });
@@ -117,7 +117,7 @@ test(
         t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
         const context = engineReleaseContext(
             { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: commit },
-            '0.3.0',
+            '2026.1.4',
         );
         fs.writeFileSync(
             path.join(temporary, 'package.json'),
@@ -184,7 +184,7 @@ test(
         assert.equal(result.status, 0, result.stderr);
         const directory = path.join(
             temporary,
-            'apps/local-engine/dist/server-packages/BOX3-Engine-Server-0.3.0-staging-linux-arm64',
+            'apps/local-engine/dist/server-packages/BOX3-Engine-Server-2026.1.4-staging-linux-arm64',
         );
         assert.ok(
             fs

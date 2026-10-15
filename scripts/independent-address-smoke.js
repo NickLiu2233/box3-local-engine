@@ -179,7 +179,7 @@ async function main() {
             `type=bind,src=${path.join(__dirname, 'lib/independent-address-upstreams.cjs')},dst=/fixtures/upstreams.cjs,readonly`,
             '--entrypoint',
             'node',
-            'box-local-engine-play:v0.3.0-linux-arm64',
+            'box-local-engine-play:v2026.1.4-linux-arm64',
             '/fixtures/upstreams.cjs',
         ]);
         const mounts = [

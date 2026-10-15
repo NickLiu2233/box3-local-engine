@@ -28,9 +28,14 @@ test('player test validate runs without a Git tag and main is rejected', async (
     ];
     const run = promisify(execFile);
     const { stdout } = await run(process.execPath, args, { timeout: 10_000, env });
+    const packageInfo = JSON.parse(
+        await readFile(new URL('../package.json', import.meta.url), 'utf8'),
+    );
     assert.match(stdout, /Player staging build validated: .*-staging/);
     assert.ok(
-        stdout.includes(`box-player-launcher-staging/player-v0.1.0-staging/${env.GITHUB_SHA}`),
+        stdout.includes(
+            `box-player-launcher-staging/player-v${packageInfo.version}-staging/${env.GITHUB_SHA}`,
+        ),
     );
     await assert.rejects(
         run(process.execPath, args, {

@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "BOX3 Engine Launcher",
-  "version": "0.3.0",
+  "version": "2026.1.4",
   "identifier": "com.box.engine.manager",
   "build": {
     "beforeDevCommand": "npm run dev",
