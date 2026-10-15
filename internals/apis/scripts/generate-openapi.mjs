@@ -159,6 +159,7 @@ function deploymentModes(apiPath, service = 'engine-web') {
   if (service === 'server-manager') return ['server-manager']
   if (service === 'game-runtime') return ['game-runtime']
   if (service === 'auth-portal') return ['auth-portal']
+  if (apiPath.startsWith('/api/player-login/')) return ['creator', 'play']
   if (apiPath.startsWith('/api/play-admin/') || apiPath.startsWith('/api/player-')) {
     return ['player-service']
   }
@@ -178,7 +179,7 @@ function securityFor(apiPath, service) {
   if (service === 'game-runtime' && apiPath.startsWith('/internal/')) {
     return [{ internalBearer: [] }]
   }
-  if (['/api/player-auth/profile', '/api/player-auth/password'].includes(apiPath)) return [{ playerAuthKey: [], playerSession: [] }]
+  if (['/api/player-auth/profile', '/api/player-auth/password', '/api/player-auth/transfer'].includes(apiPath)) return [{ playerAuthKey: [], playerSession: [] }]
   if (['/api/auth/profile', '/api/auth/password'].includes(apiPath)) return [{ playerSession: [] }]
   if (apiPath.startsWith('/api/player-auth/') && apiPath !== '/api/player-auth/login-required') return [{ playerAuthKey: [] }]
   if (apiPath === '/api/play-admin/login' || apiPath === '/api/player-auth/login-required') return []

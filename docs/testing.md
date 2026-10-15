@@ -45,6 +45,15 @@ VOXA 可分别运行 `check:model-library-scope`、`check:model-project-bundle`�
 
 不要混用运行器：Jest 使用 game 的 npm 脚本；Node test 和 TS 注册器以对应模块脚本为准。game Jest 默认输出终端报告，POSIX shell 设置 `JEST_HTML_REPORT=1` 可生成 HTML 报告。
 
+独立公网登录回归：
+
+```sh
+npm --prefix apps/game test -- --runInBand --runTestsByPath server/player-login-transfer.test.ts server/player-login-transfer-store.test.ts server/player-service-public-auth.test.ts server/player-map-library-proxy.test.ts server/player-session-security.test.ts
+npm --prefix apps/player-auth-portal test
+```
+
+覆盖跨域名/IP 回跳、子路径、会话与设备 Cookie、错误目标、校验值、过期、重放和会话撤销。上线验收时将门户与 Play / Creator 配为不同主机，分别验证首次登录、已有登录自动返回、退出后访问被拒绝；无需开放第三方 Cookie。
+
 ## 真实数据库测试
 
 使用独立测试库，账号需允许创建/删除测试 schema；不要连接生产数据。命令不会自动读取根 `.env`，连接串特殊字符需 URL 编码。

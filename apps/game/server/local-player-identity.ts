@@ -33,6 +33,7 @@ import { requestClientAddress } from './client-address';
 import { hasTrustedPlayerAuthKey } from './player-auth-security';
 import { PlayerAdminRequestError } from './player-admin-errors';
 import { changeSelfPassword, PlayerSelfServiceError, verifyLockedLoginPassword } from './player-self-password';
+import { applicationEndpoint, openTransfer, sealTransfer, transferChallenge, transferTokenPattern, type LoginSource } from './player-login-transfer';
 
 const COOKIE_NAME = 'box_local_player_session';
 const DEVICE_COOKIE_NAME = 'box_local_player_device';
@@ -427,6 +428,16 @@ async function initialize() {
       await database.query(`ALTER TABLE ${table('sessions')} ADD COLUMN IF NOT EXISTS last_seen_ip TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('sessions')} ADD COLUMN IF NOT EXISTS user_agent TEXT NOT NULL DEFAULT ''`);
       await database.query(`ALTER TABLE ${table('sessions')} ADD COLUMN IF NOT EXISTS device_hash TEXT NOT NULL DEFAULT ''`);
+      await database.query(`
+        CREATE TABLE IF NOT EXISTS ${table('login_transfers')} (
+          code_hash TEXT PRIMARY KEY,
+          session_hash TEXT NOT NULL REFERENCES ${table('sessions')}(token_hash) ON DELETE CASCADE,
+          source TEXT NOT NULL,
+          challenge TEXT NOT NULL,
+          credentials TEXT NOT NULL,
+          expires_at TIMESTAMPTZ NOT NULL
+        )
+      `);
       await database.query(`
         CREATE INDEX IF NOT EXISTS local_sessions_principal
         ON ${table('sessions')} (principal_id)
@@ -850,6 +861,51 @@ export async function resolvePlayerIdentity(req: NextApiRequest, res: NextApiRes
   if (!row?.user_id) throw new Error('AUTH_REQUIRED');
   await database.query(`UPDATE ${table('sessions')} SET device_hash = $2 WHERE token_hash = $1 AND device_hash = ''`, [tokenHash(sessionToken(req)), currentDeviceHash]);
   return { ...rowToIdentity(row), deviceHash: currentDeviceHash };
+}
+
+/** Only the authenticated portal issues codes, after validating its session. */
+export async function issuePlayerLoginTransfer(req: NextApiRequest, res: NextApiResponse) {
+  const { source, challenge } = req.body || {};
+  if ((source !== 'play' && source !== 'creator') || typeof challenge !== 'string' || !transferTokenPattern.test(challenge)) {
+    throw new Error('登录交换请求无效');
+  }
+  applicationEndpoint(source, '/api/player-login/callback');
+  const identity = await resolvePlayerIdentity(req, res);
+  if (identity.status !== 'active') throw new Error('AUTH_REQUIRED');
+  const credentials = { session: sessionToken(req), device: deviceToken(req) };
+  if (!transferTokenPattern.test(credentials.session) || !transferTokenPattern.test(credentials.device)) throw new Error('AUTH_REQUIRED');
+  const database = getPool()!;
+  const code = randomBytes(32).toString('base64url');
+  await database.query(`DELETE FROM ${table('login_transfers')} WHERE expires_at <= NOW()`);
+  await database.query(`
+    INSERT INTO ${table('login_transfers')} (code_hash, session_hash, source, challenge, credentials, expires_at)
+    VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '60 seconds')
+  `, [tokenHash(code), tokenHash(credentials.session), source, challenge, sealTransfer(code, credentials)]);
+  return { code };
+}
+
+/** Atomic consumption prevents replay; revocation also invalidates outstanding codes. */
+export async function redeemPlayerLoginTransfer(req: NextApiRequest, res: NextApiResponse) {
+  const { code, source, verifier } = req.body || {};
+  if ((source !== 'play' && source !== 'creator') || typeof code !== 'string' || typeof verifier !== 'string' ||
+      !transferTokenPattern.test(code) || !transferTokenPattern.test(verifier)) throw new Error('登录交换请求无效');
+  applicationEndpoint(source as LoginSource, '/api/player-login/callback');
+  await initialize();
+  const database = getPool();
+  if (!database) throw new Error('玩家账号功能需要配置 PostgreSQL');
+  const result = await database.query<{ credentials: string }>(`
+    DELETE FROM ${table('login_transfers')}
+    WHERE code_hash = $1 AND source = $2 AND challenge = $3 AND expires_at > NOW()
+    RETURNING credentials
+  `, [tokenHash(code), source, transferChallenge(verifier)]);
+  if (!result.rows[0]) throw new Error('登录凭证失效，请重新登录');
+  const credentials = openTransfer(code, result.rows[0].credentials);
+  const identityRequest = Object.assign(Object.create(req), {
+    headers: { ...req.headers, cookie: `${COOKIE_NAME}=${credentials.session}; ${DEVICE_COOKIE_NAME}=${credentials.device}` },
+  }) as NextApiRequest;
+  const identity = await resolvePlayerIdentity(identityRequest, res);
+  if (identity.status !== 'active') throw new Error('AUTH_REQUIRED');
+  return credentials;
 }
 
 /** Resolves a long-lived CLI token issued from player management. The raw token is never stored. */

@@ -1,4 +1,8 @@
 const exactSummaries = {
+  'get /api/player-login/start': '发起独立公网地址的玩家登录',
+  'get /api/player-login/callback': '交换一次性登录码并设置本站会话',
+  'post /api/player-auth/transfer': '为已登录玩家签发短时单次登录码',
+  'post /api/player-internal/login-transfer': '兑换目标服务和浏览器绑定的登录码',
   'get /api/health-check': '检查当前服务健康状态',
   'get /api/creator/v1/health': '检查 Creator CLI 服务状态',
   'post /api/player-auth/login': '登录玩家账号',

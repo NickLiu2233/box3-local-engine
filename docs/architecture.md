@@ -22,6 +22,30 @@ Creator、Play 和 Player Service 共用 `apps/game` 的网页与 HTTP 实现，
 
 Player Service 保存账号、管理权限、封禁和审计。地图脚本 storage 使用独立命名空间。Redis 可用于会话、限流与缓存；本地回退不能代替玩家身份数据库。
 
+### 独立公网登录
+
+Play、Creator 和登录门户可分别使用不同域名、IP、端口和入口路径。跨源登录通过浏览器顶层跳转完成，不依赖第三方 Cookie。
+
+```mermaid
+sequenceDiagram
+    participant B as 浏览器
+    participant A as Play / Creator
+    participant P as 登录门户
+    participant I as Player Service
+    B->>A: 发起登录，保存本站校验状态
+    A-->>B: 跳转门户，携带目标与挑战值
+    B->>P: 登录或复用现有登录
+    P->>I: 申请绑定目标的一次性登录码
+    P-->>B: 跳回目标站点
+    B->>A: 提交登录码与校验状态
+    A->>I: 服务端兑换并核验当前会话
+    A-->>B: 写入本站会话和设备 Cookie，返回原页面
+```
+
+登录码有效期 60 秒、仅兑换一次；浏览器校验状态有效期 5 分钟。目标站点写入同一玩家会话及设备凭证，退出、改密和会话撤销仍统一生效。数据库只保存登录码哈希与加密凭证，长期会话不进入跳转 URL。
+
+更新时需同步部署 Play、Creator、Player Service 和登录门户。自定义登录镜像需同步最新模板中的登录交换协议；公网地址由配置决定，不信任浏览器提供的回调地址。
+
 ## 代码位置
 
 | 目录                                                              | 职责                                              |

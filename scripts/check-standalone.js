@@ -843,6 +843,7 @@ for (const [label, pattern] of [
     ['read-only root filesystem', /read_only: true/],
     ['no-new-privileges', /no-new-privileges:true/],
     ['all capabilities dropped', /cap_drop:\s*\n\s*- ALL/],
+    ['backup access to service-owned private files', /cap_add:\s*\n\s*- DAC_OVERRIDE/],
     ['Docker socket mount', /\/var\/run\/docker\.sock/],
 ]) {
     requirePattern(serverManagerCompose, composeFile, `server manager ${label}`, pattern);

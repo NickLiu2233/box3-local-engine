@@ -65,6 +65,15 @@ before(async () => {
             body: Buffer.concat(chunks).toString('utf8'),
         };
         response.setHeader('Content-Type', 'application/json');
+        if (requestURL.endsWith('/transfer')) {
+            if (!String(request.headers.cookie || '').includes('box_player_session=test-token')) {
+                response.statusCode = 401;
+                response.end(JSON.stringify({ message: 'AUTH_REQUIRED' }));
+                return;
+            }
+            response.end(JSON.stringify({ code: 'c'.repeat(43) }));
+            return;
+        }
         if (requestURL.endsWith('/profile') || requestURL.endsWith('/password')) {
             if (!String(request.headers.cookie || '').includes('box_local_player_session=')) {
                 response.statusCode = 401;
@@ -119,6 +128,38 @@ before(async () => {
 
 after(async () => {
     await Promise.all([close(portal), close(upstream)]);
+});
+
+test('cross-host login exchanges freshly issued cookies for a code bound to the configured callback', async () => {
+    const response = await fetch(`${portalURL}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Origin': portalURL },
+        body: JSON.stringify({
+            username: 'tester',
+            password: 'secret',
+            source: 'play',
+            returnUrl: 'https://attacker.test/steal',
+            transferState: 's'.repeat(43),
+            transferChallenge: 'v'.repeat(43),
+        }),
+    });
+    assert.equal(response.status, 200);
+    const data = await response.json();
+    const callback = new URL(data.returnUrl);
+    assert.equal(callback.origin, 'http://play.example.test');
+    assert.equal(callback.pathname, '/api/player-login/callback');
+    assert.equal(callback.searchParams.get('code'), 'c'.repeat(43));
+    assert.equal(callback.searchParams.get('state'), 's'.repeat(43));
+    assert.equal(lastUpstreamRequest.url, '/api/player-auth/transfer');
+    assert.deepEqual(JSON.parse(lastUpstreamRequest.body), {
+        source: 'play',
+        challenge: 'v'.repeat(43),
+    });
+    assert.ok(String(lastUpstreamRequest.headers.cookie).includes('box_player_session=test-token'));
+    assert.ok(
+        response.headers.getSetCookie().some((value) => value.startsWith('box_player_session=')),
+    );
+    assert.ok(!JSON.stringify(data).includes('test-token'));
 });
 
 test('nickname and password APIs forward only self-service fields, sessions and cookie revocation', async () => {
@@ -358,4 +399,25 @@ test('cross-origin browser posts are rejected before reaching Player Service', a
     });
     assert.equal(response.status, 403);
     assert.equal(lastUpstreamRequest, previousRequest);
+});
+
+test('older engine clients first establish browser state at the configured application', async () => {
+    const server = createAuthPortalServer({
+        playerServiceURL: new URL(upstreamURL),
+        publicURL: new URL('http://47.111.123.64:3125'),
+        playURL: new URL('https://play.example.test/play'),
+    });
+    const url = await listen(server);
+    try {
+        const response = await fetch(`${url}/?source=play&returnUrl=https://evil.test/`, {
+            redirect: 'manual',
+        });
+        assert.equal(response.status, 302);
+        const target = new URL(response.headers.get('location')!);
+        assert.equal(target.origin, 'https://play.example.test');
+        assert.equal(target.pathname, '/play/api/player-login/start');
+        assert.equal(target.searchParams.get('returnUrl'), 'https://play.example.test/play');
+    } finally {
+        await close(server);
+    }
 });
