@@ -10,6 +10,8 @@ npm run verify
 
 只运行 Prettier 和 ESLint，检查格式、语法和代码风格。CI 与本地范围相同，不执行应用构建、类型检查、业务回归、依赖审计或 Compose 校验。基础检查无需启动 Docker、数据库或 Rust 编译。
 
+PR 合入 `main`、`staging` 或 `release/v…` 时，`verify` 任务直接跳过，不安装依赖、不重复检查；这些分支的 push 也不运行 Verify。保留 PR 任务的跳过状态，是为了满足现有分支规则要求的 `verify` 状态，避免永久等待。`dev`、`dev-*`、`dev/**` 等开发分支继续执行基础检查。
+
 ## 按需选择检查
 
 | 目标                    | 命令                                             | 前提                                                  |
@@ -44,6 +46,15 @@ npm run verify
 VOXA 可分别运行 `check:model-library-scope`、`check:model-project-bundle`、`check:local-cors` 和 `check:model-management-permission`。默认皮肤或父窗口资源地址变化时，追加 `check:default-skin-scope` / `check:parent-storage-url`。使用 `npm --prefix apps/voxa run <脚本名>`。
 
 不要混用运行器：Jest 使用 game 的 npm 脚本；Node test 和 TS 注册器以对应模块脚本为准。game Jest 默认输出终端报告，POSIX shell 设置 `JEST_HTML_REPORT=1` 可生成 HTML 报告。
+
+独立公网登录回归：
+
+```sh
+npm --prefix apps/game test -- --runInBand --runTestsByPath server/player-login-transfer.test.ts server/player-login-transfer-store.test.ts server/player-service-public-auth.test.ts server/player-map-library-proxy.test.ts server/player-session-security.test.ts
+npm --prefix apps/player-auth-portal test
+```
+
+覆盖跨域名/IP 回跳、子路径、会话与设备 Cookie、错误目标、校验值、过期、重放和会话撤销。上线验收时将门户与 Play / Creator 配为不同主机，分别验证首次登录、已有登录自动返回、退出后访问被拒绝；无需开放第三方 Cookie。
 
 ## 真实数据库测试
 
@@ -86,4 +97,6 @@ npm --prefix apps/player-launcher run test:cache
 
 记录执行命令、退出码、失败与 skipped 原因，以及测试的提交、镜像版本和平台。清理仅限测试创建的临时目录/schema，不删除开发数据或 Docker 卷。日志与截图移除 Token、Cookie、数据库凭据和玩家资料。
 
-Git 历史检查与日常基础检查独立；隔离候选可使用 `node scripts/check-public-history.js /absolute/path/to/public-candidate.git`。脚本扫描全部可达正常引用；二进制及大于 8 MiB 的 blob 不做内容扫描。该检查不会改写历史或发布仓库。
+发布流水线使用 `node scripts/check-public-repository.js` 检查当前源码中的内部文件、凭据和运行数据；已删除的历史文件不属于本次打包输入。该检查也可在本机单独运行，检测结果不输出凭据明文。
+
+Git 全历史审计单独运行：`node scripts/check-public-history.js /absolute/path/to/public-candidate.git`。脚本扫描完整克隆中全部可达引用；二进制及大于 8 MiB 的 blob 不做内容扫描。当前源码检查通过，不代表旧历史已经清理；公开源码时还需处理历史中的敏感记录。该检查不会改写历史或发布仓库。

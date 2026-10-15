@@ -1,7 +1,6 @@
 name: Build and Release BOX3 Local Engine
 run-name: Engine / ${{ github.ref_name }}
 'on':
-  create: {}
   push:
     branches:
       - staging
@@ -32,9 +31,8 @@ env:
 jobs:
   validate-release:
     if: >-
-      (github.ref == 'refs/heads/staging' && github.event_name != 'create') ||
+      github.ref == 'refs/heads/staging' ||
       (startsWith(github.ref, 'refs/heads/release/v') &&
-       (github.event_name != 'create' || github.event.ref_type == 'branch') &&
        (github.event_name != 'push' || github.event.created != true))
     runs-on: ubuntu-latest
     permissions:
@@ -53,8 +51,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Require a clean public source history
-        run: node scripts/check-public-history.js
+      - name: Check current release source
+        run: node scripts/check-public-repository.js
       - name: Validate release version and OSS configuration
         run: |
           node scripts/sync-root-version.js --check

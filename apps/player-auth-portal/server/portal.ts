@@ -55,6 +55,42 @@ export class PortalServer {
             if (request.method === 'GET' && url.pathname === '/api/health-check') {
                 return Http.json(response, 200, { status: 'ok', service: 'player-auth-portal' });
             }
+            // Also support existing engine clients that navigate directly to
+            // the portal: establish destination browser state before login.
+            if (
+                request.method === 'GET' &&
+                url.pathname === '/' &&
+                !url.searchParams.has('transferState') &&
+                !url.searchParams.has('transferChallenge')
+            ) {
+                const source = url.searchParams.get('source');
+                const target =
+                    source === 'play'
+                        ? this.config.playURL
+                        : source === 'creator'
+                          ? this.config.creatorURL
+                          : null;
+                if (
+                    target &&
+                    this.config.publicURL &&
+                    target.origin !== this.config.publicURL.origin
+                ) {
+                    const start = new URL(target);
+                    start.pathname = `${start.pathname.replace(/\/$/, '')}/api/player-login/start`;
+                    start.search = '';
+                    start.hash = '';
+                    start.searchParams.set(
+                        'returnUrl',
+                        this.config.returnURL(source!, url.searchParams.get('returnUrl') || '')!,
+                    );
+                    response.writeHead(302, {
+                        'Location': start.href,
+                        'Cache-Control': 'no-store',
+                    });
+                    response.end();
+                    return;
+                }
+            }
             if (await this.auth.handle(request, response, url)) {
                 return;
             }

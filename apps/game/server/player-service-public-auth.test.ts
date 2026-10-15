@@ -30,14 +30,21 @@ function responseMock() {
 }
 
 describe('public player authentication boundary', () => {
-  test('builds an external login URL with a trusted return URL', () => {
+  test('starts a browser-bound exchange before redirecting to an independent login host', () => {
     process.env.BOX_PLAYER_LOGIN_URL = 'https://accounts.example.com/sign-in?brand=box';
     process.env.BOX_PLAY_PUBLIC_URL = 'https://play.example.com';
     const login = new URL(playerLoginURL('play', 'https://play.example.com/p/demo?room=1'));
-    expect(login.origin + login.pathname).toBe('https://accounts.example.com/sign-in');
+    expect(login.origin + login.pathname).toBe('https://play.example.com/api/player-login/start');
+    expect(login.searchParams.get('returnUrl')).toBe('https://play.example.com/p/demo?room=1');
+  });
+
+  test('keeps direct login navigation when the application and portal share an origin', () => {
+    process.env.BOX_PLAYER_LOGIN_URL = 'https://play.example.com/auth?brand=box';
+    process.env.BOX_PLAY_PUBLIC_URL = 'https://play.example.com/play';
+    const login = new URL(playerLoginURL('play'));
+    expect(login.pathname).toBe('/auth');
     expect(login.searchParams.get('brand')).toBe('box');
     expect(login.searchParams.get('source')).toBe('play');
-    expect(login.searchParams.get('returnUrl')).toBe('https://play.example.com/p/demo?room=1');
   });
 
   test('rejects an untrusted return origin and missing login configuration', () => {

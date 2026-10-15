@@ -12,7 +12,12 @@ const yaml = require(
 const release = yaml.load(workflow);
 assert.deepEqual(release.on.push, { branches: ['staging', 'release/v*'] });
 assert.ok(Object.hasOwn(release.on, 'workflow_dispatch'));
-assert.ok(Object.hasOwn(release.on, 'create'));
+assert.equal(Object.hasOwn(release.on, 'create'), false);
+const creationRouter = yaml.load(
+    fs.readFileSync(path.join(root, '.github/workflows/release-branch-created.yml'), 'utf8'),
+);
+assert.ok(Object.hasOwn(creationRouter.on, 'create'));
+assert.equal(creationRouter.permissions.actions, 'write');
 assert.equal(release.jobs['merge-gate'], undefined);
 assert.equal(release.jobs['validate-release'].needs, undefined);
 assert.match(release.jobs['validate-release'].if, /refs\/heads\/release\/v/);

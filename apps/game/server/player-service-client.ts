@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { ApiClient } from '@box/apis';
 import type { RuntimePlayerIdentity } from '@box/utils/local-player-identity';
 import { requestClientAddress } from './client-address';
+import { applicationEndpoint } from './player-login-transfer';
 
 type RuntimeIdentityResponse = {
   identity: RuntimePlayerIdentity;
@@ -189,6 +190,11 @@ export function requirePlayerLoginURL(from: 'creator' | 'play', requestedReturnU
   }
   login.searchParams.set('source', from);
   login.searchParams.set('returnUrl', trustedReturnURL(from, requestedReturnUrl));
+  if (login.origin !== publicApplicationURL(from).origin) {
+    const start = applicationEndpoint(from, '/api/player-login/start');
+    start.searchParams.set('returnUrl', trustedReturnURL(from, requestedReturnUrl));
+    return start.href;
+  }
   return login.toString();
 }
 

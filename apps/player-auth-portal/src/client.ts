@@ -33,12 +33,19 @@ export class PortalError extends Error {
 
 /** 页面只复用这个客户端，不接触服务密钥或 HttpOnly Cookie。 */
 export class PortalClient {
-    public readonly navigation:{ source:string; returnUrl:string };
+    public readonly navigation:{
+        source:string;
+        returnUrl:string;
+        transferState:string;
+        transferChallenge:string;
+    };
     public constructor(search = location.search) {
         const query = new URLSearchParams(search);
         this.navigation = {
             source: query.get('source') || '',
             returnUrl: query.get('returnUrl') || '',
+            transferState: query.get('transferState') || '',
+            transferChallenge: query.get('transferChallenge') || '',
         };
     }
     private async request<T>(path:string, method = 'GET', body?:object):Promise<T> {

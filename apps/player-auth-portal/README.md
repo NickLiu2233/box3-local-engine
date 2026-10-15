@@ -74,6 +74,9 @@ AMD64 使用 `--platform linux/amd64`。在部署管理器“数据配置 → �
 - 写请求检查 Origin，JSON 最大 32 KiB；改昵称/密码只操作当前会话。
 - 转发 Cookie、逐条 Set-Cookie、上游状态和 Retry-After；不缓存账号响应。
 - 回跳只允许配置的 Creator / Play 源；密码不持久化，改密成功后重新登录。
+- 独立公网地址使用一次性登录码共享会话，不要求统一域名。自定义页面须保留 `source`、`returnUrl`、`transferState`、`transferChallenge`，登录或查询会话后使用后端返回的 `returnUrl` 跳转；不要自行拼接回跳地址。
 - 静态文件限制在 `public/`，校验真实路径，不公开 `.env` 和源码。
+
+跨站登录流程及更新要求见[架构与数据流](../../docs/architecture.md#独立公网登录)。登录门户、Player Service、Play 和 Creator 需同步更新。
 
 导出模板使用 `npm run export:template`，得到 `dist/box3-login-template-<版本>.tar.gz`。模板包含源码、锁文件、测试与文档，不含本机数据。许可见 [MIT](LICENSE)，品牌与第三方资源遵循各自约定。

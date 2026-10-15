@@ -335,6 +335,14 @@ export const apiOperations = {
     "path": "/api/player-launcher/maps/{mapId}/download-plan",
     "method": "GET"
   },
+  "getApiPlayerLoginCallback": {
+    "path": "/api/player-login/callback",
+    "method": "GET"
+  },
+  "getApiPlayerLoginStart": {
+    "path": "/api/player-login/start",
+    "method": "GET"
+  },
   "getApiPlayLibrary": {
     "path": "/api/play-library",
     "method": "GET"
@@ -645,6 +653,14 @@ export const apiOperations = {
   },
   "postApiPlayerAuthRegister": {
     "path": "/api/player-auth/register",
+    "method": "POST"
+  },
+  "postApiPlayerAuthTransfer": {
+    "path": "/api/player-auth/transfer",
+    "method": "POST"
+  },
+  "postApiPlayerInternalLoginTransfer": {
+    "path": "/api/player-internal/login-transfer",
     "method": "POST"
   },
   "postApiPlayerInternalLogout": {
@@ -1773,6 +1789,30 @@ export class ApiClient {
     return this.unwrap(this.getApiPlayerLauncherMapsMapIdDownloadPlanRaw(...init));
   }
 
+  getApiPlayerLoginCallbackRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-login/callback"]["GET"]>
+  ) {
+    return this.paths["/api/player-login/callback"].GET(...init);
+  }
+
+  getApiPlayerLoginCallback(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-login/callback"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayerLoginCallbackRaw(...init));
+  }
+
+  getApiPlayerLoginStartRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-login/start"]["GET"]>
+  ) {
+    return this.paths["/api/player-login/start"].GET(...init);
+  }
+
+  getApiPlayerLoginStart(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-login/start"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayerLoginStartRaw(...init));
+  }
+
   getApiPlayLibraryRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/play-library"]["GET"]>
   ) {
@@ -2707,6 +2747,30 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/player-auth/register"]["POST"]>
   ) {
     return this.unwrap(this.postApiPlayerAuthRegisterRaw(...init));
+  }
+
+  postApiPlayerAuthTransferRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-auth/transfer"]["POST"]>
+  ) {
+    return this.paths["/api/player-auth/transfer"].POST(...init);
+  }
+
+  postApiPlayerAuthTransfer(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-auth/transfer"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiPlayerAuthTransferRaw(...init));
+  }
+
+  postApiPlayerInternalLoginTransferRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-internal/login-transfer"]["POST"]>
+  ) {
+    return this.paths["/api/player-internal/login-transfer"].POST(...init);
+  }
+
+  postApiPlayerInternalLoginTransfer(
+    ...init: Parameters<PathBasedClient<paths>["/api/player-internal/login-transfer"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiPlayerInternalLoginTransferRaw(...init));
   }
 
   postApiPlayerInternalLogoutRaw(

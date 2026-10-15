@@ -1,7 +1,6 @@
 name: Build and Release BOX3 Player Launcher
 run-name: Player / ${{ github.ref_name }}
 'on':
-  create: {}
   push:
     branches:
       - staging
@@ -24,9 +23,8 @@ env:
 jobs:
   validate:
     if: >-
-      (github.ref == 'refs/heads/staging' && github.event_name != 'create') ||
+      github.ref == 'refs/heads/staging' ||
       (startsWith(github.ref, 'refs/heads/player-release/v') &&
-       (github.event_name != 'create' || github.event.ref_type == 'branch') &&
        (github.event_name != 'push' || github.event.created != true))
     runs-on: ubuntu-24.04
     permissions:
@@ -42,8 +40,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
-      - name: Require a clean public source history
-        run: node scripts/check-public-history.js
+      - name: Check current release source
+        run: node scripts/check-public-repository.js
       - name: Validate player version and OSS configuration
         id: version
         run: node --experimental-strip-types apps/player-launcher/scripts/release.mts validate
