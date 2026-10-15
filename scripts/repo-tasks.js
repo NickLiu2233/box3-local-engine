@@ -111,6 +111,7 @@ function check() {
         '--test',
         'scripts/internal-migrator.test.js',
         'scripts/check-public-repository.test.js',
+        'scripts/release-source-guard.test.js',
         'scripts/check-public-history.test.js',
     ]);
     node('scripts/check-windows-offline-installer.js');
