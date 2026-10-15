@@ -1,20 +1,24 @@
 # HTTP API 契约与客户端
 
-`@box/apis` 维护本地引擎 HTTP 路由契约、OpenAPI、类型声明和生成客户端。Creator、玩家后台、管理器等应用通过同一套契约访问服务，避免各自维护一份请求 URL 和响应结构。地图脚本 API 声明属于 `internals/schema` / `packages/script-api`，不在这里生成。
+`@box/apis` 统一路由、领域类型、权限元数据、OpenAPI 和生成客户端。地图脚本声明由 `internals/schema` / `packages/script-api` 维护。
 
-## 来源与产物
+```mermaid
+flowchart LR
+    Contract["src：路由与领域类型"] --> Generate["api:generate"]
+    Generate --> Artifacts["OpenAPI 与生成客户端"]
+    Artifacts --> Consumers["Creator、后台与管理器"]
+    Artifacts --> Check["api:check：核对同步"]
+```
 
-| 文件/目录                                                     | 用途                         |
-| ------------------------------------------------------------- | ---------------------------- |
-| `src/routes.ts`、`src/domain.ts`、`src/local-engine-types.ts` | 路由定义与领域数据类型       |
-| `src/permissions.ts`                                          | 契约权限元数据               |
-| `scripts/generate-openapi.mjs`                                | 从契约生成 OpenAPI           |
-| `scripts/generate-client.mjs`                                 | 生成应用使用的客户端         |
-| `openapi/openapi.json`、`src/generated/`                      | 提交并检查同步的生成产物     |
-| `test/`                                                       | 契约/生成客户端回归          |
-| `dist/`                                                       | 包构建结果，不作为手工维护源 |
+| 位置                                                  | 内容            |
+| ----------------------------------------------------- | --------------- |
+| `src/routes.ts`、`domain.ts`、`local-engine-types.ts` | 契约源          |
+| `src/permissions.ts`                                  | 权限元数据      |
+| `scripts/generate-openapi.mjs`、`generate-client.mjs` | 生成工具        |
+| `openapi/openapi.json`、`src/generated/`              | 需提交的生成物  |
+| `test/`、`dist/`                                      | 回归 / 构建结果 |
 
-从仓库根先安装工作区依赖。修改契约或响应类型后，运行生成、同步检查与构建，再验证实际服务实现及调用者：
+根目录安装依赖后，修改契约并按需执行：
 
 ```sh
 npm run api:generate
@@ -23,6 +27,4 @@ npm run api:build
 npm --prefix internals/apis test
 ```
 
-不要直接改 `src/generated/` 绕过契约。检查路由方法、参数、响应、错误与权限是否一致；OpenAPI 类型正确不表示服务端自动完成了授权或输入校验。
-
-`npm run api:docs` 启动本机文档服务器，实际地址以日志为准，Ctrl+C 停止。文档命令也会生成契约，因此运行后检查差异。按需执行的类型检查、测试和工程检查会在构建前核对已提交生成产物，避免重新生成文件掩盖遗漏；基础 `npm run verify` 不执行契约或生成同步检查。详见[测试指南](../../docs/testing.md)。
+`npm run api:docs` 启动本机参考文档，地址以日志为准。不要手改生成客户端；字段、方法、响应和鉴权需同时核对服务实现。契约检查不属于基础 Verify。

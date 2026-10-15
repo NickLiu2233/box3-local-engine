@@ -1,31 +1,5 @@
-# ReactMD, Next.js, and Typescript Example
+# SDK 的 Next.js 示例
 
-This example sets up a simple [ReactMD](https://github.com/mlaursen/react-md), Next.js, and Typescript
-app featuring:
+用于浏览器 SDK 集成的历史示例，入口为 `pages/index.tsx`，页面样式位于 `styles/`。它保留自己的旧依赖，不属于主 Rush 开发栈，也不是引擎的部署模板。
 
-- [app.scss](./styles/app.scss) global styles that conditionally apply the dark theme
-  based on the user's OS preferences
-- a custom [\_app.tsx](./pages/_app.tsx) that uses a persistent layout
-
-For more information about ReactMD's features, styling, components, and API, check out
-the [main documentation](https://react-md.dev).
-
-## Deploy your own
-
-Deploy the example using [Vercel](https://vercel.com?utm_source=github&utm_medium=readme&utm_campaign=next-example) or preview live with [StackBlitz](https://stackblitz.com/github/vercel/next.js/tree/canary/examples/with-react-md-typescript)
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/git/external?repository-url=https://github.com/vercel/next.js/tree/canary/examples/with-react-md-typescript&project-name=with-react-md-typescript&repository-name=with-react-md-typescript)
-
-## How to use
-
-Execute [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app) with [npm](https://docs.npmjs.com/cli/init), [Yarn](https://yarnpkg.com/lang/en/docs/cli/create/), or [pnpm](https://pnpm.io) to bootstrap the example:
-
-```bash
-npx create-next-app --example with-react-md-typescript with-react-md-typescript-app
-# or
-yarn create next-app --example with-react-md-typescript with-react-md-typescript-app
-# or
-pnpm create next-app --example with-react-md-typescript with-react-md-typescript-app
-```
-
-Deploy it to the cloud with [Vercel](https://vercel.com/new?utm_source=github&utm_medium=readme&utm_campaign=next-example) ([Documentation](https://nextjs.org/docs/deployment)).
+日常开发使用仓库根[开发入口](../../../../docs/developer-guide.md)。维护本示例前先核对本地 SDK 构建与该目录 `package.json`，不要套用外部 ReactMD 模板的安装或一键部署链接。

@@ -9,4 +9,4 @@ const capabilities = effectivePlayerAdminCapabilities('moderator', ['players.vie
 
 服主身份仍由服务端会话验证；`owner` 要求不能通过角色字符串授予。客户端菜单判断不替代服务端授权。HTTP 记录继续来自 `@box/apis`，本包不定义另一套 DTO。
 
-仓库中运行 `rush build --to @box/player-policy`，在本目录运行 `npm test`。构建产物提供 ESM、CommonJS 和声明，构建后可 `npm pack` 给其他项目安装；本轮不自动发布到 npm。
+仓库中运行 `npm run build -- --to @box/player-policy`，在本目录运行 `npm test`。构建产物提供 ESM、CommonJS 和声明，构建后可 `npm pack` 给其他项目安装。

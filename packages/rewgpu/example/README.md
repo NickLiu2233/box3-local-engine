@@ -1,23 +1,5 @@
-This is an example project for rewgpu interface
+# 渲染接口示例
 
-## Getting Started
+用于尝试 `@box/rewgpu` 的历史页面，保留旧版 Next.js 和多项本地包引用，未纳入主 Rush 工作区。
 
-### Build @box/rewgpu first
-
-### Install
-
-
-```bash
-npm install
-```
-
-### Develop
-
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### Usage
+维护前先构建对应公共包并核对本目录依赖。当前客户端渲染代码见[浏览器引擎](../../../apps/game/src/engine/README.md)，项目开发见[开发入门](../../../docs/developer-guide.md)。

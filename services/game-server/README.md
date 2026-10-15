@@ -1,96 +1,44 @@
-# BOX 游戏运行时
+# 权威游戏运行时
 
-`services/game-server` 是 Box Local Engine 内部的权威游戏运行时。它由创作端或游玩端
-启动器管理，不再作为普通用户需要单独部署的产品。
+`services/game-server` 维护实体、体素、会话、地图脚本、storage 和反作弊。它由 Creator / Play 管理，不是玩家直接部署的网页服务。
 
-## 本地调试
-
-在本目录可以直接启动一个使用 Local Engine 本地配置的游玩运行时：
-
-```bash
-rushx dev
+```mermaid
+sequenceDiagram
+    participant Browser as 玩家浏览器
+    participant Web as Creator / Play
+    participant Runtime as game-server
+    Browser->>Web: 请求地图会话
+    Web->>Runtime: 校验并创建会话
+    Runtime-->>Web: 返回会话
+    Web-->>Browser: 同源连接地址与会话
+    Browser->>Web: WebSocket 与资源请求
+    Web->>Runtime: 转发到对应地图运行时
 ```
 
-默认监听 `127.0.0.1:9966`，调试器监听 `127.0.0.1:9223`。切换为编辑运行时：
+| 模式        | 行为                                        |
+| ----------- | ------------------------------------------- |
+| 编辑        | 保存工程变化，供 Creator 使用               |
+| 预览 / 游玩 | 执行脚本与权威状态；Play 加载不可变发布快照 |
 
-```bash
-MODE=edit rushx dev
-```
+## 调试与检查
 
-该命令会自动加载 `apps/local-engine/config/local.config.json`，无需手动填写环境、版本或
-区域变量。日常打开完整创作端仍应在仓库根目录执行 `rush dev`。
+日常调试从根目录 `npm run dev:infra` 启动，让本地引擎提供工程、资源、身份和内部配置。
 
-## 在两种模式中的职责
+高级独立调试可用 `npm --prefix services/game-server run dev`，但应先设置 `STORAGE_PATH` 指向独立测试工程/资源目录，以及需要的 `BOX_PROJECT_STATE_PATH` / `HASH`。`MODE=edit` 选择编辑模式；该入口默认使用本地配置，内部端口为 play `9966`、edit `9967`，调试器 `9223`。不要使用真实作品目录做破坏性测试。
 
-创作端会启动：
+| 按需任务     | 根目录命令                                                  |
+| ------------ | ----------------------------------------------------------- |
+| 构建         | `npm --prefix services/game-server run build`               |
+| 运行时回归   | `npm --prefix services/game-server test`                    |
+| 反作弊       | `npm --prefix services/game-server run check:anticheat`     |
+| 本地 storage | `npm --prefix services/game-server run check:local-storage` |
+| 会话撤销     | `npm --prefix services/game-server run check:realtime`      |
 
-- 游玩运行时，用于本地预览。
-- 编辑运行时，用于保存工程变化。
+## 接口边界
 
-游玩端只启动只读游玩运行时，不启动编辑能力，也不提供在线协作编辑。
+- 健康检查为 `/api/health-check`；资源读取为 `/block/:hash`。
+- Play 资源存储只读，`POST /block` 返回 403。
+- `/api/session`、`/api/server-info` 为兼容直连接口，仅在显式设置 `BOX_DIRECT_SESSION_API=true` 时开放。
+- 玩家浏览器必须下载场景可见资源；秘密、授权与重要业务逻辑保留在服务端。
 
-普通用户只运行：
-
-```bash
-rush package-images --architecture <amd64|arm64> --service creator
-rush package-images --architecture <amd64|arm64> --service play
-```
-
-具体作品通过作品管理器导出的部署包启动。底层运行时由产品启动器自动管理。
-
-## 玩家连接链路
-
-```text
-POST /api/createSession
-      ↓
-返回 sessionId 和 socketServerUrl
-      ↓
-WebSocket 连接 /?sid=<sessionId>
-      ↓
-GET /block/:hash 下载世界和人物资源
-```
-
-游玩模式的资源存储为只读：
-
-- `GET /block/:hash`：允许
-- `POST /block`：返回 `403 Forbidden`
-
-健康检查：
-
-```text
-GET /api/health-check
-```
-
-`/api/session` 与 `/api/server-info` 属于旧的游戏服务直连兼容入口，本地产品默认不开放。
-只有服主明确设置 `BOX_DIRECT_SESSION_API=true` 并直接暴露游戏服务端口时才会注册。
-
-## 环境变量
-
-| 变量 | 默认值 | 说明 |
-| --- | --- | --- |
-| `BOX_SERVER_HOST` | `127.0.0.1` | HTTP 和 WebSocket 内部监听地址 |
-| `BOX_SERVER_PORT` | `9966` | HTTP 和 WebSocket 端口 |
-| `BOX_SERVER_DATA_PATH` | Local Engine 数据目录 | 世界和资源目录 |
-| `BOX_SERVER_CONTENT_ID` | `0` | 世界 ID |
-| `BOX_SERVER_NAME` | `BOX 世界` | 玩家看到的名称 |
-| `BOX_LOCAL_PLAYER_LIMIT` | `8` | 最大玩家数 |
-
-普通部署不直接公开这些端口。游玩端网页通过同源网关转发 HTTP、资源和 WebSocket。
-
-## 发布数据约束
-
-游玩端只能加载作品发布后的不可变快照。发行镜像和挂载目录中不应出现：
-
-- 工程 `source/`
-- 项目管理器的写入接口
-- 未发布素材或本机 blob
-- 可编辑 `.boxproject` 工程包
-- 环境变量文件、证书、私钥和 Source Map
-
-玩家浏览器仍需下载场景实际使用的模型、贴图和音频，因此重要逻辑、权限和不可公开数据
-应留在权威运行时中。
-
-完整说明：
-
-- [项目 README](../../README.md)
-- [开发入门](../../docs/developer-guide.md)
+运行地址和密钥由启动器注入，内部控制端口不直接公开。源码配置和数据位置见[开发入门](../../docs/developer-guide.md)，测试边界见[检查与测试](../../docs/testing.md)。

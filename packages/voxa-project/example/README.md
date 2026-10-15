@@ -1,24 +1,5 @@
-This is an example project for testing migrate model and project file
+# 模型工程迁移示例
 
-## Getting Started
+用于手动观察 `.vb` / `.vd` 文件与模型工程迁移，页面支持将样本拖入蓝色区域。它保留旧版 Next.js 与独立依赖，未纳入主 Rush 工作区。
 
-### Build @box/voxa-project first
-
-### Install
-
-
-```bash
-npm install
-```
-
-### Develop
-
-
-```bash
-npm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-### Usage
-Drop .vb/.vd file in blue area
+维护时先构建 `@box/voxa-project` 及依赖，再核对本目录 `package.json` 的本地包引用。当前模型开发入口见 [VOXA](../../../apps/voxa/README.md)，不要把此示例当作正式编辑器。

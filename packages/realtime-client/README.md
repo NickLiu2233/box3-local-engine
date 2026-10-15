@@ -13,4 +13,4 @@ stop();
 
 会话握手只在建立/重连时发生，不周期轮询 HTTP。票据在首个 WebSocket 帧发送，不放入 URL；socket 必须与页面同源，HTTPS 页面使用 WSS。调用方处理事件载荷和重新授权，服务端继续校验票据与权限。
 
-仓库中运行 `rush build --to @box/realtime-client`，本目录运行 `npm test`。构建产物提供 ESM、CommonJS 与声明；构建后可 `npm pack`，本轮不自动发布到 npm。
+仓库中运行 `npm run build -- --to @box/realtime-client`，本目录运行 `npm test`。构建产物提供 ESM、CommonJS 与声明；构建后可 `npm pack`。

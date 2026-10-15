@@ -1,8 +1,8 @@
-# Box Local Engine 游玩端部署包
+# 独立 Play 分发部署
 
-服主只需要 Docker，不需要项目源码、Node.js 或 pnpm。
+服主需要 Docker Engine / Desktop、Compose v2 和 PostgreSQL，无需项目源码或 Node.js。地图通过 `.boxplay` 导入，增加地图不重建镜像。
 
-将以下文件放在同一个目录：
+## 文件与配置
 
 ```text
 play-image.tar
@@ -12,21 +12,23 @@ compose.yml
 play-worlds/
 ```
 
-通过创作端正式导出的分发目录还会包含 `BUILD-INFO.json`、`LICENSE.txt`、
-`THIRD-PARTY-NOTICES.json` 和 `SHA256SUMS`。收到这种目录后先校验完整性：Linux 执行
-`sha256sum -c SHA256SUMS`，macOS 执行 `shasum -a 256 -c SHA256SUMS`。
+正式导出目录还包含构建记录、许可说明和 `SHA256SUMS`；Linux 使用 `sha256sum -c SHA256SUMS`，macOS 使用 `shasum -a 256 -c SHA256SUMS` 校验。
 
-首次部署：
+复制 `.env.example` 为 `.env`，设置：
 
-```bash
-cp .env.example .env
-openssl rand -hex 32
-```
+| 配置                      | 用途                                                                     |
+| ------------------------- | ------------------------------------------------------------------------ |
+| `PERMISSION_TOKEN_SECRET` | 至少 32 字节随机秘密，使用 `openssl rand -hex 32` 生成，升级和重启时保留 |
+| `BOX_DATABASE_URL`        | PostgreSQL 连接                                                          |
+| `BOX_PLAYER_AUTH_API_KEY` | 至少 16 字符，仅供登录门户后端与 Player Service 共用                     |
+| `BOX_PLAYER_LOGIN_URL`    | 服主部署的登录页地址；留空显示未开启登录                                 |
+| `BOX_PLAY_ADMIN_TOKEN`    | 玩家后台的服主令牌                                                       |
 
-把生成值填入 `.env` 的 `PERMISSION_TOKEN_SECRET`，并配置 PostgreSQL 的
-`BOX_DATABASE_URL`，然后执行：
+登录与注册页面单独部署，Play 和 Player Service 不内置玩家登录页。
 
-```bash
+## 启动与导入地图
+
+```sh
 docker image load --input play-image.tar
 docker image load --input player-service-image.tar
 mkdir -p play-worlds
@@ -34,54 +36,28 @@ docker compose up -d
 docker compose ps
 ```
 
-`play-storage-init` 是保留的服务名，实际只初始化运行时缓存卷；显示 `Exited (0)` 是正常状态：它在启动前修复目录所有权，完成后
-立即退出；Play 主容器仍以非 root 的 `node` 用户运行。只有该任务退出码非 `0` 时才需要检查
-volume 权限。
+默认 Play 为 `http://127.0.0.1:3121/`，玩家后台为 `http://127.0.0.1:3124/players`。使用服主身份在“游玩管理 → 游玩地图”导入 `.boxplay`，检查内容后开放地图组。也可把完整发布目录放入 `play-worlds/<作品ID>/`。
 
-默认只允许本机访问 `http://127.0.0.1:3121/`。直接通过服务器 IP 访问时，将
-`BOX_PLAY_HOST_IP` 改为 `0.0.0.0` 并配置服务器防火墙。正式公网环境推荐使用 HTTPS
-反向代理。
+`play-storage-init` 只初始化缓存卷，`Exited (0)` 表示成功。Play 主容器仍以非 root 用户运行。
 
-`BOX_DATABASE_URL` 和固定的 `PERMISSION_TOKEN_SECRET` 是分发部署的必填项；后者不能在
-重启或升级时更换，否则现有会话和运行时身份会失效。公网只暴露 HTTPS 反向代理，Player
-Service 管理页、PostgreSQL 和 Redis 不应直接暴露到互联网。
+## 缓存与传送
 
-两个镜像归档相互独立，更新玩家服务不需要重新分发游玩镜像。玩家管理后台默认是
-`http://127.0.0.1:3124/players`。玩家登录页由服主自行部署；配置
-`BOX_PLAYER_LOGIN_URL` 后，未登录玩家会跳转到该地址，留空则显示“未开启登录”。认证接口仍必须配置
-至少 16 位的 `BOX_PLAYER_AUTH_API_KEY`。Key 只能配置在服主登录
-后端与 Player Service，不能放进浏览器；Origin 限制可通过 `BOX_PLAYER_AUTH_ALLOWED_ORIGINS` 配置。
+| 内容           | 配置                                                                            |
+| -------------- | ------------------------------------------------------------------------------- |
+| 预烘焙缓存     | 保存在 `box-play-runtime-cache` 卷，可重建，不包含账号或脚本持久数据            |
+| 常驻运行时数量 | `BOX_PLAY_PREWARM_RUNTIMES`，设为 `0` 关闭，不超过 `BOX_PLAY_MAX_RUNTIMES`      |
+| 跨地图传送     | `world.teleport(mapId, players, serverId?)`，默认创建独立私有房间               |
+| 私有房间限制   | `BOX_TELEPORT_MAX_ROOMS`、`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS`；仍计入运行时上限 |
 
-登录、注册 API 和玩家管理只在玩家服务中提供；Player Service 和 Play 都不内置玩家登录页。
+## 更新与备份
 
-Play 会在后台依次为全部地图生成持久预烘焙缓存，并保存到 `box-play-runtime-cache` 卷。该卷只保存可再生成的运行时缓存，不保存玩家账号、权限或地图脚本持久数据。
-使用 `BOX_PLAY_PREWARM_RUNTIMES` 调整缓存完成后继续常驻的地图数量，设为 `0` 可关闭；
-该值不应超过 `BOX_PLAY_MAX_RUNTIMES`。运行时回收或容器重启不会再次完整烘焙未变化的地图。
-
-地图组脚本支持 `world.teleport(mapId, players, serverId?)`。默认会创建不公开展示的独立
-私有房间；只有被传送的登录玩家可以进入。`BOX_TELEPORT_MAX_ROOMS` 控制可保留的房间数量，
-`BOX_TELEPORT_ROOM_IDLE_TIMEOUT_MS` 控制无人房间的回收时间，房间运行时仍计入
-`BOX_PLAY_MAX_RUNTIMES`。
-
-地图可以通过玩家管理后台导入。先在 `.env` 设置：
-
-```env
-BOX_PLAY_ADMIN_TOKEN=CHANGE_ME_BOX_PLAY_ADMIN_TOKEN
-```
-
-然后执行 `docker compose up -d --force-recreate`，在玩家管理后台的“游玩管理 → 游玩地图”中导入
-`.boxplay`。也可以把完整发布目录放入 `play-worlds/<作品ID>/`。增加地图不需要重建镜像。
-
-更新镜像：
-
-```bash
+```sh
 docker compose down
 docker image load --input play-image.tar
 docker image load --input player-service-image.tar
 docker compose up -d
 ```
 
-不要把 `.env`、管理员密钥、数据库密码或 `play-worlds` 玩家数据公开发送。
+两个镜像可独立更新。保留 `.env`、地图目录和数据库备份；作品包与缓存卷不能代替 PostgreSQL `pg_dump` 或快照。
 
-地图包、镜像和工程目录备份不包含 PostgreSQL 数据。服主必须另外安排数据库快照或
-`pg_dump`，并验证可以恢复玩家账号、审计记录和地图数据空间。
+远程访问时配置实际公开地址和 HTTPS，管理路由、数据库、Redis 不直接公开。详细安装和网络说明见[服务器指南](../server/README.md)。

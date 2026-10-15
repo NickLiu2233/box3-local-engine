@@ -68,27 +68,7 @@ BOX3 本地引擎提供地图编辑、模型制作、地图脚本、多人游玩
 curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 ```
 
-安装完成后，保存终端显示的管理地址和密钥：
-
-| 密钥                       | 用途                       |
-| -------------------------- | -------------------------- |
-| `BOX_SERVER_MANAGER_TOKEN` | 登录 Linux Web 管理器      |
-| `BOX_PLAY_ADMIN_TOKEN`     | 以服主身份登录玩家管理后台 |
-
-这两个密钥不能互换。安装器默认允许通过网络访问管理端，端口为 TCP `3130`；远程直连需要配置安全组和防火墙，并通过 HTTPS 反向代理、VPN 或来源 IP 白名单保护管理入口。只需本机访问时，可改为回环地址安装：
-
-```sh
-curl -fsSL https://assets.box3.fun/local-engine/install.sh -o install.sh
-sudo BOX3_MANAGER_BIND_IP=127.0.0.1 sh install.sh
-```
-
-再从自己的电脑建立 SSH 隧道：
-
-```sh
-ssh -L 3130:127.0.0.1:3130 <服务器用户>@<服务器地址>
-```
-
-保持连接，在浏览器打开 `http://127.0.0.1:3130`。随后在 Web 管理器配置数据库、访问地址并启动业务服务。详细安装、升级、备份与排障见 [Linux 服务器指南](distribution/server/README.md)。
+安装后保存终端显示的管理地址和密钥：`BOX_SERVER_MANAGER_TOKEN` 用于 Web 管理器，`BOX_PLAY_ADMIN_TOKEN` 用于玩家后台。安装器默认开放 TCP `3130`；仅本机访问、SSH 隧道、数据库与防火墙配置见 [Linux 服务器指南](distribution/server/README.md)。
 
 ## 从创作到游玩
 

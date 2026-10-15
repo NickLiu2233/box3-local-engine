@@ -1,31 +1,12 @@
-# 图标
-仅包含图标库的图标。
+# 图标组件
 
-# 使用方法
-这个库利用figma-export直接从figma对应的文件中拉取所有icon图标，生成svg组件。
-并通过typescript编译成js。
+`@box/icons` 将 `output/` 中的 React 图标编译为工作区使用的组件。普通开发直接使用已提交图标，无需 Figma 账号。
 
-执行命令:
+```sh
+# 仓库根目录执行
+npm run build -- --to @box/icons
+```
 
-`rushx figma:build`
+需要从 Figma 重新导出时，在本目录复制 `.env.example` 为 `.env`，填写自己的 `FIGMA_TOKEN`，核对 `.figmaexportrc.js`，并将导出脚本的格式配置更新为当前 `.prettierrc.cjs` 后，再运行 `npm run figma:build`。重新导出需要 Figma 权限和网络。
 
-# 配置Access Token
-由于是从figma上拉取数据，需要自行配置token。
-
-## 如何获取Figma Access Token
-详见：[Figma - Manage personal access token](https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens)
-
-## 设置配置文件
-复制一份.env.example文件，重命名为.env。
-文件内的`{TOKEN}`更新为你获得Token即可。
-
-# 提交代码
-output目录下的文件需要一并被提交。会作为编译的源码。
-
-# 与设计的约定
-与设计师达成了以下约定
-- 图标库的图标全部放到figma单独的一个页面（Page）中。并且只有图标被设置为component。
-- 图标的命名遵循以下规范
-  - 以"icon/"开头，方便设计师在fimga上使用
-  - 内容使用连词符风格。
-  - 不能重名。
+图标放在专用 Page 中，以 component 导出；名称使用唯一的 `icon/<kebab-case>`。更新后提交 `output/`，不提交 Token 或 `.env`。Token 管理见 [Figma 文档](https://help.figma.com/hc/en-us/articles/8085703771159-Manage-personal-access-tokens)。

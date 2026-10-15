@@ -1,63 +1,43 @@
-# BOX 浏览器界面
+# 网页编辑器与玩家服务
 
-`apps/game` 是 Box Local Engine 的浏览器界面实现。它同时为创作端和游玩端提供页面，
-但两种构建包含的能力不同。
+`apps/game` 为 Creator、Play 和 Player Service 提供页面与 HTTP 服务，按 `BOX_DEPLOYMENT_MODE` 构建不同产物。
 
-## 创作端
+| 模式           | 页面与职责                                                           |
+| -------------- | -------------------------------------------------------------------- |
+| Creator        | `/projects` 工程管理、`/e/<project-id>` 编辑、`/p/<project-id>` 预览 |
+| Play           | 发布地图库、`/p/<publicId>` 游玩、会话与资源转发                     |
+| Player Service | 玩家身份、管理 API、玩家后台静态资源                                 |
 
-```bash
-node apps/local-engine/src/deploy.js creator
+Creator 和 VOXA 使用获授权玩家的创作能力；后台管理使用独立管理会话。Play 的地图来自已导入 `.boxplay`，不会自动显示 Creator 工程。
+
+## 开发与部署
+
+源码开发在仓库根目录运行：
+
+```sh
+npm run dev:infra
 ```
 
-创作端包含：
+Docker 调试入口也从仓库根目录执行：
 
-- 作品管理页 `/projects`
-- 编辑页 `/e/<project-id>`
-- 本地预览页 `/p/<project-id>`
-- 本地工程导入、导出和发布接口
-
-创作端应在创作者自己的电脑或可信内网使用。它没有面向公网的身份验证，不能作为玩家
-网站直接发布。
-
-## 游玩端
-
-```bash
-node apps/local-engine/src/deploy.js play
-```
-
-游玩端是专门生成的 play-only 构建。构建期间会将编辑入口、管理员实现和管理员界面
-替换为轻量适配器，不复制 Monaco 编辑器资源，也不提供本地项目管理接口。
-
-源码部署命令会生成 play-only 构建，避免把完整创作构建误当成游玩端启动。反过来，
-创作端也会拒绝使用 play-only 产物。
-
-玩家只需访问部署者给出的游玩地址。游戏会连接同一套游玩部署内部的只读运行时，请求
-游客会话、建立 WebSocket 并读取 `/block/:hash` 资源。
-
-## Docker
-
-```bash
+```sh
 node apps/local-engine/src/deploy.js creator
 node apps/local-engine/src/deploy.js play
 node apps/local-engine/src/deploy.js stop
 ```
 
-具体作品由作品管理器导出的部署包绑定版本并启动。
+开发地址见[开发入门](../../docs/developer-guide.md)。容器网页监听 `3000`，宿主机端口由部署配置映射，不能与源码端口混用。
 
-游玩镜像只应复制 Next standalone 运行产物及实际运行依赖，不应包含：
+## 代码入口
 
-- `apps/game/src` TypeScript 源码
-- 编辑器和 Monaco
-- 本地创作工程
-- 可编辑工程导出包
-- `.env`、证书、私钥和 Source Map
+| 位置                                 | 用途                           |
+| ------------------------------------ | ------------------------------ |
+| `pages/`                             | 页面与 HTTP 路由               |
+| `server/`                            | 身份、管理、实时连接与代理实现 |
+| `src/views/edit/`、`src/views/play/` | 创作和游玩界面                 |
+| `src/engine/`                        | 浏览器游戏引擎                 |
+| `shared/`                            | 页面与服务共用逻辑             |
 
-## 同源入口
+浏览器通过同源入口访问会话、资源和 WebSocket，网页服务转发到内部 game-server。Play 使用独立构建，移除编辑器、Monaco 和工程写入入口；不要将 Creator 产物当作游玩镜像。
 
-创作端与游玩端对外都只监听 `3000`。Next 会把编辑、会话、地图资源和 WebSocket 转发到
-仅监听本机的内部运行时。浏览器始终使用页面当前域名，不需要单独填写运行时地址。
-
-完整说明：
-
-- [项目 README](../../README.md)
-- [开发入门](../../docs/developer-guide.md)
+按需检查：`npm --prefix apps/game run lint`、`npm --prefix apps/game test -- --runInBand`。接口变更同步 `@box/apis`；完整范围见[检查与测试](../../docs/testing.md)。

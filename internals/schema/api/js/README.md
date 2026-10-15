@@ -1,62 +1,38 @@
-# Game JS Scripts
+# 地图服务端脚本入门
 
-Game is a multiplayer web-based game creation platform. Scripts in Game are JavaScript programs which run on the server, respond to various events and update the game engine state.  Scripts runs in a separate process from the main engine for security purposes and to prevent user code from crashing the game engine. Scripts are very powerful and can control almost any aspect of the game state.  Here is an example:
+地图脚本响应玩家与世界事件，修改服务端实体和体素状态，在隔离环境中执行。接口声明以本目录和 `packages/script-api` 为准，编辑器会提供类型提示。
 
-```javascript
-// When a player joins the game ...
+## 玩家加入与体素
+
+```js
 world.onPlayerJoin(({ entity }) => {
-    // ... and whenever that player touches a voxel ...
     entity.onVoxelContact(({ x, y, z }) => {
-        // ... turn that voxel into air
         world.voxels.setVoxel(x, y, z, 0);
     });
 });
-
-console.log('event handlers installed');
 ```
 
-This script will make players break whatever voxels they touch.
+示例会移除玩家接触的体素。只在独立测试地图运行，不能将浏览器 DOM 或任意 Node.js 模块当作脚本环境能力。
 
-## Execution model
+## 事件与取消
 
-As on the web, the scripts execute using an event based API.  Server-side engine state is updated in ticks, which are scheduled at intervals of roughly 64ms apart.  During a tick the engine does the following things:
-
-1. Apply updates from the clients
-2. Apply updates from scripts
-3. Update the engine physics state
-4. Synchronize state with all scripts and schedule a new script tick
-5. Send updated state to all clients
-
-If a script is running slow or has crashed, the engine skips scheduling more ticks until it has unstuck.  This prevents a script from getting stuck in a loop where it can't keep up with the engine process.  Any events or updates to the script are synchronized to occur at the tick boundary.
-
-## Events
-
-Events are dispatched into the script process whenever something changes in the engine.  Scipts can subscribe to these events using "EventChannels".  To subscribe to an event channel, you call it with the handler passed in as an argument.  Calling a handler returns a token which can be used to cancel any pending events.  For example:
-
-```javascript
-let tickCount = 0;
-let tickHandler = world.onTick(({ tick }) => {
-    console.log(tickCount++);
-    if (tickCount > 10) {
-        tickHandler.cancel();
+```js
+let count = 0;
+const subscription = world.onTick(() => {
+    count += 1;
+    if (count > 10) {
+        subscription.cancel();
     }
 });
 ```
 
-Examples of events include ticks, physics collisions, players entering/leaving the game, pushing a button and so on.
+事件处理器返回可取消订阅。玩家加入/离开、碰撞、按键和 tick 使用各自事件通道。
 
-## World
+| 入口                                         | 用途                     |
+| -------------------------------------------- | ------------------------ |
+| `world`                                      | 世界状态、实体查找和创建 |
+| `world.voxels`                               | 地形与体素操作           |
+| `world.createEntity()`、`entity.destroy()`   | 创建与销毁实体           |
+| `world.onPlayerJoin` / `world.onPlayerLeave` | 玩家生命周期             |
 
-The `world` object is the entry point for the entire game api.  It has methods for enumerating entities and players as well as searching the world using various methods.
-
-## Voxel
-
-The `world.voxel` object lets you modify the terrain.
-
-## Entities
-
-Objects in Game are called "Entities".  An entity has some physical properties, like position, velocity and so on, as well as other properties like mesh or display information.  Scripts can create entities by calling `world.createEntity()` or copy copy an entity using the same method.  You can destroy an entity by calling `entity.destroy()` on it.
-
-## Players
-
-Players are a special type of entity in game corresponding to a connected player.  You can trap a player login event using the `onPlayerJoin` event handler and detect when they leave using the `onPlayerLeave` method.
+运行时按 tick 协调客户端输入、脚本更新、物理与状态同步。具体调度和权限以服务端实现为准，不依赖固定毫秒数编写逻辑。首次创建、预览和发布见[首个作品教程](../../../../docs/first-project.md)。
