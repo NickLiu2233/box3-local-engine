@@ -1,11 +1,9 @@
 'use strict';
 
-const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
-const exceptionFile = path.join(root, 'config/security/dependency-audit-exceptions.json');
 const severities = ['info', 'low', 'moderate', 'high', 'critical'];
 
 function parseAuditReport(output) {
@@ -155,7 +153,7 @@ function evaluateAudit(report, exceptions) {
 }
 
 function auditDependencies({ run = spawnSync, config, now = new Date(), log = console.log } = {}) {
-    const exceptions = config || JSON.parse(fs.readFileSync(exceptionFile, 'utf8'));
+    const exceptions = config || { formatVersion: 1, exceptions: [] };
     validateExceptions(exceptions, now);
     const execution = run(
         process.execPath,
@@ -174,10 +172,10 @@ function auditDependencies({ run = spawnSync, config, now = new Date(), log = co
             'Dependency audit command failed; check registry connectivity and installed dependencies',
         );
     }
-    // Exit 1 is normal when pnpm finds a high vulnerability. Never treat it as
+    // Exit 1 is normal when pnpm finds vulnerabilities, including lower levels. Never treat it as
     // a parse error or turn a network/registry error into a successful audit.
     const result = evaluateAudit(parseAuditReport(execution.stdout), exceptions.exceptions);
-    if (execution.status === 1 && !result.counts.high && !result.counts.critical) {
+    if (execution.status === 1 && severities.every((severity) => !result.counts[severity])) {
         throw new Error('Dependency audit command failed without vulnerability records');
     }
     log(
@@ -203,9 +201,7 @@ if (require.main === module) {
         auditDependencies();
     } catch (error) {
         // Raw subprocess output may contain registry URLs or credentials.
-        console.error(
-            error instanceof SyntaxError ? 'Invalid audit exception JSON' : error.message,
-        );
+        console.error(error.message);
         process.exitCode = 1;
     }
 }

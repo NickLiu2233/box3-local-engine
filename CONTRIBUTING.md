@@ -59,16 +59,7 @@ npm run verify
 git diff --check
 ```
 
-`verify` 依次运行格式、Lint、类型与测试，测试包含 game Jest、玩家启动器检查、权威运行时回归、反作弊与工程检查。它也编译并测试 Rust 共享核心和 Web 管理器，需要 Rust 工具链。局部模块测试便于开发时定位问题，但不能代替完整验证；真实 PostgreSQL 专项、Docker 业务部署、Tauri/Electron 图形运行和各平台安装包仍需要额外检查。验证失败时先判断是否由本次修改引起，PR 中明确说明原因与影响，不能将未执行或跳过的检查写成通过。
-
-仅修改文档时，至少执行：
-
-```sh
-node scripts/check-documentation.js
-git diff --check
-```
-
-同时检查 Markdown 格式和示例命令是否与当前脚本一致。文档链接检查不执行示例，也不验证远程页面是否可访问。格式命令见开发入门；全仓格式化后要检查差异，不提交与本次任务无关的文件。
+`verify` 依次运行格式、Lint、类型与测试，测试包含 game Jest、玩家启动器检查、权威运行时回归、工程检查。它也编译并测试 Rust 共享核心和 Web 管理器，需要 Rust 工具链。局部模块测试便于开发时定位问题，但不能代替完整验证；真实 PostgreSQL 专项、Docker 业务部署、Tauri/Electron 图形运行和各平台安装包仍需要额外检查。验证失败时先判断是否由本次修改引起，PR 中明确说明原因与影响，不能将未执行或跳过的检查写成通过。
 
 ## 5. 暂存、提交与推送
 
@@ -78,16 +69,11 @@ git diff --check
 git status --short
 git diff -- README.md CONTRIBUTING.md docs/
 git add README.md CONTRIBUTING.md docs/
-node scripts/check-public-repository.js --staged
 git diff --cached --check
 git diff --cached --stat
 git commit -m "docs: clarify development and contribution workflow"
 git push -u origin HEAD
 ```
-
-`check-public-repository.js --staged` 检查暂存内容中的公开仓库风险；运行前必须先暂存要提交的文件。它不能保证识别所有秘密，仍应人工查看暂存差异。不提交真实凭据、用户数据、地图、数据库备份、日志或本机构建产物。新增公开示例优先使用自行创作的最小内容。
-
-`apps/local-engine/data/blobs/` 整个目录作为默认资源纳入源码与 Docker 构建输入，新增资源时直接提交对应文件，无需维护逐个哈希的清单或排除规则。构建会生成运行资源并按引用复制到最终镜像；上传、项目、缓存和备份使用各自的数据目录，不放入默认资源目录。
 
 提交信息应描述改了什么，例如 `fix: handle missing map metadata` 或 `docs: explain staging image reuse`。代码、相关测试、契约和说明一起提交，让评审者能理解并验证同一行为。
 
@@ -103,7 +89,7 @@ PR 说明至少包含：
 - **用户可见变化**：界面截图或操作步骤；发行改动说明目标平台与产物来源。
 - **风险与回滚**：涉及权限、持久数据、部署或迁移时说明备份与恢复方案。
 
-PR 创建、更新、重新打开和标记为可评审时，Verify 自动运行质量检查，包括格式、Lint、类型、测试、生产依赖审计和 Compose 模板校验。依赖审计拒绝全部 critical 与未经审查的 high；有期限的精确例外见 `config/security/dependency-audit-exceptions.json`，过期或依赖路径改变会失败，不能把例外解释为没有漏洞。PR 本身不打包、不上传 OSS，Fork 贡献者无需配置官方发布密钥。自动检查通过是评审依据之一，不代表完成所有平台的实际安装与业务验收。
+PR 创建、更新、重新打开和标记为可评审时，Verify 自动运行质量检查，包括格式、Lint、类型、测试、生产依赖审计和 Compose 模板校验。生产依赖审计拒绝全部 high 与 critical，不依赖例外配置文件。PR 本身不打包、不上传 OSS，Fork 贡献者无需配置官方发布密钥。自动检查通过是评审依据之一，不代表完成所有平台的实际安装与业务验收。
 
 评审要求修改时，继续提交到同一个主题分支即可更新 PR；说明关键调整并重新运行受影响检查。合并由维护者决定，合并后可以删除自己的主题分支，下次贡献重新从最新 dev 创建。
 

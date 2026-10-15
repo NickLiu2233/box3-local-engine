@@ -4,21 +4,18 @@
 
 # BOX3 本地引擎
 
-[![Node.js](https://img.shields.io/badge/Node.js-22.17-339933.svg)](https://nodejs.org/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.6.3-3178C6.svg)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-19.2.1-61DAFB.svg)](https://react.dev/)
-[![Rush](https://img.shields.io/badge/Rush-5.156.0-2B4F81.svg)](https://rushjs.io/)
-[![Rust](https://img.shields.io/badge/Rust-000000.svg)](https://www.rust-lang.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791.svg)](https://www.postgresql.org/)
-[![Redis](https://img.shields.io/badge/Redis-7-DC382D.svg)](https://redis.io/)
-[![Docker](https://img.shields.io/badge/Docker-Compose_v2-2496ED.svg)](https://www.docker.com/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
+**在自己的电脑或服务器上创作、发布和运行网页多人 3D 游戏。**
 
-**网页多人 3D 创作与游玩，自主部署与管理**
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
+[![Node.js](https://img.shields.io/badge/Node.js-22.17-339933.svg)](https://nodejs.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.93.0-000000.svg)](https://www.rust-lang.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose_v2-2496ED.svg)](https://www.docker.com/)
+
+[下载安装](https://github.com/box3lab/box3-local-engine/releases) · [使用指南](https://docs.box3lab.com/local-engine/getting-started/first-start.html) · [开发文档](docs/README.md) · [问题反馈](https://github.com/box3lab/box3-local-engine/issues)
 
 </div>
 
-BOX3 本地引擎把地图创作、模型编辑、多人游玩和服务器管理部署在自己的电脑或 Linux 服务器上。创作者使用 ARENA 制作地图、用 VOXA 编辑模型，再发布给玩家通过浏览器游玩。
+BOX3 本地引擎提供地图编辑、模型制作、地图脚本、多人游玩和服务管理。创作者通过浏览器制作作品，服主将作品部署到自己的服务器，玩家通过浏览器或玩家启动器进入游戏。
 
 <table align="center" cellspacing="12" cellpadding="0">
   <tr>
@@ -31,73 +28,84 @@ BOX3 本地引擎把地图创作、模型编辑、多人游玩和服务器管理
   </tr>
 </table>
 
-## 安装与使用
+## 项目能力
 
-### 在电脑上安装桌面启动器
+| 功能     | 说明                                                                   |
+| -------- | ---------------------------------------------------------------------- |
+| 地图创作 | 使用创作端 Creator（ARENA 编辑器）编辑场景、体素与脚本，预览并发布作品 |
+| 模型制作 | 使用 VOXA 编辑模型、皮肤和动画，并将资源用于地图                       |
+| 多人游玩 | 使用游玩端 Play 运行已发布地图，支持地图组与地图间传送                 |
+| 玩家管理 | 通过 Player Service 和玩家管理后台管理账号、权限及游玩地图             |
+| 自主部署 | 通过桌面部署管理器或 Linux Web 管理器配置、启动和维护服务              |
+| 作品迁移 | 导出可编辑工程 `.boxproject`，或交付游玩包 `.boxplay`                  |
 
-先安装并启动 Docker，再下载启动器：Windows、macOS 请安装 [Docker Desktop](https://www.docker.com/products/docker-desktop/)；Linux 请安装并启动 Docker Engine。Windows 还需要启用 CPU 虚拟化并安装 WSL 2。建议电脑有 4 核 CPU、8 GB 内存和 30 GB 可用磁盘空间；Docker 镜像、地图和数据库会继续占用磁盘空间。
+部署管理器负责安装和管理服务器；**玩家启动器只负责连接已有服务器并游玩**。两者用途不同，创作和开服请选择部署管理器。
 
-前往 [GitHub Releases](https://github.com/box3lab/box3-local-engine/releases) 下载最新版本，再按系统和处理器选择对应 ZIP：Windows x64/ARM64、macOS Apple 芯片（ARM64）、Linux x64/ARM64。
+服务使用 Docker 运行，玩家身份与地图脚本持久数据使用 PostgreSQL，Redis 为可选组件。首次安装和镜像下载需要联网；完全离线的地图应选择“仅本地资源”，引用对象存储的地图仍需访问相应资源地址。
 
-将 ZIP 完整解压到本地目录，再打开 BOX3 Engine Launcher。首次启动时保持 Docker 运行，并按界面提示配置服务；需要的服务镜像会在启动时下载。
+## 选择使用方式
 
-安装后请阅读[首次启动指南](https://docs.box3lab.com/local-engine/getting-started/first-start.html)。遇到问题可加入 QQ 群「Box3Local秘密基地」交流：[1107448537](https://qm.qq.com/q/yV2NR8skec)。
+| 你的目标                  | 推荐入口                                         | 需要准备                   |
+| ------------------------- | ------------------------------------------------ | -------------------------- |
+| 在自己的电脑上创作或开服  | [桌面安装](#桌面安装)                            | Docker 和桌面部署管理器    |
+| 在 Linux 服务器上长期运行 | [服务器安装](#服务器安装)                        | Linux AMD64 / ARM64 服务器 |
+| 修改引擎、编辑器或管理器  | [源码开发](#源码开发)                            | Git、Node.js 和开发环境    |
+| 连接已有服务器游玩        | [玩家启动器说明](apps/player-launcher/README.md) | 服主提供的服务器地址与账号 |
 
-### 在 Linux 服务器上安装
+### 桌面安装
 
-适用于无桌面 Linux 服务器，支持 AMD64 和 ARM64。推荐 Ubuntu 或 Alibaba Cloud Linux 3/4 或 Debian。联网安装器会准备 Docker Engine 和 Compose v2，下载并校验发行包，然后启动 Web 管理器。
+1. 安装并启动 Docker：Windows、macOS 使用 [Docker Desktop](https://www.docker.com/products/docker-desktop/)；Linux 使用 Docker Engine 和 Compose v2。Windows 还需启用硬件虚拟化并安装 WSL 2。
+2. 前往 [GitHub Releases](https://github.com/box3lab/box3-local-engine/releases)，选择桌面部署管理器对应的 ZIP，完整解压后打开 **BOX3 Engine Launcher**。
+3. 按界面提示配置数据库和服务，等待所需镜像下载并启动，再按[首次启动指南](https://docs.box3lab.com/local-engine/getting-started/first-start.html)创建账号和配置创作权限。
 
-```bash
+桌面包支持 Windows x64 / ARM64、macOS Apple 芯片（ARM64）、Linux x64 / ARM64，具体文件以 Releases 为准。小规模游玩建议至少 4 核 CPU、8 GB 内存和 30 GB 可用磁盘；同时运行创作、模型和游玩服务，建议 8 核、16 GB 内存及 50 GB 可用磁盘起。
+
+### 服务器安装
+
+适用于无桌面的 Linux AMD64 / ARM64 服务器。推荐使用 Ubuntu、Debian 或 Alibaba Cloud Linux 3 / 4。联网安装器会准备 Docker Engine 和 Compose v2，下载并校验发行包，然后启动 Web 管理器。
+
+```sh
 curl -fsSL https://assets.box3.fun/local-engine/install.sh | sudo bash
 ```
 
-安装完成后保存终端显示的管理地址和两种密钥：
+安装完成后，保存终端显示的管理地址和密钥：
 
-| 密钥                       | 用途                          |
-| -------------------------- | ----------------------------- |
-| `BOX_SERVER_MANAGER_TOKEN` | 登录 Linux Web 管理器         |
-| `BOX_PLAY_ADMIN_TOKEN`     | 以 owner 身份登录玩家管理后台 |
+| 密钥                       | 用途                       |
+| -------------------------- | -------------------------- |
+| `BOX_SERVER_MANAGER_TOKEN` | 登录 Linux Web 管理器      |
+| `BOX_PLAY_ADMIN_TOKEN`     | 以服主身份登录玩家管理后台 |
 
-两种密钥不可互换，也不要发到公开聊天、截图或日志中。管理端口默认为 TCP `3130`；需要从其他电脑访问时，在云安全组和系统防火墙放行该端口。登录 Web 管理器后，按[首次启动指南](https://docs.box3lab.com/local-engine/getting-started/first-start.html)配置数据库、访问范围并启动业务服务。
+这两个密钥不能互换。安装器默认允许通过网络访问管理端，端口为 TCP `3130`；远程直连需要配置安全组和防火墙，并通过 HTTPS 反向代理、VPN 或来源 IP 白名单保护管理入口。只需本机访问时，可改为回环地址安装：
 
-安装器默认让管理端可从网络访问，建议通过 HTTPS 反向代理、VPN 或来源 IP 白名单保护管理入口。只允许本机访问时，可用回环地址安装，并通过 SSH 隧道登录：
-
-```bash
+```sh
 curl -fsSL https://assets.box3.fun/local-engine/install.sh -o install.sh
 sudo BOX3_MANAGER_BIND_IP=127.0.0.1 sh install.sh
 ```
 
-```bash
+再从自己的电脑建立 SSH 隧道：
+
+```sh
 ssh -L 3130:127.0.0.1:3130 <服务器用户>@<服务器地址>
 ```
 
-保持 SSH 连接，在本机浏览器打开 `http://127.0.0.1:3130`。服务器包的完整说明、日常运维和排障步骤见 [Linux 服务器安装指南](distribution/server/README.md)。
+保持连接，在浏览器打开 `http://127.0.0.1:3130`。随后在 Web 管理器配置数据库、访问地址并启动业务服务。详细安装、升级、备份与排障见 [Linux 服务器指南](distribution/server/README.md)。
 
-日常运维命令：
+## 从创作到游玩
 
-```bash
-cd /opt/box3-engine
-./status.sh       # 查看状态
-./start.sh        # 启动 Web 管理器
-./logs.sh play    # 查看 Play 日志
-./stop.sh         # 停止服务，不删除数据
-```
+1. **准备账号**：服主配置玩家登录门户，创建玩家账号并授予创作权限。普通注册账号不会自动获得管理或创作权限。
+2. **制作作品**：在 Creator 创建地图，通过 ARENA 编辑场景和脚本，使用 VOXA 制作模型，再进入预览。
+3. **备份工程**：导出 `.boxproject`，用于继续编辑、迁移和协作。
+4. **发布游玩**：发布并导出 `.boxplay`，由服主在玩家管理后台导入 Play；玩家登录后即可进入。
 
-## 服务与作品
+Play 展示已导入的发布地图，Creator 中正在编辑的工程不会自动出现在游玩列表。源码环境的完整操作示例见[首个作品教程](docs/first-project.md)。
 
-- **Creator**：创建、编辑和预览地图。
-- **VOXA**：编辑模型、皮肤和动画。
-- **Play**：运行已发布的地图，供玩家通过浏览器游玩。
-- **Player Service 与玩家后台**：管理玩家身份、账号和游玩地图。
-- **玩家登录门户**：可定制登录、注册、退出和账号设置页面。可从 [BOX3 玩家登录门户模板](https://github.com/box3lab/box3-engine-player-auth-template) 开始；门户需要在部署管理器中配置并连接 Player Service，不能脱离本地引擎独立提供账号功能。
-- **部署管理器**：配置、启动和维护本地服务。
-- **玩家启动器**：连接已有服务器并游玩，不负责部署服务器。
+玩家登录门户提供登录、注册、退出和账号设置页面，需要连接 Player Service。可以使用仓库中的[参考实现](apps/player-auth-portal/README.md)，或基于 [BOX3 玩家登录门户模板](https://github.com/box3lab/box3-engine-player-auth-template)定制，并在部署管理器中配置。
 
-`.boxproject` 是可编辑工程，适合备份和协作；`.boxplay` 是发布后的地图快照，适合导入 Play。更新引擎不会替代作品导出和数据备份，数据位置与格式见[本地引擎说明](apps/local-engine/README.md)。
+## 源码开发
 
-## 从源码开发
+使用 Node.js `22.17.x`，并提前启动 Docker。工作区由 Rush 管理，仓库脚本会准备锁定版本的 Rush 和 pnpm。原生管理器开发与完整验证还需要 Rust stable 及平台工具链，详见[开发入门](docs/developer-guide.md)。
 
-修改源码需要 Node.js `22.17.x` 和 Docker Compose v2。仓库脚本会准备锁定版本的 Rush 和 pnpm；原生管理器构建与完整验证还需要 Rust stable 和对应平台工具链。
+在终端执行：
 
 ```sh
 git clone https://github.com/box3lab/box3-local-engine.git
@@ -108,15 +116,49 @@ npm run check:workspace
 npm run dev:infra
 ```
 
-开发服务默认地址、数据库设置、平台工具链和故障排查见[开发入门](docs/developer-guide.md)。首次创作需要服主初始化管理入口，并给测试玩家授予创作权限；按[首个作品教程](docs/first-project.md)完成创建、预览、导出和游玩。
+Windows PowerShell 使用 `Copy-Item .env.docker.example .env`；已有 `.env` 时跳过复制。`dev:infra` 会启动开发用 PostgreSQL、Redis 和源码服务，首次启动需要构建依赖。已有 PostgreSQL 时可配置 `BOX_DATABASE_URL`，改用 `npm run dev`。
 
-改动后在根目录运行 `npm run verify`。它检查格式、Lint、类型、模块测试与工程检查；代码约定见[代码规范](docs/code-style.md)。全部入口见[文档导航](docs/README.md)。
+服务就绪后，常用开发入口为：
 
-## 参与贡献
+| 入口            | 默认地址                 |
+| --------------- | ------------------------ |
+| 玩家登录门户    | `http://127.0.0.1:3125/` |
+| 创作端 Creator  | `http://127.0.0.1:3127/` |
+| 模型编辑器 VOXA | `http://127.0.0.1:3123/` |
+| 游玩端 Play     | `http://127.0.0.1:3121/` |
+| 玩家管理后台    | `http://127.0.0.1:8000/` |
 
-源码贡献流程、Fork 与分支、验证要求和 Pull Request 说明见[贡献指南](CONTRIBUTING.md)。社区贡献只向 `dev` 提交 PR。
+源码开发产生的地图、模型、导入包、备份、导出和缓存统一放在仓库根目录 `.local-data/`，Git 与镜像构建均忽略该目录。可通过 `BOX_DEV_DATA_DIRECTORY` 更换开发数据根目录。账号和脚本持久数据仍在 PostgreSQL 中，备份作品目录不能代替数据库备份。
 
-问题反馈与讨论见 [GitHub Issues](https://github.com/box3lab/box3-local-engine/issues)。
+常用命令均在仓库根目录执行：
+
+| 命令                                  | 用途                                   |
+| ------------------------------------- | -------------------------------------- |
+| `npm run dev:creator:infra`           | 启动创作栈与开发基础服务，缩小调试范围 |
+| `npm run dev:manager`                 | 调试部署管理器网页界面                 |
+| `npm run verify`                      | 检查格式、Lint、类型、测试和工程约束   |
+| `node scripts/check-documentation.js` | 检查本地文档链接与基础入口             |
+
+目录职责见[架构指南](docs/architecture.md)，局部验证、数据库测试和平台验收见[测试指南](docs/testing.md)。镜像与安装包构建见[发布与版本说明](docs/release-and-version.md)。
+
+## 文档
+
+| 文档                                                                                   | 内容                               |
+| -------------------------------------------------------------------------------------- | ---------------------------------- |
+| [首次启动指南](https://docs.box3lab.com/local-engine/getting-started/first-start.html) | 安装后的配置、服务启动与使用       |
+| [Linux 服务器指南](distribution/server/README.md)                                      | 无桌面服务器的安装、运维与备份     |
+| [首个作品教程](docs/first-project.md)                                                  | 从账号准备到编辑、预览、导出和游玩 |
+| [开发入门](docs/developer-guide.md)                                                    | 开发环境、数据目录、常用命令与排障 |
+| [架构指南](docs/architecture.md)                                                       | 应用职责、服务连接与作品数据流     |
+| [测试指南](docs/testing.md)                                                            | 自动检查范围和实际运行验收         |
+| [全部文档](docs/README.md)                                                             | 模块说明、代码规范与发布流程       |
+
+## 贡献与交流
+
+欢迎提交问题反馈、文档修正、测试和代码改进。开始前请阅读[贡献指南](CONTRIBUTING.md)与[代码规范](docs/code-style.md)；社区贡献统一向 `dev` 分支提交 Pull Request。
+
+- 问题与功能建议：[GitHub Issues](https://github.com/box3lab/box3-local-engine/issues)。报告时附上系统、版本、复现步骤和脱敏日志。
+- 社区交流：QQ群「Box3Local秘密基地」，群号 [1107448537](https://qm.qq.com/q/yV2NR8skec)。
 
 ## 许可证
 

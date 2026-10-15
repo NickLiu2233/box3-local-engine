@@ -173,7 +173,7 @@
     "mime": "3.0.0",
     "minimist": "1.2.8",
     "rollup": "4.59.0",
-    "sass": "1.49.10",
+    "sass": "1.93.3",
     "sass-loader": "15.0.0",
     "shadcn": "3.5.0",
     "style-loader": "4.0.0",

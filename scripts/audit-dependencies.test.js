@@ -65,6 +65,19 @@ function execute(audit, config = reviewed, overrides = {}) {
     return { result, output };
 }
 
+test('the CI entry point needs no exception file and blocks high vulnerabilities by default', () => {
+    const run = (audit) =>
+        auditDependencies({
+            now,
+            log() {},
+            run() {
+                return { status: 0, stdout: JSON.stringify(audit) };
+            },
+        });
+    assert.equal(run(report()).blocked.length, 0);
+    assert.throws(() => run(report([vulnerability()])), /unreviewed high or critical/);
+});
+
 test('accepts a clean production audit with the Rush banner and reports lower severities', () => {
     const audit = report();
     audit.metadata.vulnerabilities.low = 2;
@@ -72,6 +85,13 @@ test('accepts a clean production audit with the Rush banner and reports lower se
     const { result, output } = execute(audit);
     assert.equal(result.blocked.length, 0);
     assert.ok(output[0].includes('3 moderate, 2 low'));
+});
+
+test('accepts audit exit 1 when the report contains only lower-severity vulnerabilities', () => {
+    const audit = report();
+    audit.metadata.vulnerabilities.moderate = 2;
+    const { result } = execute(audit, reviewed, { status: 1 });
+    assert.equal(result.blocked.length, 0);
 });
 
 test('accepts only the reviewed high advisory path/version, despite audit exit 1', () => {
