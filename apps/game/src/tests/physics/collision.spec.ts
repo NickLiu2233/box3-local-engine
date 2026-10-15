@@ -3,7 +3,7 @@ import {
   boxRayIntersect,
   sweepSweepIntersect,
   boxSweepIntersect,
-} from 'src/engine/physics/box-collide';
+} from '@box/schema/physics/box-collide';
 import { vec3 } from 'gl-matrix';
 
 const TOLERANCE = 4096;

@@ -12,5 +12,5 @@ fileNames.forEach(fileName => {
   // than assuming Rollup always writes exactly two lines at the end.
   const exports = source.statements.filter(node => ts.isExportDeclaration(node) || ts.isExportAssignment(node));
   for (const node of exports.reverse()) data = data.slice(0, node.getFullStart()) + data.slice(node.end);
-  fs.writeFileSync(filePath, data.trimEnd() + '\n');
+  fs.writeFileSync(filePath, data.replace(/[\t ]+$/gm, '').trimEnd() + '\n');
 });

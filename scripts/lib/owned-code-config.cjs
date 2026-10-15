@@ -2,7 +2,7 @@
 
 const path = require('node:path');
 
-const extensions = 'js,cjs,ts,tsx,mts,cts,css,less';
+const extensions = 'js,cjs,mjs,ts,tsx,mts,cts,css,less';
 const directories = [
     'apps/deployment-manager',
     'apps/player-admin',
@@ -21,7 +21,14 @@ const directories = [
     'services/game-server/scripts/fixtures/anticheat',
 ];
 const configurationFiles = ['.prettierrc.cjs', '.eslintrc.cjs'];
-const documentationFiles = ['README.md', 'CONTRIBUTING.md'];
+const documentationFiles = [
+    'README.md',
+    'CONTRIBUTING.md',
+    'apps/voxa/README.md',
+    'apps/server-manager-rust/README.md',
+    'apps/manager-core/README.md',
+    'internals/apis/README.md',
+];
 const documentationDirectories = [
     'docs',
     'apps/deployment-manager',

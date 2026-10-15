@@ -1,4 +1,6 @@
 node_modules/
+# Development maps, models, imports, backups and caches belong in this directory.
+/.local-data/
 # Ignore generated distribution output at any depth.
 dist/
 # This vendored runtime is consumed directly and has no build step.
@@ -39,6 +41,10 @@ apps/game/html-report/
 !.env.docker.example
 !**/.env.example
 !**/.env.*.example
+# These two files contain only guard-validated public defaults, and must survive
+# a fresh public-source snapshot whose history no longer carries private envs.
+!apps/game/.env.development
+!apps/game/rusty/.env.prod
 
 # The launcher generates runtime configuration locally; legacy license data stays ignored.
 # Old installations may retain credentials here; never add them to the repository.
@@ -49,12 +55,13 @@ apps/game/html-report/
 /tools/windows-launcher/bin/
 /tools/windows-launcher/obj/
 
-# 本机创作数据只能通过工程导入/导出流转，不能随代码提交或发行。
-# 已跟踪的默认资源不受此规则影响；新增素材会被忽略。
+
+# Keep the complete blob store in source checkouts for offline builds.
+# Other local engine data is generated or belongs to local projects.
 apps/local-engine/data/*
 !apps/local-engine/data/blobs/
-apps/local-engine/data/blobs/*
-!apps/local-engine/data/blobs/.gitkeep
+!apps/local-engine/data/blobs/**
+
 apps/local-engine/projects/
 # Ephemeral edit/play runtime blobs and build caches. They are rebuilt from
 # local map data and must never be versioned or shipped as source artifacts.
@@ -96,3 +103,4 @@ apps/manager-core/target/
 **/*private-key*.pem
 **/*.p12
 **/*.pfx
+/internals/dev-certs/certs/

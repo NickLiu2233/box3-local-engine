@@ -23,8 +23,9 @@ const repoRoot = path.resolve(packageRoot, '../..');
 const projectsRoot = process.env.BOX_LOCAL_PROJECTS_PATH || path.join(packageRoot, 'projects');
 const templateDataRoot = process.env.BOX_LOCAL_TEMPLATE_DATA_PATH || path.join(packageRoot, 'data');
 const voxaDataRoot = process.env.BOX_LOCAL_VOXA_DATA_PATH || path.join(packageRoot, '../voxa/data');
-const distributionRoot = path.join(packageRoot, 'dist', 'releases');
-const projectExportRoot = path.join(packageRoot, 'dist', 'projects');
+const outputRoot = process.env.BOX_LOCAL_DIST_PATH || path.join(packageRoot, 'dist');
+const distributionRoot = path.join(outputRoot, 'releases');
+const projectExportRoot = path.join(outputRoot, 'projects');
 const projectBackupRoot = process.env.BOX_PROJECT_BACKUP_PATH || path.join(packageRoot, 'backups');
 const snapshotLimit = 5;
 const projectImageMaxBytes = 3 * 1024 * 1024;
@@ -1094,7 +1095,18 @@ function createProject({ id, name, author = '', description = '', mapSize }) {
 
     fs.mkdirSync(root, { recursive: true, mode: 0o755 });
     try {
-        copyReadableDirectorySync(templateDataRoot, path.join(root, 'source'));
+        if (path.resolve(templateDataRoot) === path.join(packageRoot, 'data')) {
+            // The developer's blob directory also receives local uploads and
+            // generated content. A new map starts with engine resources only.
+            require('./runtime-assets').copyRuntimeData(
+                path.resolve(packageRoot, '../..'),
+                path.join(root, 'source'),
+            );
+        } else {
+            // Explicit templates and Docker's staged runtime-data directory
+            // retain their existing portable project format.
+            copyReadableDirectorySync(templateDataRoot, path.join(root, 'source'));
+        }
     } catch (error) {
         // A failed first attempt must not leave a project that blocks retrying the
         // same map ID. Cleanup is best-effort because Docker Desktop may briefly

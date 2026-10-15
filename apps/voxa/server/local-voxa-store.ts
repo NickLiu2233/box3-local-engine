@@ -35,7 +35,9 @@ type StoreIndex = {
 };
 
 const dataRoot = path.resolve(
-  process.env.VOXA_DATA_PATH || path.join(process.cwd(), 'data'),
+  process.env.VOXA_DATA_PATH || (process.env.NODE_ENV === 'production'
+    ? path.join(process.cwd(), 'data')
+    : path.resolve(process.cwd(), '../..', process.env.BOX_DEV_DATA_DIRECTORY || '.local-data', 'apps/voxa/data')),
 );
 const blobsRoot = path.join(dataRoot, 'blobs');
 const indexPath = path.join(dataRoot, 'models.json');

@@ -23,8 +23,6 @@ const client = new MuClient(socket)
 
 ## API
 
-* [`createLocalSocketServer()`](#createlocalsocketserver())
-* [`createLocalSocket()`](#createlocalsocket())
 * [`MuLocalSocketServer`](#mulocalsocketserver)
 * [`MuLocalSocket`](#mulocalsocket)
 
@@ -40,7 +38,6 @@ createLocalSocketServer(spec?:{
     scheduler?:MuScheduler,
 }) : MuLocalSocketServer
 ```
-* `scheduler` can be set to a [`MuMockScheduler`](../../scheduler/README#mumockscheduler) for testing
 
 ---
 
@@ -56,18 +53,15 @@ createLocalSocket(spec:{
 ```
 * `sessionId` a user-generated session id
 * `server` the server returned by `createLocalSocketServer()`
-* `scheduler` can be set to a [`MuMockScheduler`](../../scheduler/README#mumockscheduler) for testing
 
 ---
 
 ### `MuLocalSocketServer`
-implements [`MuSocketServer`](../README#musocketserver)
 
 A pseudo socket server.
 
 ---
 
 ### `MuLocalSocket`
-implements [`MuSocket`](../README#musocket)
 
 A pseudo socket.

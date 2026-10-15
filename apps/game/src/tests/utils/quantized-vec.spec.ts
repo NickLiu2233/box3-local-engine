@@ -4,7 +4,7 @@ import {
   QuantizedVec3Schema,
   QuantizedVec2Schema,
   QuantizedVec4Schema,
-} from 'src/engine/utils/quantized-schema';
+} from '@box/schema/utils/quantized-schema';
 import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 
 test('quantized-vec2', function () {

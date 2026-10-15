@@ -38,8 +38,8 @@ jobs:
       - name: Install dependencies
         run: node common/scripts/install-run-rush.js install
 
-      - name: Reject critical production vulnerabilities
-        run: node common/scripts/install-run-rush-pnpm.js audit --prod --audit-level critical
+      - name: Reject unreviewed high and all critical production vulnerabilities
+        run: node scripts/audit-dependencies.js
 
       - name: Validate Compose templates
         env:

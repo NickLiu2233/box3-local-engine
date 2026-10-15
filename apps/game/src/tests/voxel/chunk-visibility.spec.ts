@@ -130,7 +130,7 @@ test('voxel visibility', () => {
     const actualVisibility = new ChunkVisibilityTable();
     chunkVisibility(
       actualVisibility,
-      chunk.data,
+      chunk.getVoxelByPtr,
       chunk.offset,
       chunk.stride[0],
       chunk.stride[1],
@@ -202,7 +202,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],
@@ -221,7 +221,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],
@@ -240,7 +240,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],
@@ -260,7 +260,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],
@@ -290,7 +290,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],
@@ -314,7 +314,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],
@@ -338,7 +338,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],
@@ -364,7 +364,7 @@ test('voxel visibility', () => {
       const result = new ChunkVisibilityTable();
       chunkVisibility(
         result,
-        chunk.data,
+        chunk.getVoxelByPtr,
         chunk.offset,
         chunk.stride[0],
         chunk.stride[1],

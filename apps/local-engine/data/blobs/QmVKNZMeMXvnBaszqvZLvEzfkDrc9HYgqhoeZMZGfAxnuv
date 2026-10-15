@@ -1,3 +1,0 @@
-world.onPlayerJoin(({ entity }) => {
-    entity.say('sss')
-})

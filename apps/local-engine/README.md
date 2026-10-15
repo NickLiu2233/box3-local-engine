@@ -34,12 +34,12 @@ node src/deploy.js stop
 
 ### 数据根
 
-端口只影响访问地址。源码/Docker Compose 使用仓库内的 `projects/` 和 `play-worlds/`；桌面启动器使用系统应用数据目录 `runtime/apps/local-engine/` 下的同名目录。两套数据独立，转移作品请使用 `.boxproject`、`.boxplay` 或备份。
+端口只影响访问地址。根源码开发命令默认使用仓库根目录 `.local-data/apps/local-engine/`，可用 `BOX_DEV_DATA_DIRECTORY` 更换根目录。Docker Compose 使用 `BOX_DATA_DIRECTORY` 下的应用数据目录；桌面启动器使用系统应用数据目录 `runtime/apps/local-engine/` 下的同名目录。不同数据根之间转移作品请使用 `.boxproject`、`.boxplay` 或备份。
 
 Creator 的可编辑工程默认保存在：
 
 ```text
-apps/local-engine/projects/<project-id>/
+.local-data/apps/local-engine/projects/<project-id>/
 ```
 
 不要手动修改其中的 `project-state.json`、blob、地图组状态或发布清单。换设备编辑时，从 Creator 导出 `.boxproject`；交付服主时，发布并导出 `.boxplay`。

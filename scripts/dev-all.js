@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
 const { createDevelopmentEnvironment } = require('./dev-environment');
+const { prepareDevelopmentData } = require('./dev-data');
 const { developmentBuildPlan } = require('./workspace-projects');
 
 const repoRoot = path.resolve(__dirname, '..');
@@ -115,6 +116,8 @@ function prepareGameTsconfigs() {
 }
 
 try {
+    console.log(`开发数据目录：${sharedEnv.BOX_DEV_DATA_DIRECTORY}`);
+    prepareDevelopmentData(repoRoot, sharedEnv);
     for (const project of developmentBuildPlan(repoRoot)) {
         console.log(`准备开发依赖：${project.name}`);
         const result = spawnSync(isWindows ? 'npm.cmd' : 'npm', ['run', 'build'], {
@@ -176,7 +179,6 @@ try {
                 BOX_WEB_PORT: '3121',
                 BOX_PLAY_RUNTIME_PORT: '9971',
                 BOX_EDIT_RUNTIME_PORT: '9972',
-                BOX_PLAY_LIBRARY_PATH: path.join(localEngineRoot, 'play-worlds'),
                 NEXT_DIST_DIR: '.next-play',
                 NEXT_TSCONFIG_PATH: '.tsconfig.dev-play.json',
                 BOX_DEPLOYMENT_MODE: 'play',

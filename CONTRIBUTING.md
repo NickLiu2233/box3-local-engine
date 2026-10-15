@@ -6,7 +6,7 @@
 
 ## 1. 确定改动范围
 
-先阅读[项目介绍](README.md)、[开发入门](docs/developer-guide.md)与相关模块 README，确认要修改哪一个应用或公共包。提交前搜索已有 Issue/PR，避免重复实现；一个 PR 尽量解决一个清楚的问题。
+先阅读[项目介绍](README.md)、[开发入门](docs/developer-guide.md)与相关模块 README，确认要修改哪一个应用或公共包。第一次接触引擎时，用[首个作品教程](docs/first-project.md)走一遍实际操作。提交前搜索已有 Issue/PR，避免重复实现；一个 PR 尽量解决一个清楚的问题。
 
 Bug 报告应包括复现步骤、预期结果、实际结果、系统与架构、引擎版本或提交，以及脱敏后的首个错误日志。功能建议应说明谁遇到什么困难、期望怎样操作，而不只列出实现方案。不要在公开 Issue 中粘贴密钥或真实用户数据。
 
@@ -19,10 +19,10 @@ git clone https://github.com/<your-account>/box3-local-engine.git
 cd box3-local-engine
 git remote add upstream https://github.com/box3lab/box3-local-engine.git
 git fetch upstream
-git switch -c codex/<short-description> upstream/dev
+git switch -c dev/<short-description> upstream/dev
 ```
 
-`origin` 指向自己的 Fork，用于推送主题分支；`upstream` 指向官方仓库，用于同步。一般贡献从官方 `dev` 创建分支，并向 `dev` 提交 PR；发布分支由维护者安排。`codex/` 是这里的示例前缀，分支名应能表达改动，例如 `codex/fix-map-import`。
+`origin` 指向自己的 Fork，用于推送主题分支；`upstream` 指向官方仓库，用于同步。一般贡献从官方 `dev` 创建分支，并向 `dev` 提交 PR；发布分支由维护者安排。`dev/` 是这里的示例前缀，分支名应能表达改动，例如 `fix/map-import`。
 
 开发期间如需同步最新 dev，先确保改动已提交或妥善保存，再在自己的主题分支执行：
 
@@ -59,7 +59,7 @@ npm run verify
 git diff --check
 ```
 
-`verify` 依次运行格式、Lint、类型与测试，测试包含工程检查。局部模块测试便于开发时定位问题，但不能代替完整验证；安装包与原生行为仍需要相应平台检查。验证失败时先判断是否由本次修改引起，PR 中明确说明原因与影响，不能将未执行的检查写成通过。
+`verify` 依次运行格式、Lint、类型与测试，测试包含 game Jest、玩家启动器检查、权威运行时回归、反作弊与工程检查。它也编译并测试 Rust 共享核心和 Web 管理器，需要 Rust 工具链。局部模块测试便于开发时定位问题，但不能代替完整验证；真实 PostgreSQL 专项、Docker 业务部署、Tauri/Electron 图形运行和各平台安装包仍需要额外检查。验证失败时先判断是否由本次修改引起，PR 中明确说明原因与影响，不能将未执行或跳过的检查写成通过。
 
 仅修改文档时，至少执行：
 
@@ -85,7 +85,9 @@ git commit -m "docs: clarify development and contribution workflow"
 git push -u origin HEAD
 ```
 
-`check-public-repository.js --staged` 检查暂存内容中的公开仓库风险；运行前必须先暂存要提交的文件。它不能保证识别所有秘密，仍应人工查看暂存差异。不提交真实凭据、用户数据、地图、数据库备份、日志或本机构建产物。
+`check-public-repository.js --staged` 检查暂存内容中的公开仓库风险；运行前必须先暂存要提交的文件。它不能保证识别所有秘密，仍应人工查看暂存差异。不提交真实凭据、用户数据、地图、数据库备份、日志或本机构建产物。新增公开示例优先使用自行创作的最小内容。
+
+`apps/local-engine/data/blobs/` 整个目录作为默认资源纳入源码与 Docker 构建输入，新增资源时直接提交对应文件，无需维护逐个哈希的清单或排除规则。构建会生成运行资源并按引用复制到最终镜像；上传、项目、缓存和备份使用各自的数据目录，不放入默认资源目录。
 
 提交信息应描述改了什么，例如 `fix: handle missing map metadata` 或 `docs: explain staging image reuse`。代码、相关测试、契约和说明一起提交，让评审者能理解并验证同一行为。
 
@@ -101,7 +103,7 @@ PR 说明至少包含：
 - **用户可见变化**：界面截图或操作步骤；发行改动说明目标平台与产物来源。
 - **风险与回滚**：涉及权限、持久数据、部署或迁移时说明备份与恢复方案。
 
-PR 创建、更新、重新打开和标记为可评审时，Verify 自动运行质量检查，包括格式、Lint、类型、测试、生产依赖 critical 漏洞检查和 Compose 模板校验。PR 本身不打包、不上传 OSS，Fork 贡献者无需配置官方发布密钥。自动检查通过是评审依据之一，不代表完成所有平台的实际安装与业务验收。
+PR 创建、更新、重新打开和标记为可评审时，Verify 自动运行质量检查，包括格式、Lint、类型、测试、生产依赖审计和 Compose 模板校验。依赖审计拒绝全部 critical 与未经审查的 high；有期限的精确例外见 `config/security/dependency-audit-exceptions.json`，过期或依赖路径改变会失败，不能把例外解释为没有漏洞。PR 本身不打包、不上传 OSS，Fork 贡献者无需配置官方发布密钥。自动检查通过是评审依据之一，不代表完成所有平台的实际安装与业务验收。
 
 评审要求修改时，继续提交到同一个主题分支即可更新 PR；说明关键调整并重新运行受影响检查。合并由维护者决定，合并后可以删除自己的主题分支，下次贡献重新从最新 dev 创建。
 
@@ -111,6 +113,6 @@ PR 创建、更新、重新打开和标记为可评审时，Verify 自动运行�
 
 staging 允许直接提交与手动测试打包，同版本默认复用已有镜像，因此新测试安装包不一定包含新引擎代码。验证新的镜像实现时需升级版本，或由维护者手动运行 Test Build 并启用 `rebuild_images`。正式版本由流水线自动固定 Tag，同版本不能指向另一个提交。
 
-具体分支、OSS 目录、版本更新和失败重跑规则见 [Release & Version](docs/release-and-version.md)。普通贡献者提交源码与验证结果即可，不需要自行上传官方发行产物。
+具体分支、OSS 目录、版本更新和失败重跑规则见 [Release &amp; Version](docs/release-and-version.md)。普通贡献者提交源码与验证结果即可，不需要自行上传官方发行产物。
 
 问题与讨论通过 [Issues](https://github.com/box3lab/box3-local-engine/issues)进行；附件和截图应先移除 Cookie、Token、数据库凭据与用户信息。

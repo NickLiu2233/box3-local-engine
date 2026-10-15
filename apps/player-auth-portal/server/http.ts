@@ -158,6 +158,7 @@ export class StaticFiles {
         return {
             'Content-Type': asset.type,
             'Content-Length': length,
+            'X-Content-Type-Options': 'nosniff',
             'Cache-Control': asset.html ? 'no-store' : 'public, max-age=300, must-revalidate',
             'Content-Security-Policy':
                 "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'",

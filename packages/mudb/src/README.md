@@ -159,7 +159,6 @@ new MuServer(
     skipProtocolValidation:boolean=false,
 )
 ```
-* `socketServer` a [`MuSocketServer`](socket/README#musocketserver) that handles communications with clients
 * `skipProtocolValidation` whether to skip validating protocol consistency
 
 #### props
@@ -297,7 +296,6 @@ new MuClient(
     skipProtocolValidation:boolean=false,
 )
 ```
-* `socket` a [`MuSocket`](socket/README#musocket) that handles communications with the server
 * `skipProtocolValidation` whether to skip validating protocol consistency
 
 #### methods

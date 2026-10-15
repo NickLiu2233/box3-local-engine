@@ -7,7 +7,7 @@ const vm = require('node:vm');
 const test = require('node:test');
 const source = fs.readFileSync(path.join(__dirname, 'repo-tasks.js'), 'utf8');
 
-function runTask(task, failBuild = false) {
+function runTask(task, failBuild = false, failAssets = false) {
     const calls = [];
     const context = {
         __dirname,
@@ -21,7 +21,13 @@ function runTask(task, failBuild = false) {
             return {
                 spawnSync(command, args, options) {
                     calls.push({ command, args, cwd: options.cwd });
-                    return { status: failBuild && args.includes('build') ? 1 : 0 };
+                    return {
+                        status:
+                            (failBuild && args.includes('build')) ||
+                            (failAssets && args.includes('prepare-assets'))
+                                ? 1
+                                : 0,
+                    };
                 },
             };
         },
@@ -77,6 +83,20 @@ for (const task of ['test', 'check', 'verify']) {
         assert.ok(build < regressions, 'dependencies must exist before running regressions');
         const builds = app.calls.filter((call) => call.args.includes('build'));
         assert.equal(new Set(builds.map((call) => call.cwd)).size, builds.length);
+        const preparedAssets = app.calls.filter(
+            (call) =>
+                call.cwd.endsWith('apps/local-engine') && call.args.includes('prepare-assets'),
+        );
+        assert.equal(preparedAssets.length, 1, 'runtime assets must be prepared exactly once');
+        const assetPreparation = app.calls.indexOf(preparedAssets[0]);
+        assert.ok(
+            builds.every((call) => app.calls.indexOf(call) < assetPreparation),
+            'asset preparation needs the compiled dependency packages',
+        );
+        assert.ok(
+            assetPreparation < regressions,
+            'generated runtime assets must exist before regressions',
+        );
         const apiCheck = app.calls.findIndex((call) => call.args.includes('check:openapi'));
         assert.ok(
             apiCheck >= 0 && apiCheck < build,
@@ -95,6 +115,53 @@ test('dependency build failure stops before runtime regressions', () => {
         false,
     );
 });
+
+test('asset preparation failure stops before runtime regressions and closure checks', () => {
+    const app = runTask('test', false, true);
+    assert.throws(app.execute, /exit 1/);
+    assert.equal(
+        app.calls.some(
+            (call) =>
+                (call.cwd.endsWith('apps/local-engine') && call.args.includes('test')) ||
+                call.args.some((arg) => arg.endsWith('check-standalone.js')),
+        ),
+        false,
+    );
+});
+
+for (const task of ['test', 'verify']) {
+    test(`${task} includes Creator, player launcher and anti-cheat regressions`, () => {
+        const app = runTask(task);
+        app.execute();
+        for (const [folder, script] of [
+            ['apps/game', 'test'],
+            ['apps/player-launcher', 'check'],
+            ['services/game-server', 'check:anticheat'],
+        ]) {
+            const matches = app.calls.filter(
+                (call) => call.cwd.endsWith(folder) && call.args.includes(script),
+            );
+            assert.equal(matches.length, 1, `${folder} ${script} must run exactly once`);
+        }
+        const creator = app.calls.find(
+            (call) => call.cwd.endsWith('apps/game') && call.args.includes('test'),
+        );
+        assert.ok(creator.args.includes('--runInBand'), 'keep CI memory use bounded');
+    });
+}
+
+for (const task of ['test', 'check', 'verify']) {
+    test(`${task} guards runtime resources`, () => {
+        const app = runTask(task);
+        app.execute();
+        const file = 'apps/local-engine/src/runtime-assets.test.js';
+        assert.equal(
+            app.calls.filter((call) => call.args.some((arg) => arg.endsWith(file))).length,
+            1,
+            `${file} must run exactly once`,
+        );
+    });
+}
 
 test('typecheck builds shared APIs before checking the admin and portal', () => {
     const app = runTask('typecheck');

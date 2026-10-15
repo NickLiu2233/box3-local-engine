@@ -6,7 +6,7 @@ import {
   resolveSelfBodyCollisions,
   BodyCollisionBox,
   BodyRBushNode,
-} from 'src/engine/physics/body-rbush';
+} from '@box/schema/physics/body-rbush';
 
 function intersectBox(a: BodyCollisionBox, b: BodyCollisionBox) {
   return (

@@ -1,7 +1,7 @@
 import { expect, test } from '@jest/globals';
 import { MuArray, MuStruct, MuUTF8, MuVarint } from '@box/mudb/schema';
 import { MuReadStream, MuWriteStream } from '@box/mudb/stream';
-import { MuArrayUnion } from 'src/engine/keyframes/mu-array-union';
+import { MuArrayUnion } from '@box/schema/keyframes/mu-array-union';
 
 test('mu-array-union', () => {
   const struct = new MuStruct({

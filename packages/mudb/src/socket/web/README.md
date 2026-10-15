@@ -37,7 +37,6 @@ const client = new MuClient(socket)
 ---
 
 ### `MuWebSocketServer`
-implements [`MuSocketServer`](../README#musocketserver)
 
 ```ts
 import { MuWebSocketServer } from 'mudb/socket/web/server'
@@ -74,12 +73,10 @@ new MuWebSocketServer(spec:{
     * `threshold:number=1024` payloads smaller than this will not be compressed
     * `zlibDeflateOptions:object` [options](https://nodejs.org/api/zlib.html#zlib_class_options) to pass to zlib on deflate
     * `zlibInflateOptions:object` [options](https://nodejs.org/api/zlib.html#zlib_class_options) to pass to zlib on inflate
-* `scheduler` can be set to a [`MuMockScheduler`](../../scheduler/README#mumockscheduler) for testing
 
 ---
 
 ### `MuWebSocket`
-implements [`MuSocket`](../README#musocket)
 
 ```ts
 import { MuWebSocket } from 'mudb/socket/web/client'

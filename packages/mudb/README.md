@@ -25,7 +25,6 @@ A *schema* is a type declaration for the interface between client and server.
 * [schema](src/schema)
 * [socket](src/socket)
     * [local](src/socket/local)
-    * [uws](src/socket/uws)
     * [web](src/socket/web)
 * [stream](src/stream)
 
@@ -42,7 +41,6 @@ A *schema* is a type declaration for the interface between client and server.
 Light reading:
 * [Protocol Buffers](https://developers.google.com/protocol-buffers)
 * [Quake 3 network model](http://fabiensanglard.net/quake3/network.php)
-* [Janus](http://equis.cs.queensu.ca/wiki/index.php/Janus)
 * "[The Tech of Planetary Annihilation: ChronoCam](https://blog.forrestthewoods.com/the-tech-of-planetary-annihilation-chronocam-292e3d6b169a)"
 * "[The Implementation of Rewind in Braid](https://www.youtube.com/watch?v=8dinUbg2h70)"
 * "[Relativistic Replication](https://mikolalysenko.github.io/nodeconfeu2014-slides/index.html#/)"

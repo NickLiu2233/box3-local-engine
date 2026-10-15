@@ -12,6 +12,9 @@ test('internal source, live environments and runtime data cannot be published', 
         'apps/voxa/data/model.json',
         'dump.sqlite',
         'debug.log',
+        '.runtime.env',
+        'apps/player-launcher/private/tmp/player-apply.mjs',
+        'internals/dev-certs/certs/minica-key.pem',
     ]) {
         assert.ok(forbiddenPath(file), file);
     }
@@ -29,6 +32,26 @@ test('internal source, live environments and runtime data cannot be published', 
         ),
     );
     assert.deepEqual(inspect('.env.local', 'VALUE=private'), ['private-environment-file']);
+});
+
+test('content-addressed names do not hide project state or retired business scripts', () => {
+    const file = 'apps/local-engine/data/blobs/QmFixture';
+    assert.ok(
+        inspect(file, JSON.stringify({ owner: 'fixture', users: {} })).includes(
+            'embedded-project-or-user-state',
+        ),
+    );
+    assert.ok(
+        inspect(file, JSON.stringify({ 123: { createdAt: 'fixture' } })).includes(
+            'embedded-project-or-user-state',
+        ),
+    );
+    assert.ok(
+        inspect(file, 'player.url = "https://portal-backstage.dao3.fun"').includes(
+            'internal-business-script',
+        ),
+    );
+    assert.deepEqual(inspect(file, JSON.stringify({ textures: ['fixture'] })), []);
 });
 
 test('public development defaults cannot silently acquire credentials', () => {

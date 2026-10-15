@@ -1,6 +1,6 @@
-# BOX3 Engine Launcher 前端
+# BOX3 Engine Launcher
 
-桌面版和 Linux Web 管理端共用这套界面。入口 `src/main.js` 只负责注册渲染器、启动时读取状态和应用级事件。
+桌面版和 Linux Web 管理端共用这套 Vite 界面；桌面使用 `src-tauri/` 的 Rust/Tauri 2 适配器，Web 使用 [server-manager-rust](../server-manager-rust/README.md)。共用配置、服务控制和备份规则在 [manager-core](../manager-core/README.md)。入口 `src/main.js` 只负责注册渲染器、启动时读取状态和应用级事件。
 
 ## 目录与职责
 
@@ -35,11 +35,53 @@ node scripts/check-headless-rust-manager.js
 
 样式入口的导入顺序保留了原来的层叠顺序。修改样式时优先编辑对应文件，调整顺序前检查主题、窄屏和后面的覆盖规则。
 
-macOS 本地打包：
+## 原生开发环境
+
+先按[开发入门](../../docs/developer-guide.md)安装工作区依赖。网页调试使用根 `npm run dev:manager`；原生调试使用 `npm run dev:manager:native`。单独的网页界面没有 Tauri 的本机 Docker/文件操作能力，Web 模式还需要真正运行的 Rust 管理器后端。
+
+所有系统安装 [Rust stable 与 rustup](https://www.rust-lang.org/tools/install)，执行 `rustup default stable`，确认 `cargo --version`。Tauri 还需要平台构建工具和 WebView；官方平台更新以 [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) 为准。
+
+### macOS
+
+安装 Xcode Command Line Tools，弹出的系统安装完成后再继续：
+
+```sh
+xcode-select --install
+xcode-select -p
+rustup default stable
+```
+
+WebKit 由系统提供。Docker Desktop 启动后，在仓库根运行 `npm run dev:manager:native`。构建 App 用下方命令。
+
+### Windows
+
+安装 Visual Studio 2022 Build Tools，选择“使用 C++ 的桌面开发”，保留 MSVC C++ 工具链与 Windows 10/11 SDK。安装 Microsoft Edge WebView2 Runtime；通常系统已有，但缺失时需按 Tauri 官方步骤安装。
+
+安装 rustup 时选择与本机架构匹配的 MSVC stable 工具链，确认 `rustup show` 的 host 使用 `pc-windows-msvc`。使用新的开发终端让 PATH 生效，运行 `cargo --version` 和 `npm run dev:manager:native`。Docker Desktop 另需 WSL 2 与硬件虚拟化，不能用 WebView2 替代 Docker 环境。
+
+### Linux（Debian / Ubuntu）
+
+在提供 WebKitGTK 4.1 软件包的系统上安装 Tauri 2 开发依赖：
+
+```sh
+sudo apt update
+sudo apt install build-essential curl wget file pkg-config libwebkit2gtk-4.1-dev libxdo-dev libssl-dev librsvg2-dev libayatana-appindicator3-dev
+rustup default stable
+```
+
+再确认 Docker Engine 正在运行、当前账号具有 Docker 访问权限，并在可用桌面会话中运行 `npm run dev:manager:native`。其他发行版按 Tauri 官方文档选择等价包；无桌面服务器优先使用 [Linux Web 管理器发行包](../../distribution/server/README.md)，不要求安装 WebKitGTK 或启动桌面 App。
+
+## 构建与验收
+
+macOS 本地 App 构建：
 
 ```sh
 cd apps/deployment-manager
 npm run tauri -- build --bundles app
 ```
 
-生成安装包请使用根目录的打包命令，支持 OSS 精简版与携带当前 Docker 镜像的本地测试版，命令以根 package.json 与脚本帮助为准。直接运行 Tauri build 仅用于界面开发，不会自动生成镜像发行资源。
+其他系统从根目录执行 `npm --prefix apps/deployment-manager run tauri -- build`，或使用根发行任务选择已支持的目标。跨架构/跨系统构建需要额外目标工具链，不能把本机 App 通过视为所有目标通过。
+
+生成安装包请使用根目录的打包命令，支持 OSS 精简版与携带当前 Docker 镜像的本地测试版，命令以根 package.json 与脚本帮助为准。直接运行 Tauri build 不会自动生成完整镜像发行资源。打包流程见[发布说明](../../docs/release-and-version.md)。
+
+根验证编译测试 Rust 共享核心与 Web 管理器，并检查桌面接线；它不编译和运行这个 Tauri App。原生改动应在目标平台检查首次启动、Docker 连接、配置保存、服务启动/停止、备份恢复和更新。测试边界见[测试指南](../../docs/testing.md)。

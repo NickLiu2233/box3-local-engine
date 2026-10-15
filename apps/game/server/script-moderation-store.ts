@@ -5,7 +5,7 @@ import type { PoolClient } from 'pg'
 import { playerAdminStore } from './player-admin-identity'
 import { PlayerAdminRequestError } from './player-admin-errors'
 import { readAdminMapCatalog, adminAuthorizationMaps } from './admin-map-catalog'
-import type { AdminActionContext } from './local-player-identity'
+import { checkPlayerDatabaseReady, type AdminActionContext } from './local-player-identity'
 import { writeScriptModerationAudit } from './script-moderation-audit'
 
 // Match the launcher's immutable map identity, not its editable access URL.
@@ -58,6 +58,9 @@ export class ScriptModerationStore {
     return createHmac('sha256', this.ipHashSalt).update(`device:${value}`).digest('hex')
   }
   async ready() {
+    // Owners can configure script moderation before the first player signs in.
+    // Reconciliation depends on the identity-ban tables from the player store.
+    await checkPlayerDatabaseReady()
     const storage = await playerAdminStore()
     if (!this.initialized)
       this.initialized = this.initialize(storage).catch((error) => {

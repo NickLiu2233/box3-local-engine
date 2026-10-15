@@ -2,6 +2,7 @@
 
 const crypto = require('node:crypto');
 const path = require('node:path');
+const { developmentDataEnvironment } = require('./dev-data');
 
 function randomSecret(existing, fallbackLength = 32) {
     return existing || crypto.randomBytes(fallbackLength).toString('hex');
@@ -35,6 +36,7 @@ function databaseURL(env, useInfrastructure) {
 function createDevelopmentEnvironment({ repoRoot, inheritedEnv, useInfrastructure }) {
     return {
         ...inheritedEnv,
+        ...developmentDataEnvironment(repoRoot, inheritedEnv),
         NODE_ENV: 'development',
         BOX_LOCAL_CONFIG_PATH: path.join(repoRoot, 'apps/local-engine/config/local.config.json'),
         PERMISSION_TOKEN_SECRET: randomSecret(inheritedEnv.PERMISSION_TOKEN_SECRET),

@@ -23,6 +23,21 @@ const repoEnvPath = path.join(repoRoot, '.env');
 if (fs.existsSync(repoEnvPath) && typeof process.loadEnvFile === 'function') {
     process.loadEnvFile(repoEnvPath);
 }
+if (
+    !process.argv.includes('--production') &&
+    process.env.NODE_ENV !== 'production' &&
+    !process.env.BOX_WORLD_PATH &&
+    !process.env.BOX_SERVER_DATA_PATH &&
+    !process.env.BOX_LOCAL_PROJECTS_PATH &&
+    !process.env.BOX_PLAY_LIBRARY_PATH
+) {
+    const {
+        developmentDataEnvironment,
+        prepareDevelopmentData,
+    } = require('../../../scripts/dev-data');
+    Object.assign(process.env, developmentDataEnvironment(repoRoot, process.env));
+    prepareDevelopmentData(repoRoot, process.env);
+}
 // Web session creation and every game runtime must share one signing secret.
 // Keep an explicit host value stable across restarts; otherwise generate one
 // per launcher process so local development still works without a weak default.
@@ -694,7 +709,8 @@ async function main() {
         ...process.env,
         BOX_LOCAL_CONFIG_PATH: configPath,
         BOX_LOCAL_ENGINE_ROOT: packageRoot,
-        BOX_LOCAL_PROJECTS_PATH: path.join(packageRoot, 'projects'),
+        BOX_LOCAL_PROJECTS_PATH:
+            process.env.BOX_LOCAL_PROJECTS_PATH || path.join(packageRoot, 'projects'),
         // VOXA is embedded from its own public origin and writes project-local
         // blobs to the editor runtime. Keep its public URL in the runtime CORS
         // list automatically, including when the deployment manager uses LAN.

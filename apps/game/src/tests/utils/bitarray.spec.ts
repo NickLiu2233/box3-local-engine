@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { BitArray } from 'src/utils/bitarray';
+import { BitArray } from '@box/build-system/utils/bitarray';
 
 const BIT_ARRAY_SIZE = 1000;
 

@@ -59,9 +59,14 @@ jobs:
       prefix: ${{ steps.identity.outputs.prefix }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
+      - name: Require a clean public source history
+        run: node scripts/check-public-history.js
+
       - name: Validate release version and OSS configuration
         run: |
           node scripts/sync-root-version.js --check

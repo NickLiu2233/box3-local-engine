@@ -1865,8 +1865,9 @@ function checkPlayerServicePruning() {
 
 checkPlayerServicePruning();
 
-// Sensitive authoring data must never enter the Docker build context. The
-// final image is additionally assembled from referenced runtime blobs only.
+// Local projects, secrets and caches stay outside the Docker build context.
+// Source blobs enter the build as a directory; the final image is assembled
+// from referenced runtime blobs only.
 const dockerIgnoreFile = '.dockerignore';
 const dockerIgnoreSource = readRequired(dockerIgnoreFile);
 const dockerIgnoreEntries = new Set(
@@ -1894,19 +1895,14 @@ for (const entry of [
 
 const stageFile = 'apps/local-engine/src/stage-runtime-data.js';
 const stageSource = readRequired(stageFile);
-for (const [label, pattern] of [
-    [
-        'runtime reference roots',
-        /const referenceRoots = \[[\s\S]*?apps\/game\/src\/resource[\s\S]*?services\/game-server/,
-    ],
-    ['CID-only collection', /const cidPattern = \/Qm/],
-    [
-        'referenced blob copy',
-        /for \(const hash of \[\.\.\.hashes\]\.sort\(\)\)[\s\S]*?fs\.copyFileSync/,
-    ],
-    ['runtime blob manifest', /runtime-blobs\.json/],
-]) {
-    requirePattern(stageSource, stageFile, label, pattern);
+requirePattern(stageSource, stageFile, 'shared runtime resource staging', /copyRuntimeData/);
+try {
+    const { runtimeBlobHashes } = require('../apps/local-engine/src/runtime-assets');
+    if (runtimeBlobHashes(root).size === 0) {
+        fail('runtime resource closure is empty');
+    }
+} catch (error) {
+    fail(`runtime resource closure: ${error.message}`);
 }
 
 const localConfig = JSON.parse(readRequired('apps/local-engine/config/local.config.json')).common;

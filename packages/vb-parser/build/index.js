@@ -3135,23 +3135,23 @@ var hasRequiredStream;
 function requireStream () {
 	if (hasRequiredStream) return stream;
 	hasRequiredStream = 1;
-	(function (exports) {
-		Object.defineProperty(exports, "__esModule", { value: true });
-		exports.MuReadStream = exports.MuWriteStream = exports.MuBuffer = exports.decodeUTF8 = exports.encodeUTF8 = void 0;
-		exports.allocBuffer = allocBuffer;
-		exports.freeBuffer = freeBuffer;
+	(function (exports$1) {
+		Object.defineProperty(exports$1, "__esModule", { value: true });
+		exports$1.MuReadStream = exports$1.MuWriteStream = exports$1.MuBuffer = exports$1.decodeUTF8 = exports$1.encodeUTF8 = void 0;
+		exports$1.allocBuffer = allocBuffer;
+		exports$1.freeBuffer = freeBuffer;
 		const root = (typeof self == 'object' && self['Object'] == Object && self)
 		    || (typeof commonjsGlobal == 'object' && commonjsGlobal['Object'] == Object && commonjsGlobal);
 		if (typeof root === 'object' && 'TextEncoder' in root) {
 		    const encoder = new TextEncoder();
-		    exports.encodeUTF8 = (str) => encoder.encode(str);
+		    exports$1.encodeUTF8 = (str) => encoder.encode(str);
 		    const decoder = new TextDecoder();
-		    exports.decodeUTF8 = (bytes) => decoder.decode(bytes);
+		    exports$1.decodeUTF8 = (bytes) => decoder.decode(bytes);
 		}
 		else {
 		    const codec = requireCodec();
-		    exports.encodeUTF8 = codec.encode;
-		    exports.decodeUTF8 = codec.decode;
+		    exports$1.encodeUTF8 = codec.encode;
+		    exports$1.decodeUTF8 = codec.decode;
 		}
 		function ceilLog2(v_) {
 		    let v = v_ - 1;
@@ -3175,7 +3175,7 @@ function requireStream () {
 		        this.uint8 = new Uint8Array(buffer);
 		    }
 		}
-		exports.MuBuffer = MuBuffer;
+		exports$1.MuBuffer = MuBuffer;
 		const bufferPool = new Array(31);
 		for (let i = 0; i < 31; ++i) {
 		    bufferPool[i] = [];
@@ -3287,7 +3287,7 @@ function requireStream () {
 		        this.offset = ptr;
 		    }
 		    writeString(str) {
-		        const bytes = (0, exports.encodeUTF8)(str);
+		        const bytes = (0, exports$1.encodeUTF8)(str);
 		        this.grow(5 + bytes.length);
 		        this.writeVarint(bytes.length);
 		        this.buffer.uint8.set(bytes, this.offset);
@@ -3300,7 +3300,7 @@ function requireStream () {
 		        this.buffer.dataView.setUint32(offset, x, LITTLE_ENDIAN);
 		    }
 		}
-		exports.MuWriteStream = MuWriteStream;
+		exports$1.MuWriteStream = MuWriteStream;
 		class MuReadStream {
 		    constructor(data) {
 		        this.buffer = new MuBuffer(data.buffer);
@@ -3421,13 +3421,13 @@ function requireStream () {
 		        this.offset += byteLength;
 		        this.checkBounds();
 		        const bytes = this.buffer.uint8.subarray(head, this.offset);
-		        return (0, exports.decodeUTF8)(bytes);
+		        return (0, exports$1.decodeUTF8)(bytes);
 		    }
 		    readUint8At(offset) {
 		        return this.buffer.dataView.getUint8(offset);
 		    }
 		}
-		exports.MuReadStream = MuReadStream;
+		exports$1.MuReadStream = MuReadStream;
 		
 	} (stream));
 	return stream;
@@ -12144,17 +12144,17 @@ function requireHelper () {
 	        if (A > 0) {
 	            vertices = [
 	                [v, v],
-	                [-2e3, v],
-	                [-2e3, -2e3],
-	                [v, -2e3],
+	                [-v, v],
+	                [-v, -v],
+	                [v, -v],
 	            ];
 	        }
 	        else {
 	            vertices = [
 	                [v, v],
-	                [v, -2e3],
-	                [-2e3, -2e3],
-	                [-2e3, v],
+	                [v, -v],
+	                [-v, -v],
+	                [-v, v],
 	            ];
 	        }
 	        for (let i = 0; i < vertices.length; i++) {
@@ -12168,17 +12168,17 @@ function requireHelper () {
 	        if (B > 0) {
 	            vertices = [
 	                [v, v],
-	                [v, -2e3],
-	                [-2e3, -2e3],
-	                [-2e3, v],
+	                [v, -v],
+	                [-v, -v],
+	                [-v, v],
 	            ];
 	        }
 	        else {
 	            vertices = [
 	                [v, v],
-	                [-2e3, v],
-	                [-2e3, -2e3],
-	                [v, -2e3],
+	                [-v, v],
+	                [-v, -v],
+	                [v, -v],
 	            ];
 	        }
 	        for (let i = 0; i < vertices.length; i++) {
@@ -12192,17 +12192,17 @@ function requireHelper () {
 	        if (C > 0) {
 	            vertices = [
 	                [v, v],
-	                [-2e3, v],
-	                [-2e3, -2e3],
-	                [v, -2e3],
+	                [-v, v],
+	                [-v, -v],
+	                [v, -v],
 	            ];
 	        }
 	        else if (C < 0) {
 	            vertices = [
 	                [v, v],
-	                [v, -2e3],
-	                [-2e3, -2e3],
-	                [-2e3, v],
+	                [v, -v],
+	                [-v, -v],
+	                [-v, v],
 	            ];
 	        }
 	        else {

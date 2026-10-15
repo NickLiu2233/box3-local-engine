@@ -108,11 +108,13 @@ npm run check:workspace
 npm run dev:infra
 ```
 
-开发服务默认地址、数据库设置、平台工具链和故障排查见[开发入门](docs/developer-guide.md)。代码约定见[代码规范](docs/code-style.md)。
+开发服务默认地址、数据库设置、平台工具链和故障排查见[开发入门](docs/developer-guide.md)。首次创作需要服主初始化管理入口，并给测试玩家授予创作权限；按[首个作品教程](docs/first-project.md)完成创建、预览、导出和游玩。
+
+改动后在根目录运行 `npm run verify`。它检查格式、Lint、类型、模块测试与工程检查；代码约定见[代码规范](docs/code-style.md)。全部入口见[文档导航](docs/README.md)。
 
 ## 参与贡献
 
-源码贡献流程、Fork 与分支、验证要求和 Pull Request 说明见[贡献指南](CONTRIBUTING.md)。社区贡献只向 `dev` 提交 PR；
+源码贡献流程、Fork 与分支、验证要求和 Pull Request 说明见[贡献指南](CONTRIBUTING.md)。社区贡献只向 `dev` 提交 PR。
 
 问题反馈与讨论见 [GitHub Issues](https://github.com/box3lab/box3-local-engine/issues)。
 

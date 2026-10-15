@@ -3,7 +3,7 @@ import {
   BlockInfo,
   BlockInfoSchema,
 } from '@box/schema/voxel/block-schema';
-import { unpackBlockIndex } from 'src/engine/voxel/blocks';
+import { unpackBlockIndex } from '@box/schema/voxel/blocks';
 import { MuWriteStream } from '@box/mudb/stream';
 
 export const TEST_BLOCK_INFO: BlockInfo = {

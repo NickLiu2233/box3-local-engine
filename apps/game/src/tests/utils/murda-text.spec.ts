@@ -3,13 +3,13 @@ import {
   MuRDAText,
   TextIterator,
   MuRDATextStoreSchema,
-} from '../../edit/models/code-editor/murda-text';
+} from '@box/schema/code-editor/murda-text';
 import {
   preAllocIds,
   allocIdsEx,
   AllocIdsData,
   allocId,
-} from '../../edit/models/code-editor/murda-id';
+} from '@box/schema/code-editor/murda-id';
 
 test('MuRDAText - store', function () {
   const strs = ['', 'abc123~!@'];

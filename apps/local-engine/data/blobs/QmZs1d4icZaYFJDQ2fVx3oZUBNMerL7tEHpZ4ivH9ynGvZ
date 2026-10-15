@@ -1,8 +1,0 @@
-{
-  "func": "buildBloomFilter",
-  "args": [
-    {
-      "file": "weak_passwords.txt"
-    }
-  ]
-}

@@ -1,5 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { ProjectCard } from '../components/project-management/catalog/project-card';
+import type { LocalProject } from '../components/project-management/project-types';
 
 const root = path.resolve(__dirname, '..');
 
@@ -11,21 +15,61 @@ describe('Creator work center model integration', () => {
   test('offers maps and models in one work center', () => {
     const page = source('pages/projects/index.tsx');
     const library = source('components/creator-model-library.tsx');
-    expect(page).toContain('作品中心');
+    expect(page).toContain('aria-label="创作中心"');
     expect(page).toContain('地图列表');
     expect(page).toContain('模型列表');
-    expect(page).toContain('地图作品');
-    expect(page).toContain('styles.sectionHeader');
-    expect(page).toContain('玩家管理');
     expect(page).not.toContain('href="/system"');
-    expect(page).toContain('<CreatorModelLibrary voxaUrl={voxaUrl} />');
-    expect(page).toContain('className={styles.cardLink}');
-    expect(page).toContain('aria-label={`编辑地图 ${project.name}`}');
-    expect(page).not.toContain('<Pencil size={14} /> 编辑</button>');
+    expect(page).toContain('<CreatorModelLibrary');
+    expect(page).toContain('voxaUrl={voxaUrl}');
+    expect(page).toContain(
+      "canManageModels={creatorPermissions.includes('models.manage')}",
+    );
+    expect(page).toContain('<ProjectCatalog');
+    expect(page).toContain('renderProjectCard={renderProjectCard}');
     expect(library).toContain('模型作品');
     expect(library).toContain('styles.sectionHeader');
     expect(library).toContain('className={styles.cardLink}');
     expect(library).not.toContain('<Pencil size={13} />编辑</button>');
+  });
+
+  test('opens a map from its accessible card and offers contextual actions', () => {
+    const project = {
+      id: 'town',
+      name: '测试地图',
+      mapRole: 'main',
+      mainProjectId: 'town',
+      author: '测试作者',
+      description: '测试简介',
+      theme: 'sunset',
+      latestRelease: 'v1.0.0',
+    } as LocalProject;
+    const noop = () => {};
+    const html = renderToStaticMarkup(
+      createElement(ProjectCard, {
+        project,
+        projects: [project],
+        menuProject: 'town',
+        exportProgress: null,
+        setMenuProject: noop,
+        openEditor: noop,
+        editDetails: noop,
+        createSubmap: noop,
+        exportProject: noop,
+        recoverProject: noop,
+        deleteProject: noop,
+      }),
+    );
+    expect(html).toContain('aria-label="编辑地图 测试地图"');
+    expect(html).toContain('role="menu"');
+    for (const label of [
+      '编辑信息',
+      '新建副地图',
+      '导出',
+      '恢复历史版本',
+      '删除',
+    ]) {
+      expect(html).toContain(label);
+    }
   });
 
   test('shows a recovery message when VOXA is unavailable', () => {
@@ -69,13 +113,19 @@ describe('Creator work center model integration', () => {
   });
 
   test('allows map editors to read existing models without model-management permission', () => {
-    expect(source('pages/api/creator-models/index.ts')).toContain("['projects.edit', 'models.manage']");
-    expect(source('pages/api/creator-models/blobs/[hash].ts')).toContain("['projects.edit', 'models.manage']");
+    expect(source('pages/api/creator-models/index.ts')).toContain(
+      "['projects.edit', 'models.manage']",
+    );
+    expect(source('pages/api/creator-models/blobs/[hash].ts')).toContain(
+      "['projects.edit', 'models.manage']",
+    );
   });
 
   test('requires current edit permission before rendering a map editor', () => {
     const editorPage = source('app/e/[container]/page.tsx');
-    expect(editorPage).toContain("hasCreatorCapability(identity.creatorPermissions, 'projects.edit')");
+    expect(editorPage).toContain(
+      "hasCreatorCapability(identity.creatorPermissions, 'projects.edit')",
+    );
     expect(editorPage).toContain('identity.creatorAccess');
     expect(editorPage).not.toContain('hasAuthenticatedPlayer(');
   });
@@ -88,13 +138,19 @@ describe('Creator work center model integration', () => {
 
   test('keeps the VOXA container health check independent from the removed library route', () => {
     const dockerfile = source('../local-engine/Dockerfile');
-    const voxaStage = dockerfile.slice(dockerfile.indexOf('FROM runtime-base AS voxa'));
-    expect(voxaStage).toContain("fetch('http://127.0.0.1:3001/api/health-check')");
+    const voxaStage = dockerfile.slice(
+      dockerfile.indexOf('FROM runtime-base AS voxa'),
+    );
+    expect(voxaStage).toContain(
+      "fetch('http://127.0.0.1:3001/api/health-check')",
+    );
     expect(voxaStage).not.toContain("fetch('http://127.0.0.1:3001/library')");
   });
 
   test('does not expose a separate VOXA library route', () => {
-    expect(fs.existsSync(path.join(root, '../voxa/pages/library.tsx'))).toBe(false);
+    expect(fs.existsSync(path.join(root, '../voxa/pages/library.tsx'))).toBe(
+      false,
+    );
   });
 
   test('keeps local VOXA save-only without a platform publish action', () => {
@@ -102,7 +158,9 @@ describe('Creator work center model integration', () => {
     expect(navBar).toContain('<SaveButton />');
     expect(navBar).not.toContain('PublishButton');
     expect(
-      fs.existsSync(path.join(root, '../voxa/src/views/nav-bar/publish-button.tsx')),
+      fs.existsSync(
+        path.join(root, '../voxa/src/views/nav-bar/publish-button.tsx'),
+      ),
     ).toBe(false);
   });
 });

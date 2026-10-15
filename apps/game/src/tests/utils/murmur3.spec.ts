@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import { murmur3 } from 'src/utils/murmur3';
+import { murmur3 } from '@box/build-system/utils/murmur3';
 
 const data = [
   'a',

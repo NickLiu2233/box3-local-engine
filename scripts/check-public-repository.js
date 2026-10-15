@@ -18,10 +18,14 @@ const publicEnvironment = {
 
 function forbiddenPath(file) {
     return (
+        path.basename(file) === '.runtime.env' ||
         /^(?:apps\/(?:migrator|license-server)\/|box-local-engine-internal\/|\.internal\/|\.private\/|license\/)/.test(
             file,
         ) ||
-        /(?:^|\/)(?:node_modules|\.local|diagnostics|\.next[^/]*)(?:\/|$)/.test(file) ||
+        /(?:^|\/)(?:node_modules|\.local|diagnostics|\.next[^/]*|private\/tmp)(?:\/|$)/.test(
+            file,
+        ) ||
+        /^internals\/dev-certs\/certs\//.test(file) ||
         (/^(?:apps\/local-engine\/(?:projects|backups|runtime-cache|play-worlds)\/|apps\/voxa\/data\/)/.test(
             file,
         ) &&
@@ -35,6 +39,31 @@ function inspect(file, text) {
     const findings = [];
     if (forbiddenPath(file)) {
         findings.push('private-or-runtime-path');
+    }
+    if (/^apps\/local-engine\/data\/blobs\//.test(file)) {
+        try {
+            const value = JSON.parse(text);
+            if (value && !Array.isArray(value) && typeof value === 'object') {
+                if (
+                    [
+                        'owner',
+                        'users',
+                        'holderId',
+                        'deviceId',
+                        'collaborators',
+                        'versionControl',
+                    ].some((key) => Object.hasOwn(value, key)) ||
+                    Object.keys(value).some((key) => /^\d+$/.test(key) && value[key]?.createdAt)
+                ) {
+                    findings.push('embedded-project-or-user-state');
+                }
+            }
+        } catch {
+            // Ordinary script and binary-resource text is not JSON state.
+        }
+        if (/portal-backstage\.(?:dao3|box3)\.fun/.test(text)) {
+            findings.push('internal-business-script');
+        }
     }
     const basename = path.basename(file);
     if (basename === 'package.json') {

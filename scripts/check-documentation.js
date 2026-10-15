@@ -3,8 +3,12 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
-const { markdownFiles, assertLocalLinks } = require('./lib/documentation-links.cjs');
-const { documentationDirectories } = require('./lib/owned-code-config.cjs');
+const {
+    markdownFiles,
+    repositoryMarkdownFiles,
+    assertLocalLinks,
+} = require('./lib/documentation-links.cjs');
+const { documentationDirectories, documentationFiles } = require('./lib/owned-code-config.cjs');
 
 const root = path.resolve(__dirname, '..');
 const docsRoot = path.join(root, 'docs');
@@ -16,6 +20,8 @@ const coreFiles = [
 const files = [
     ...new Set([
         ...coreFiles,
+        ...repositoryMarkdownFiles(root),
+        ...documentationFiles.map((file) => path.join(root, file)),
         ...documentationDirectories
             .filter((directory) => directory !== 'docs')
             .flatMap((directory) => markdownFiles(path.join(root, directory))),
@@ -42,8 +48,8 @@ for (const required of ['MIT', 'npm run install:all', 'npm run verify', 'CONTRIB
 }
 const contributors = fs.readFileSync(path.join(root, 'CONTRIBUTING.md'), 'utf8');
 for (const required of [
-    'git clone https://github.com/<your-account>/box3-local-engine.git',
-    'git remote add upstream https://github.com/box3lab/box3-local-engine.git',
+    'git clone ',
+    'git remote add upstream ',
     'git fetch upstream',
     'Pull Request',
 ]) {

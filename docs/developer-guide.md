@@ -6,10 +6,11 @@
 
 | 工具    | 要求                                | 使用场景                            |
 | ------- | ----------------------------------- | ----------------------------------- |
-| Git     | 可正常克隆与切换分支                | 获取源码、同步和提交                |
+| Git     | 2.31 及以上                         | 获取源码、同步、完整历史检查        |
 | Node.js | `22.17.x`，与 `.node-version` 一致  | 仓库脚本与 JS/TS 开发               |
 | Docker  | Docker Engine/Desktop 与 Compose v2 | `dev:infra`、镜像构建及部署         |
 | Rust    | stable 与对应平台原生工具链         | 管理器原生开发、Rust 检查与完整验证 |
+| Python  | Python 3，可从命令行访问            | 需要本机编译的 Node 原生依赖        |
 
 macOS 原生构建需要 Xcode Command Line Tools；Windows 需要适用的 C++ 构建工具和 WebView2；Linux 原生管理器需要 Tauri 对应的系统开发库。具体原生依赖与命令见[部署管理器 README](../apps/deployment-manager/README.md)。只修改网页时可以先运行局部检查，但提交前的完整验证仍可能需要 Rust。
 
@@ -86,9 +87,26 @@ npm run dev:infra
 | Player Service | http://127.0.0.1:3124/ | 玩家身份与管理接口       |
 | 玩家后台       | http://127.0.0.1:8000/ | 玩家与游玩地图管理       |
 
-先确认 Player Service 没有数据库错误，再通过登录门户创建测试账号，随后进入 Creator。管理功能需要相应权限，不能把普通注册账号当作管理员；权限问题应检查服务端授权与模块说明。Play 的地图来自导入的 `.boxplay`，没有导入作品时不会自动展示 Creator 的全部工程。
+先确认 Player Service 没有数据库错误，再通过登录门户创建测试账号。注册玩家默认不会成为管理员，也不会自动获得创作权限。首次使用需配置 `BOX_PLAY_ADMIN_TOKEN`、重启源码栈并以服主身份登录玩家后台，再授予测试玩家创作能力；操作步骤见[首个作品教程](./first-project.md)。Play 的地图来自导入的 `.boxplay`，没有导入作品时不会自动展示 Creator 的全部工程。
 
-源码开发数据通常保存在 `apps/local-engine/projects/`、`play-worlds/`、`data/` 和 `backups/`；身份数据在 PostgreSQL 中。桌面管理器使用自己的系统应用数据目录，与源码目录独立。更详细的数据格式见[本地引擎 README](../apps/local-engine/README.md)。
+源码开发数据统一保存在仓库根目录 `.local-data/`，该目录同时被 Git 和 Docker 构建忽略。Creator 工程、导入的 Play 地图、VOXA 模型、运行数据与缓存、工程导出和备份都写入这里；`apps/local-engine/data/blobs/` 只保留引擎内置及构建资源。
+
+```text
+.local-data/
+  build-assets/blobs/ # 资源构建的中间产物，可重新生成
+  apps/local-engine/
+    projects/         # 可编辑地图和地图组
+    play-worlds/      # 导入的游玩包
+    data/             # 本机运行资源、配置和上传数据
+    runtime-cache/    # 可重建运行缓存
+    backups/          # 工程备份
+    dist/             # 导出的工程与游玩包
+  apps/voxa/data/     # 模型库与模型资源
+```
+
+可在 `.env` 设置 `BOX_DEV_DATA_DIRECTORY` 使用其他开发数据目录；根开发命令和直接启动本地引擎、VOXA 的开发模式均使用这个配置。Docker 部署目录仍由 `BOX_DATA_DIRECTORY` 控制。根开发命令启动时会打印实际路径，并在首次使用新目录时迁移旧工程、游玩包、模型和导出目录；已有独立数据不会被覆盖。源码内置资源保留原位，旧公共 blob 库复制到独立数据目录以保留作品依赖；后续启动不会反复导入旧数据。资源构建缓存固定保存在仓库的 `.local-data/build-assets/`，仅最终运行及旧地图迁移所需的资源写回源码 blob 目录。
+
+身份与脚本持久数据仍在配置的 PostgreSQL 中；`dev:infra` 的数据库使用 Docker 持久卷，不会写入源码文件。桌面管理器使用自己的系统应用数据目录。更详细的数据格式见[本地引擎 README](../apps/local-engine/README.md)。
 
 ### 缩小启动范围
 
@@ -128,7 +146,7 @@ docker compose --profile infra stop postgres redis
 | 更新 / 检查 API 契约     | `npm run api:generate` / `npm run api:check`          | 修改契约后生成，并检查产物同步                 |
 | 文档链接                 | `node scripts/check-documentation.js`                 | 检查本地文档链接与基础入口                     |
 
-单模块检查使用对应 `package.json` 的脚本。例如 `npm --prefix apps/player-launcher run check` 检查玩家启动器；局部成功不等于完整验证或目标平台安装验证通过。公共包与权威运行时修改后可能需要重新构建并重启，不能假设所有修改都热更新。
+单模块检查使用对应 `package.json` 的脚本。例如 `npm --prefix apps/player-launcher run check` 检查玩家启动器；局部成功不等于完整验证或目标平台安装验证通过。默认 CI、数据库条件测试、runner 选择与桌面 smoke 的具体边界见[测试指南](./testing.md)。公共包与权威运行时修改后可能需要重新构建并重启，不能假设所有修改都热更新。
 
 新增项目登记到 `rush.json`，修改依赖后执行 `npm run update:all`，提交相关清单与 `common/config/rush/pnpm-lock.yaml`。HTTP 契约由 `@box/apis` 维护；不要手工修改生成客户端来绕过契约更新。
 

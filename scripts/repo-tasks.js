@@ -56,6 +56,9 @@ function prepareTestDependencies() {
     for (const project of testDependencyBuildPlan(root)) {
         npmScript(project.folder, 'build');
     }
+    // Runtime references include generated API/texture/model assets. Rebuild
+    // these from approved source inputs before checking or copying their closure.
+    npmScript('apps/local-engine', 'prepare-assets');
     testDependenciesPrepared = true;
 }
 
@@ -82,8 +85,11 @@ function check() {
         'scripts/package-manifest-order.test.js',
         'scripts/documentation-links.test.js',
         'scripts/browser-runtime-config.test.js',
+        'scripts/audit-dependencies.test.js',
+        'scripts/game-test-environment.test.js',
     ]);
     node('apps/local-engine/src/build-metadata.test.js');
+    node('apps/local-engine/src/runtime-assets.test.js');
     node('apps/local-engine/scripts/regression-project-storage-identity.js');
     node('scripts/regression-empty-mesh-asset.js');
     node('scripts/check-standalone.js');
@@ -105,8 +111,8 @@ function check() {
         '--test',
         'scripts/internal-migrator.test.js',
         'scripts/check-public-repository.test.js',
+        'scripts/check-public-history.test.js',
     ]);
-    run(process.execPath, ['--test', 'scripts/license-removal.test.js']);
     node('scripts/check-windows-offline-installer.js');
     run(process.execPath, [
         '--test',
@@ -156,6 +162,9 @@ function test() {
     prepareTestDependencies();
     npmScript('apps/local-engine', 'test');
     npmScript('services/game-server', 'test');
+    npmScript('apps/game', 'test', ['--runInBand']);
+    npmScript('apps/player-launcher', 'check');
+    npmScript('services/game-server', 'check:anticheat');
     check();
 }
 

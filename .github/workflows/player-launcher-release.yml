@@ -53,9 +53,14 @@ jobs:
       tag: ${{ steps.identity.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: .node-version
+      - name: Require a clean public source history
+        run: node scripts/check-public-history.js
+
       - name: Validate player version and OSS configuration
         id: version
         run: node --experimental-strip-types apps/player-launcher/scripts/release.mts validate

@@ -1,1 +1,0 @@
-{"DEFAULT_SCREEN_ID":{"childrenIds":[],"id":"DEFAULT_SCREEN_ID","name":"screen","parentId":"ROOT_ID","type":2,"value":{"data":{"enable":true,"layout":{"data":null,"type":"none"},"zIndex":1},"type":"screen"}},"ROOT_ID":{"childrenIds":["DEFAULT_SCREEN_ID"],"id":"ROOT_ID","name":"Root","parentId":"","type":0}}

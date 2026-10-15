@@ -90,7 +90,6 @@ EntitySetSchema.free(anotherSet)
         * [json](#json)
 * functor
     * [array](#array)
-    * [sorted array](#sortedarray)
     * [dictionary](#dictionary)
     * [struct](#struct)
     * [union](#union)

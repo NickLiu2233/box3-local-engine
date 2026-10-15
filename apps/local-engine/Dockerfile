@@ -77,9 +77,10 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     \) -exec rm -rf {} + \
     && find /opt/game-server -type f \( \
       -iname 'README*' -o -iname 'CHANGELOG*' -o -iname 'HISTORY*' \
-      -iname 'CONTRIBUTING*' -o -iname 'AUTHORS*' -o -iname '*.md' \
+      -iname 'CONTRIBUTING*' -o -iname '*.md' \
       -o -iname '*.markdown' -o -name 'yarn.lock' -o -name 'package-lock.json' \
-    \) -delete \
+    \) ! \( -iname 'LICENSE*' -o -iname 'LICENCE*' -o -iname 'COPYING*' \
+      -o -iname 'NOTICE*' -o -iname 'COPYRIGHT*' -o -iname 'AUTHORS*' -o -iname 'PATENTS*' \) -delete \
     && rm -rf /opt/game-server/node_modules/@types \
       /opt/game-server/node_modules/.pnpm/node_modules/@types \
     && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \
@@ -125,9 +126,10 @@ RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
     \) -exec rm -rf {} + \
     && find /opt/game-server -type f \( \
       -iname 'README*' -o -iname 'CHANGELOG*' -o -iname 'HISTORY*' \
-      -iname 'CONTRIBUTING*' -o -iname 'AUTHORS*' -o -iname '*.md' \
+      -iname 'CONTRIBUTING*' -o -iname '*.md' \
       -o -iname '*.markdown' -o -name 'yarn.lock' -o -name 'package-lock.json' \
-    \) -delete \
+    \) ! \( -iname 'LICENSE*' -o -iname 'LICENCE*' -o -iname 'COPYING*' \
+      -o -iname 'NOTICE*' -o -iname 'COPYRIGHT*' -o -iname 'AUTHORS*' -o -iname 'PATENTS*' \) -delete \
     && rm -rf /opt/game-server/node_modules/@types \
       /opt/game-server/node_modules/.pnpm/node_modules/@types \
     && find /opt/game-server/node_modules/.pnpm -mindepth 1 -maxdepth 1 -type d \

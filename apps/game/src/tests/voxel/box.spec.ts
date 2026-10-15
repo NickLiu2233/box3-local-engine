@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
 import { VoxelView, allocVoxels, freeVoxels } from '@box/utils/voxel';
-import { meshChunkToBoxes, boxCompress } from 'src/engine/voxel/box-encode';
+import { meshChunkToBoxes, boxCompress } from '@box/build-system/utils/box-encode';
 import { CHUNK_SIZE } from '@box/schema/voxel/voxel-collision-schema';
 import { MuWriteStream, MuReadStream } from '@box/mudb/stream';
 import { blitBoxesToChunk, boxDecompress } from '@box/schema/voxel/box-decode';

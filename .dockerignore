@@ -1,10 +1,15 @@
 .git
+.local-data/
 .gitignore
 .DS_Store
 **/.DS_Store
 **/node_modules
 **/.rush
 **/.next
+**/.next-*
+/dist/
+apps/player-auth-portal/dist/
+apps/game/dist/
 **/coverage
 **/.turbo
 **/*.tsbuildinfo
@@ -40,13 +45,14 @@ apps/voxa/data/
 # Legacy local license data must never enter a build context.
 apps/license-server/
 
-# Local blobs created by the current workspace are never part of the engine
-# template. The runtime image is additionally assembled from referenced blobs
-# only, so these files cannot enter a distributed layer.
-apps/local-engine/data/blobs/QmRsmiQgwNDJcsNuhYLnw8DzfLfX7hboaHA7ms9c47Wv1t
-apps/local-engine/data/blobs/QmSaZSmYVACNo1s5ptxyfKpRkvQM2CYcQeVAg4u4ZZ7uVo
-apps/local-engine/data/blobs/QmasiQ6eEzBVDjh9F5uaSLhEFwWLS9bXo86o52HrztxmUw
-apps/local-engine/data/blobs/QmcFDasm1RakZvsQ3Xwv7nLnhsbWQHWCvcokAXNbUoana6
+# Include the complete blob store as build input. Other local engine data stays excluded.
+apps/local-engine/data/*
+!apps/local-engine/data/blobs/
+!apps/local-engine/data/blobs/**
+apps/local-engine/runtime-cache/
+apps/local-engine/backups/
+apps/player-launcher/private/
+internals/dev-certs/
 apps/migrator/cache
 apps/migrator/cache/
 

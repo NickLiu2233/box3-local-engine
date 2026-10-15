@@ -1,5 +1,5 @@
 import { expect, test } from '@jest/globals';
-import * as pq from 'src/engine/script/pairing-heap';
+import * as pq from '@box/utils/script/pairing-heap';
 
 function checkHeapInvariant(root) {
   expect(pq.NIL._left).toBe(pq.NIL);

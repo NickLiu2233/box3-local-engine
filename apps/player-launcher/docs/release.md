@@ -34,7 +34,7 @@ Linux 使用 AppImage，应用执行文件名为 `box3-player-launcher`。CI 安
 产物存储在独立目录 `oss://<Bucket>/box-player-launcher/<player-v标签>/`，不与引擎的 `local-engine/` 目录混用。
 使用 AWS CLI 的 OSS S3 兼容接口，与引擎流水线 Windows 步骤相同；固定 virtual-hosted 寻址，凭据只通过子进程环境传递。
 
-安装包上传/下载使用高阶 `s3 cp`，超过 16 MiB 分块传输，分块大小 16 MiB，并发 4。输出实际字节/速率进度，并每 15 秒报告状态。连接超时 20 秒、读取超时 60 秒，整个传输最多 10 分钟；HEAD 最多 90 秒。上传后还会核对 OSS 对象大小和 SHA256 元数据，只有核对成功才报告完成。上传步骤另设 12 分钟上限。参见 [AWS CLI S3 配置](https://docs.aws.amazon.com/cli/latest/topic/s3-config.html)。
+安装包上传/下载使用高阶 `s3 cp`，超过 16 MiB 分块传输，分块大小 16 MiB，并发 4。输出实际字节/速率进度，并每 15 秒报告状态。连接超时 30 秒、读取超时 120 秒，整个传输最多 30 分钟；HEAD 最多 90 秒。上传后还会核对 OSS 对象大小和 SHA256 元数据，只有核对成功才报告完成。上传步骤另设 35 分钟上限。参见 [AWS CLI S3 配置](https://docs.aws.amazon.com/cli/latest/topic/s3-config.html)。
 
 发布顺序：
 
