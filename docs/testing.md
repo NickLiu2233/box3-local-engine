@@ -10,6 +10,8 @@ npm run verify
 
 只运行 Prettier 和 ESLint，检查格式、语法和代码风格。CI 与本地范围相同，不执行应用构建、类型检查、业务回归、依赖审计或 Compose 校验。基础检查无需启动 Docker、数据库或 Rust 编译。
 
+PR 合入 `main`、`staging` 或 `release/v…` 时，`verify` 任务直接跳过，不安装依赖、不重复检查；这些分支的 push 也不运行 Verify。保留 PR 任务的跳过状态，是为了满足现有分支规则要求的 `verify` 状态，避免永久等待。`dev`、`dev-*`、`dev/**` 等开发分支继续执行基础检查。
+
 ## 按需选择检查
 
 | 目标                    | 命令                                             | 前提                                                  |
