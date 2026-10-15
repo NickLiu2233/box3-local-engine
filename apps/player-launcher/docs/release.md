@@ -1,18 +1,18 @@
 # 玩家启动器发布
 
-分支总流程见[发布与版本](../../../docs/release-and-version.md)。玩家版本独立取自本模块 `package.json`，不由 `sync-root-version.js` 同步。staging 在打包时追加 `-staging`，使用独立应用标识和本机数据目录。
+分支总流程见[发布与版本](../../../docs/release-and-version.md)。玩家正式版本独立取自 `player-release/v<版本>` 分支名，不由引擎发布分支决定；本模块 `package.json` 提供本地 dev 与 staging 的基础版本。staging 在打包时追加 `-staging`，使用独立应用标识和本机数据目录。
 
 本机执行 `npm run package:player-launcher:macos-arm64` 等打包命令，或在本模块执行 `npm run bundle:electron`，实际应用版本自动追加 `-dev`（当前为 `2026.1.2-dev`），使用 `com.box.player.launcher.dev` 和独立数据目录。GitHub Actions 继续按 staging / 正式渠道打包。
 
 ## 触发与产物
 
-| 入口                      | 行为                                                                     |
-| ------------------------- | ------------------------------------------------------------------------ |
-| 更新 `staging` / 手动测试 | 与正式流程相同的五平台预发布包，实际版本带 `-staging`，仅上传测试 OSS    |
-| PR 合入 `release`         | 固定 `player-v<版本>` 标签，构建或复用安装包，发布 OSS 和 GitHub Release |
-| `dev`、`main`、普通 PR    | 不打包玩家启动器；Verify 只做基础检查                                    |
+| 入口                                 | 行为                                                                  |
+| ------------------------------------ | --------------------------------------------------------------------- |
+| 更新 `staging` / 手动测试            | 与正式流程相同的五平台预发布包，实际版本带 `-staging`，仅上传测试 OSS |
+| 创建 / 推送 `player-release/v<版本>` | 从分支名取版本，构建或复用安装包，发布 OSS 和 GitHub Release          |
+| `dev`、`main`、普通 PR               | 不打包玩家启动器；Verify 只做基础检查                                 |
 
-两种渠道共用 `player-launcher-release.yml` 的缓存、检查、签名、打包和汇总步骤；正式渠道额外核对合并提交和版本，同版本不允许指向另一提交，不需要手动打 Tag。玩家 Release 设置 `make_latest: false`，不覆盖引擎的 latest；预发布版本会标记 prerelease。
+两种渠道共用 `player-launcher-release.yml` 的缓存、检查、签名、打包和汇总步骤；正式渠道核对版本分支与不可变版本，同版本不允许指向另一提交，不需要手动打 Tag。玩家 Release 设置 `make_latest: false`，不覆盖引擎的 latest；预发布版本会标记 prerelease。
 
 | 目标          | Runner             | 安装包后缀             |
 | ------------- | ------------------ | ---------------------- |
@@ -26,15 +26,16 @@
 
 ## 发布前操作
 
-在仓库根目录执行，示例版本按实际替换：
+在仓库根目录执行，在已验收的源码提交上，示例版本按实际替换：
 
 ```sh
-npm --prefix apps/player-launcher version 2026.1.2 --no-git-tag-version
 npm --prefix apps/player-launcher run check
 npm run verify
+git switch -c player-release/v2026.1.3
+git push -u origin player-release/v2026.1.3
 ```
 
-提交后按 `dev → staging → release` 推进；实际验证登录、地图、缓存与目标平台安装。合入 release 同时启动引擎发布，也需确认引擎版本可用于本次提交。
+提交后先在 staging 验证登录、地图、缓存与目标平台安装，再创建玩家版本分支。玩家正式分支只发布玩家启动器；引擎使用独立的 `release/v<版本>` 分支。实际应用版本和文件名取分支版本，源码版本不必提前同步修改。
 
 ## 缓存与重跑
 

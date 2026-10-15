@@ -38,7 +38,7 @@ export function releaseInfo(tag:string, commit:string, packageVersion:string):Re
     }
     if (version !== packageVersion) {
         throw new Error(
-            `Player tag ${tag} does not match apps/player-launcher/package.json version ${packageVersion}`,
+            `Player tag ${tag} does not match the expected build version ${packageVersion}`,
         );
     }
     if (!/^[a-f0-9]{40}$/.test(commit)) {

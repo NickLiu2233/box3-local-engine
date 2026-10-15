@@ -10,15 +10,12 @@ const yaml = require(
     require.resolve('js-yaml', { paths: [path.join(root, 'tools/repo-tooling')] }),
 );
 const release = yaml.load(workflow);
-assert.deepEqual(release.on.push, { branches: ['staging', 'release'] });
+assert.deepEqual(release.on.push, { branches: ['staging', 'release/v*'] });
 assert.ok(Object.hasOwn(release.on, 'workflow_dispatch'));
-assert.equal(release.jobs['validate-release'].needs, 'merge-gate');
-assert.equal(release.jobs['validate-release'].if, "needs.merge-gate.outputs.merged == 'true'");
-assert.ok(
-    release.jobs['merge-gate'].steps.some(
-        (step) => step.run === 'node scripts/github-build-gate.js merge release',
-    ),
-);
+assert.ok(Object.hasOwn(release.on, 'create'));
+assert.equal(release.jobs['merge-gate'], undefined);
+assert.equal(release.jobs['validate-release'].needs, undefined);
+assert.match(release.jobs['validate-release'].if, /refs\/heads\/release\/v/);
 assert.ok(
     release.jobs['validate-release'].steps.some((step) =>
         step.run?.includes('node scripts/github-build-gate.js release engine'),
@@ -82,7 +79,7 @@ assert.match(workflow, /architecture: arm64\s+runner: ubuntu-24\.04-arm/);
 assert.match(workflow, /^ {2}validate-release:/m);
 assert.equal(release.jobs.images.needs, 'validate-release');
 assert.match(workflow, /sync-root-version\.js --check/);
-assert.doesNotMatch(workflow, /GITHUB_REF_NAME|github\.ref_name/);
+assert.match(release['run-name'], /github\.ref_name/);
 assert.doesNotMatch(workflow, /docker\/setup-qemu-action/);
 assert.match(
     workflow,
@@ -192,7 +189,7 @@ assert.equal(
     release.jobs.publish.env.OSS_SERVER_RELEASE_PREFIX,
     '${{ needs.validate-release.outputs.releasePrefix }}',
 );
-assert.equal(publication.if, "github.ref == 'refs/heads/release'");
+assert.equal(publication.if, "startsWith(github.ref, 'refs/heads/release/v')");
 assert.match(workflow, /ALIYUN_OSS_BUCKET must contain only the bucket name/);
 assert.match(workflow, /ALIYUN_OSS_ENDPOINT must be an OSS endpoint hostname/);
 assert.doesNotMatch(workflow, /actions\/(?:upload|download)-artifact@/);

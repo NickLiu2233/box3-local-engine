@@ -236,8 +236,8 @@ test('player release workflow requires a merge, checks OSS before installing and
         } // The ordinary CI workflow is optional.
         throw error;
     });
-    assert.match(release, /branches:\s*\n\s*- staging\s*\n\s*- release/);
-    assert.match(release, /github-build-gate\.js merge release/);
+    assert.match(release, /branches:\s*\n\s*- staging\s*\n\s*- ['"]?player-release\/v\*/);
+    assert.doesNotMatch(release, /github-build-gate\.js merge/);
     assert.match(release, /github-build-gate\.js release player/);
     assert.match(release, /workflow_dispatch/);
     assert.doesNotMatch(release, /tags:|package-images|package-desktop|docker/);

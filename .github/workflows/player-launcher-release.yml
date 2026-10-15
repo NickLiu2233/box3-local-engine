@@ -1,9 +1,11 @@
 name: Build and Release BOX3 Player Launcher
+run-name: Player / ${{ github.ref_name }}
 'on':
+  create: {}
   push:
     branches:
       - staging
-      - release
+      - 'player-release/v*'
   workflow_dispatch: {}
 permissions:
   contents: read
@@ -20,31 +22,12 @@ env:
   OSS_ACCESS_KEY_SECRET: ${{ secrets.ALIYUN_OSS_ACCESS_KEY_SECRET }}
   PLAYER_BUILD_CHANNEL: ${{ github.ref == 'refs/heads/staging' && 'staging' || 'production' }}
 jobs:
-  merge-gate:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    outputs:
-      merged: ${{ steps.merge.outputs.merged || steps.staging.outputs.merged }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version-file: .node-version
-      - name: Require a merged pull request
-        id: merge
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node scripts/github-build-gate.js merge release
-        if: github.ref == 'refs/heads/release'
-      - name: Accept the staging build entry
-        id: staging
-        if: github.ref == 'refs/heads/staging'
-        run: echo "merged=true" >> "$GITHUB_OUTPUT"
   validate:
-    needs: merge-gate
-    if: needs.merge-gate.outputs.merged == 'true'
+    if: >-
+      (github.ref == 'refs/heads/staging' && github.event_name != 'create') ||
+      (startsWith(github.ref, 'refs/heads/player-release/v') &&
+       (github.event_name != 'create' || github.event.ref_type == 'branch') &&
+       (github.event_name != 'push' || github.event.created != true))
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -69,7 +52,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: node scripts/github-build-gate.js release player
-        if: github.ref == 'refs/heads/release'
+        if: startsWith(github.ref, 'refs/heads/player-release/v')
   installers:
     needs: validate
     name: Package (${{ matrix.target }})
@@ -200,4 +183,4 @@ jobs:
             player-release-files/*.sha256
             player-release-files/*.build.json
             player-release-files/SHA256SUMS.txt
-        if: github.ref == 'refs/heads/release'
+        if: startsWith(github.ref, 'refs/heads/player-release/v')

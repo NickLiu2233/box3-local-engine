@@ -83,12 +83,39 @@ function gitOutput(args) {
 
 function prepareReleaseMetadata() {
     const dirty = gitOutput(['status', '--porcelain']);
-    if (dirty && process.env.BOX_ALLOW_DIRTY_RELEASE !== 'true') {
+    const versionFiles = new Set([
+        'package.json',
+        'apps/deployment-manager/package.json',
+        'apps/local-engine/package.json',
+        'apps/player-admin/package.json',
+        'apps/player-auth-portal/package.json',
+        'apps/server-manager/package.json',
+        'apps/deployment-manager/src-tauri/tauri.conf.json',
+        'apps/deployment-manager/src-tauri/Cargo.toml',
+        'apps/manager-core/Cargo.toml',
+        'apps/server-manager-rust/Cargo.toml',
+        'apps/deployment-manager/src-tauri/Cargo.lock',
+        'apps/manager-core/Cargo.lock',
+        'apps/server-manager-rust/Cargo.lock',
+        'apps/player-auth-portal/package-lock.json',
+        'docker-compose.yml',
+        'distribution/play/compose.yml',
+    ]);
+    // Preparing a versioned release changes only these metadata files in CI.
+    const preparedVersion =
+        process.env.GITHUB_ACTIONS === 'true' &&
+        process.env.BOX_BUILD_CHANNEL === 'production' &&
+        !gitOutput(['ls-files', '--others', '--exclude-standard']) &&
+        gitOutput(['diff', '--name-only', 'HEAD'])
+            .split('\n')
+            .filter(Boolean)
+            .every((file) => versionFiles.has(file));
+    if (dirty && !preparedVersion && process.env.BOX_ALLOW_DIRTY_RELEASE !== 'true') {
         fail(
             '工作区存在未提交修改。请提交后再构建正式启动器；仅测试时可设置 BOX_ALLOW_DIRTY_RELEASE=true。',
         );
     }
-    if (dirty) {
+    if (dirty && !preparedVersion) {
         console.warn('WARNING: 正在构建带未提交修改的测试包，禁止用于公开发布。');
     }
     process.env.BOX_BUILD_COMMIT ||= gitOutput(['rev-parse', 'HEAD']) || 'unknown';

@@ -12,7 +12,7 @@ const commit = 'a'.repeat(40);
 
 test('channel identities keep production unchanged and pin staging caches to the source commit', () => {
     const production = engineReleaseContext(
-        { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit },
+        { GITHUB_REF: 'refs/heads/release/v2026.1.4', GITHUB_SHA: commit },
         '2026.1.4',
     );
     assert.equal(production.tag, 'v2026.1.4');
@@ -36,20 +36,24 @@ test('channel identities keep production unchanged and pin staging caches to the
     );
     for (const env of [
         { GITHUB_REF: 'refs/heads/main', GITHUB_SHA: commit },
-        { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit, BOX_BUILD_CHANNEL: 'staging' },
+        {
+            GITHUB_REF: 'refs/heads/release/v2026.1.4',
+            GITHUB_SHA: commit,
+            BOX_BUILD_CHANNEL: 'staging',
+        },
         { GITHUB_REF: 'refs/heads/staging', GITHUB_SHA: '../invalid' },
     ]) {
         assert.throws(() => engineReleaseContext(env, '2026.1.4'));
     }
     assert.throws(() =>
         engineReleaseContext(
-            { GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit },
-            '2026.1.4-staging',
+            { GITHUB_REF: 'refs/heads/release/v2026.1.4-staging', GITHUB_SHA: commit },
+            '2026.1.4',
         ),
     );
 });
 
-test('staging prepares the actual Node, Cargo, Tauri and Compose versions before the common build', (t) => {
+test('versioned production and staging prepare the actual Node, Cargo, Tauri and Compose versions', (t) => {
     const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'box-channel-version-'));
     t.after(() => fs.rmSync(temporary, { recursive: true, force: true }));
     const files = [
@@ -64,6 +68,10 @@ test('staging prepares the actual Node, Cargo, Tauri and Compose versions before
         'apps/deployment-manager/src-tauri/Cargo.toml',
         'apps/manager-core/Cargo.toml',
         'apps/server-manager-rust/Cargo.toml',
+        'apps/deployment-manager/src-tauri/Cargo.lock',
+        'apps/manager-core/Cargo.lock',
+        'apps/server-manager-rust/Cargo.lock',
+        'apps/player-auth-portal/package-lock.json',
         'docker-compose.yml',
         'distribution/play/compose.yml',
     ];
@@ -72,8 +80,11 @@ test('staging prepares the actual Node, Cargo, Tauri and Compose versions before
         fs.mkdirSync(path.dirname(file), { recursive: true });
         fs.copyFileSync(path.join(root, name), file);
     }
-    const version = JSON.parse(fs.readFileSync(path.join(temporary, 'package.json'))).version;
-    prepareBuildChannel({ GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit }, temporary);
+    const version = '2026.1.5';
+    prepareBuildChannel(
+        { GITHUB_REF: 'refs/heads/release/v2026.1.5', GITHUB_SHA: commit },
+        temporary,
+    );
     assert.equal(
         JSON.parse(fs.readFileSync(path.join(temporary, 'package.json'))).version,
         version,
@@ -97,6 +108,32 @@ test('staging prepares the actual Node, Cargo, Tauri and Compose versions before
             .readFileSync(path.join(temporary, 'docker-compose.yml'), 'utf8')
             .includes(`BOX_IMAGE_TAG:-${stagingVersion(version)}`),
     );
+    for (const file of [
+        'apps/manager-core/Cargo.lock',
+        'apps/deployment-manager/src-tauri/Cargo.lock',
+        'apps/server-manager-rust/Cargo.lock',
+    ]) {
+        assert.match(
+            fs.readFileSync(path.join(temporary, file), 'utf8'),
+            new RegExp(
+                `name = "box-manager-core"\\nversion = "${stagingVersion(version).replaceAll('.', '\\.')}"`,
+            ),
+        );
+    }
+    const portalLock = JSON.parse(
+        fs.readFileSync(path.join(temporary, 'apps/player-auth-portal/package-lock.json')),
+    );
+    assert.equal(portalLock.version, stagingVersion(version));
+    assert.equal(portalLock.packages[''].version, stagingVersion(version));
+    const checked = spawnSync(
+        process.execPath,
+        [path.join(temporary, 'scripts/sync-root-version.js'), '--check'],
+        {
+            cwd: temporary,
+            encoding: 'utf8',
+        },
+    );
+    assert.equal(checked.status, 0, checked.stderr);
 });
 
 test('rendering a staging installer cannot update the production bootstrap defaults', () => {

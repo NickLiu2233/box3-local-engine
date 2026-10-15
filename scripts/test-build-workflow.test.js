@@ -23,7 +23,7 @@ const upload =
     steps.find((step) => step.name === 'Upload images to Aliyun OSS').run;
 
 test('staging and production use one workflow and the same engine jobs', () => {
-    assert.deepEqual(workflow.on.push.branches, ['staging', 'release']);
+    assert.deepEqual(workflow.on.push.branches, ['staging', 'release/v*']);
     assert.equal(fs.existsSync(path.join(root, '.github/workflows/test-build.yml')), false);
     for (const name of ['images', 'desktop', 'headless-server', 'publish']) {
         assert.equal(workflow.jobs[name].if, undefined);
@@ -36,7 +36,7 @@ test('staging and production use one workflow and the same engine jobs', () => {
     const publish = workflow.jobs.publish.steps.find(
         (step) => step.uses === 'softprops/action-gh-release@v2',
     );
-    assert.equal(publish.if, "github.ref == 'refs/heads/release'");
+    assert.equal(publish.if, "startsWith(github.ref, 'refs/heads/release/v')");
     assert.equal(
         workflow.jobs.publish.env.OSS_SERVER_RELEASE_PREFIX,
         '${{ needs.validate-release.outputs.releasePrefix }}',

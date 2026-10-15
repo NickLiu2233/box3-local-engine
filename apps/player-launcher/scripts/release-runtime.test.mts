@@ -65,6 +65,7 @@ test('release validate runs in Node strip-only mode without a transpiler', async
                 NODE_OPTIONS: '',
                 GITHUB_OUTPUT: '',
                 PLAYER_RELEASE_TAG: tag,
+                GITHUB_REF: `refs/heads/player-release/v${packageInfo.version}`,
                 PLAYER_BUILD_CHANNEL: 'production',
                 PLAYER_RELEASE_COMMIT: 'a'.repeat(40),
                 OSS_BUCKET: 'fixture-bucket',

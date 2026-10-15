@@ -1,5 +1,20 @@
 'use strict';
 
+function productionVersion(ref, product = 'engine') {
+    const prefix = { engine: 'release', player: 'player-release' }[product];
+    const match =
+        prefix &&
+        new RegExp(
+            `^refs/heads/${prefix}/v((?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*)\\.(?:0|[1-9]\\d*))$`,
+        ).exec(ref || '');
+    if (!match) {
+        throw new Error(
+            `Production ${product} builds require a ${prefix || 'valid'}/v<version> branch`,
+        );
+    }
+    return match[1];
+}
+
 function versionForChannel(version, channel) {
     if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(version)) {
         throw new Error('Invalid packaging version');
@@ -24,7 +39,15 @@ function packagingContext(env, packageVersion, channelVariable = 'BOX_BUILD_CHAN
     if (!['dev', 'staging', 'production'].includes(channel)) {
         throw new Error('Unknown packaging channel');
     }
-    return { channel, version: versionForChannel(packageVersion, channel) };
+    const version =
+        channel === 'production' &&
+        /^refs\/heads\/(?:release|player-release)\//.test(env.GITHUB_REF || '')
+            ? productionVersion(
+                  env.GITHUB_REF,
+                  channelVariable === 'PLAYER_BUILD_CHANNEL' ? 'player' : 'engine',
+              )
+            : versionForChannel(packageVersion, channel);
+    return { channel, version };
 }
 
-module.exports = { packagingContext, versionForChannel };
+module.exports = { packagingContext, versionForChannel, productionVersion };

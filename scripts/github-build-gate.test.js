@@ -5,7 +5,6 @@ const assert = require('node:assert/strict');
 const {
     githubContext,
     githubGet,
-    mergedBuild,
     releaseIdentity,
     checkRelease,
     createTag,
@@ -24,10 +23,9 @@ const pull = {
     merge_commit_sha: commit,
     base: { ref: 'staging', repo: { full_name: context.repository } },
 };
-const noWait = async () => {};
 
 test('version reservation creates only the current immutable commit tag', async () => {
-    const selected = { ...context, ref: 'refs/heads/release' };
+    const selected = { ...context, ref: 'refs/heads/release/v2026.1.0' };
     const identity = releaseIdentity('engine', '2026.1.0');
     let creates = 0;
     assert.deepEqual(
@@ -60,7 +58,7 @@ test('version reservation creates only the current immutable commit tag', async 
                 throw new Error('must not move tag');
             },
         ),
-        /increment package.json/,
+        /new versioned release branch/,
     );
     assert.equal(
         await createTag(selected, identity, async (url, options) => {
@@ -78,7 +76,7 @@ test('version reservation creates only the current immutable commit tag', async 
 });
 
 test('tag creation races are resolved against GitHub, never by trusting a cache', async () => {
-    const selected = { ...context, ref: 'refs/heads/release' };
+    const selected = { ...context, ref: 'refs/heads/player-release/v0.1.0' };
     const identity = releaseIdentity('player', '0.1.0');
     let reads = 0;
     await reserveRelease(
@@ -100,71 +98,6 @@ test('tag creation races are resolved against GitHub, never by trusting a cache'
     await assert.rejects(
         createTag(selected, identity, async () => ({ status: 403, ok: false })),
         /reservation failed/,
-    );
-});
-
-test('merged PRs must match the exact destination, repository and pushed SHA', async () => {
-    for (const branch of ['staging', 'release']) {
-        const selected = { ...context, ref: `refs/heads/${branch}` };
-        assert.equal(
-            await mergedBuild(
-                selected,
-                branch,
-                async () => [{ ...pull, base: { ...pull.base, ref: branch } }],
-                noWait,
-            ),
-            true,
-        );
-    }
-    for (const candidate of [
-        { ...pull, merged_at: null },
-        { ...pull, merge_commit_sha: 'b'.repeat(40) },
-        { ...pull, base: { ...pull.base, ref: 'main' } },
-        { ...pull, base: { ...pull.base, repo: { full_name: 'other/repository' } } },
-    ]) {
-        assert.equal(await mergedBuild(context, 'staging', async () => [candidate], noWait), false);
-    }
-    assert.equal(await mergedBuild(context, 'staging', async () => [], noWait), false);
-    for (const ref of ['refs/heads/dev', 'refs/heads/main', 'refs/tags/v0.3.0']) {
-        assert.equal(
-            await mergedBuild(
-                { ...context, ref },
-                'staging',
-                async () => {
-                    throw new Error('must not request');
-                },
-                noWait,
-            ),
-            false,
-        );
-    }
-});
-
-test('merge lookup handles pagination and delayed GitHub indexing', async () => {
-    const endpoints = [];
-    assert.equal(
-        await mergedBuild(
-            context,
-            'staging',
-            async (endpoint) => {
-                endpoints.push(endpoint);
-                return endpoint.endsWith('page=1')
-                    ? Array.from({ length: 100 }, () => ({ merged_at: null }))
-                    : [pull];
-            },
-            noWait,
-        ),
-        true,
-    );
-    assert.equal(endpoints.length, 2);
-    let requests = 0;
-    assert.equal(
-        await mergedBuild(context, 'staging', async () => (++requests === 1 ? [] : [pull]), noWait),
-        true,
-    );
-    await assert.rejects(
-        mergedBuild(context, 'staging', async () => null, noWait),
-        /pull request list/,
     );
 });
 
@@ -192,7 +125,7 @@ test('GitHub requests are authenticated, bounded and fail closed without echoing
     assert.equal(await githubGet(context, 'example', async () => ({ status: 404 })), null);
 });
 
-test('branch releases derive independent engine and player identities from package versions', () => {
+test('branch releases derive independent engine and player identities from resolved versions', () => {
     assert.deepEqual(releaseIdentity('engine', '2026.1.0'), {
         version: '2026.1.0',
         tag: 'v2026.1.0',
@@ -209,7 +142,7 @@ test('branch releases derive independent engine and player identities from packa
 });
 
 test('published version identity cannot be moved to a different commit', async () => {
-    const selected = { ...context, ref: 'refs/heads/release' };
+    const selected = { ...context, ref: 'refs/heads/release/v0.3.0' };
     const identity = releaseIdentity('engine', '0.3.0');
     assert.deepEqual(await checkRelease(selected, identity, async () => null), identity);
     assert.deepEqual(
@@ -222,11 +155,11 @@ test('published version identity cannot be moved to a different commit', async (
         checkRelease(selected, identity, async () => ({
             object: { type: 'commit', sha: 'b'.repeat(40) },
         })),
-        /increment package.json/,
+        /new versioned release branch/,
     );
     await assert.rejects(
         checkRelease(context, identity, async () => null),
-        /release branch/,
+        /v<version> branch/,
     );
     let requests = 0;
     assert.deepEqual(

@@ -16,7 +16,7 @@ test('one player workflow builds, checks and collects both channels before produ
     const workflow = yaml.load(
         fs.readFileSync(path.join(root, '.github/workflows/player-launcher-release.yml'), 'utf8'),
     );
-    assert.deepEqual(workflow.on.push.branches, ['staging', 'release']);
+    assert.deepEqual(workflow.on.push.branches, ['staging', 'player-release/v*']);
     assert.ok(Object.hasOwn(workflow.on, 'workflow_dispatch'));
     assert.equal(workflow.jobs.installers.if, undefined);
     assert.equal(workflow.jobs.installers.strategy.matrix.include.length, 5);
@@ -40,6 +40,6 @@ test('one player workflow builds, checks and collects both channels before produ
     assert.ok(publish.steps.some((step) => step.run?.endsWith('release.mts download')));
     assert.equal(
         publish.steps.find((step) => step.uses === 'softprops/action-gh-release@v2').if,
-        "github.ref == 'refs/heads/release'",
+        "startsWith(github.ref, 'refs/heads/player-release/v')",
     );
 });

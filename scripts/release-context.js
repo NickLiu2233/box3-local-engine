@@ -3,6 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const { productionVersion } = require('./packaging-context');
 
 const root = path.resolve(__dirname, '..');
 const versionPattern =
@@ -21,17 +22,17 @@ function engineReleaseContext(env, packageVersion) {
     const channel =
         env.BOX_BUILD_CHANNEL ||
         (env.GITHUB_REF === 'refs/heads/staging' ? 'staging' : 'production');
-    const branch = channel === 'staging' ? 'staging' : 'release';
-    if (!['production', 'staging'].includes(channel) || env.GITHUB_REF !== `refs/heads/${branch}`) {
-        throw new Error('Release channel does not match the staging/release branch');
+    if (
+        !['production', 'staging'].includes(channel) ||
+        (channel === 'staging' && env.GITHUB_REF !== 'refs/heads/staging')
+    ) {
+        throw new Error('Release channel does not match the staging/versioned release branch');
     }
     if (!versionPattern.test(packageVersion) || !/^[a-f0-9]{40}$/.test(env.GITHUB_SHA || '')) {
         throw new Error('Release requires a valid version and source commit');
     }
-    if (channel === 'production' && /(?:-|\.)(dev|staging)$/.test(packageVersion)) {
-        throw new Error('Development and staging versions cannot enter production');
-    }
-    const version = channel === 'staging' ? stagingVersion(packageVersion) : packageVersion;
+    const version =
+        channel === 'staging' ? stagingVersion(packageVersion) : productionVersion(env.GITHUB_REF);
     const releasePrefix = channel === 'staging' ? 'local-engine-staging' : 'local-engine';
     const prefix = `${releasePrefix}/v${version}${channel === 'staging' ? `/${env.GITHUB_SHA}` : ''}`;
     return {
@@ -75,6 +76,12 @@ if (require.main === module) {
             process.argv[2] === 'prepare'
                 ? prepareBuildChannel()
                 : engineReleaseContext(process.env, version);
+        if (process.argv[2] === 'check-notes') {
+            require('./build-release-manifest').buildReleaseManifest(
+                context.version,
+                new Date().toISOString().slice(0, 10),
+            );
+        }
         if (process.env.GITHUB_OUTPUT) {
             fs.appendFileSync(
                 process.env.GITHUB_OUTPUT,

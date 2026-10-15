@@ -1,12 +1,12 @@
 # 发布与版本
 
-`staging` 和 `release` 共用同一套构建、校验、签名、打包与汇总流程。引擎使用 `release.yml`，玩家启动器使用 `player-launcher-release.yml`；没有单独的测试打包流程。
+`staging` 和正式版本分支共用同一套构建、校验、签名、打包与汇总流程。引擎使用 `release.yml`，玩家启动器使用 `player-launcher-release.yml`；没有单独的测试打包流程。
 
 ## 一套流程，两个渠道
 
 ```mermaid
 flowchart TD
-    Branch["推送 staging / release，或手动选择分支"] --> Identity["识别渠道、版本与源码提交"]
+    Branch["创建正式版本分支 / 推送 staging，或手动选择分支"] --> Identity["识别渠道、版本与源码提交"]
     Identity --> Images["引擎：两架构、六个服务镜像"]
     Images --> Desktop["五个平台部署启动器"]
     Images --> Server["两架构 Linux 服务器包"]
@@ -19,7 +19,7 @@ flowchart TD
     Channel -->|production| Production["正式 OSS / CDN 与 GitHub Release"]
 ```
 
-两条产品流水线独立完成汇总；上图展示共同阶段。PR、`dev` 和 `main` 的 Verify 只检查格式、语法和代码风格，不打包。正式发布要求通过 PR 合入 `release`，成功后由维护者同步 `main`。
+两条产品流水线独立完成汇总；上图展示共同阶段。PR、`dev` 和 `main` 的 Verify 只检查格式、语法和代码风格，不打包。正式发布通过创建版本分支触发：引擎用 `release/v<版本>`，玩家启动器用 `player-release/v<版本>`，成功后由维护者同步 `main`。创建分支即可构建，无需先向固定 `release` 分支合并 PR；后续推送和手动运行也支持同一入口。
 
 ## 本地开发包
 
@@ -42,7 +42,7 @@ flowchart TD
 
 预发布后缀属于实际应用版本，不只是 ZIP 名称。流水线在临时构建工作区准备版本，无需把源码版本手工改成 staging，也不创建 staging Git Tag。正式 Tag 仍由流水线固定为 `v<引擎版本>` / `player-v<玩家版本>`。
 
-引擎版本取根 `package.json`，后续使用 `YYYY.N.P`；玩家版本取自身 `package.json`。一个正式版本只能对应一个提交。
+正式版本取分支名，采用 `YYYY.N.P`：`release/v2026.1.5` 生成引擎与部署启动器 `2026.1.5`，`player-release/v2026.1.3` 生成玩家启动器 `2026.1.3`。流水线自动准备实际构建版本，无需先手改全部版本文件。源码 `package.json` 继续提供本地 dev 和 staging 的基础版本。一个正式版本只能对应一个提交。
 
 ## OSS 与更新隔离
 
@@ -59,25 +59,27 @@ flowchart TD
 
 ## 维护者操作
 
-| 步骤     | 操作                                                                    |
-| -------- | ----------------------------------------------------------------------- |
-| 准备     | 更新引擎和玩家版本，同步版本文件，完成基础检查                          |
-| 模拟发布 | 推送 `staging`，查看两条工作流的全部目标与汇总任务                      |
-| 业务验收 | 下载 staging 包，检查安装、登录、地图、备份与更新；核对版本、架构和提交 |
-| 正式发布 | 通过 PR 合入 `release`，检查正式 Release 与 CDN 产物                    |
-| 升级     | 同步 `main`；保留 `.env`、作品和数据库备份，再部署                      |
+| 步骤     | 操作                                                                     |
+| -------- | ------------------------------------------------------------------------ |
+| 准备     | 提交待发布代码和对应版本的更新日志，完成基础检查                         |
+| 模拟发布 | 推送 `staging`，查看两条工作流的全部目标与汇总任务                       |
+| 业务验收 | 下载 staging 包，检查安装、登录、地图、备份与更新；核对版本、架构和提交  |
+| 正式发布 | 创建 `release/v<引擎版本>` 或 `player-release/v<玩家版本>`，检查对应产物 |
+| 升级     | 同步 `main`；保留 `.env`、作品和数据库备份，再部署                       |
 
-版本更新示例，仓库根目录执行，数字按本次发行替换：
+正式发布示例，仓库根目录执行。先为引擎目标版本补充 `distribution/release-notes.json`；缺少对应日志会在构建前报错：
 
 ```sh
-npm version 2026.1.4 --no-git-tag-version
-node scripts/sync-root-version.js
-npm --prefix apps/player-launcher version 2026.1.2 --no-git-tag-version
-npm run version:check
-npm run verify
+# 从已验收的提交创建分支；两个产品按需单独发布
+git switch -c release/v2026.1.5
+git push -u origin release/v2026.1.5
+
+# 玩家启动器从同一个已验收提交创建自己的版本分支
+git switch -c player-release/v2026.1.3
+git push -u origin player-release/v2026.1.3
 ```
 
-正式失败后，同一提交可重跑；需要修改源码或签名时使用新版本和新 PR，不移动旧 Tag。回滚前确认旧镜像与数据格式兼容。
+正式失败后，同一提交可重跑；版本保留后需要修改源码或签名时，创建新版本分支，不移动旧 Tag。首次推送新分支由创建事件构建，重复的 push 事件跳过，避免重复打包。回滚前确认旧镜像与数据格式兼容。
 
 ## 配置入口
 

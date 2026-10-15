@@ -133,13 +133,11 @@ async function build(target:PlayerTarget):Promise<void> {
         '--publish',
         'never',
         `--config.artifactName=${filename}`,
+        `--config.extraMetadata.version=${info.version}`,
     ];
     const signingEnv = builderEnvironment(process.env);
     if (channel !== 'production') {
-        args.push(
-            `--config.extraMetadata.version=${info.version}`,
-            `--config.appId=com.box.player.launcher.${channel}`,
-        );
+        args.push(`--config.appId=com.box.player.launcher.${channel}`);
     }
     if (mac) {
         args.push(...macSigningArguments(signingEnv));

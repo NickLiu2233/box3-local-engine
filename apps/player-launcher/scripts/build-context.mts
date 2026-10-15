@@ -1,21 +1,18 @@
+import { createRequire } from 'node:module';
+
 import { releaseInfo } from './release-contract.mts';
+
+const { productionVersion } = createRequire(import.meta.url)(
+    '../../../scripts/packaging-context.js',
+);
 
 /** Staging identities and upload scopes never reuse a production tag directory. */
 export function playerBuildContext(env:NodeJS.ProcessEnv, packageVersion:string) {
     const channel = env.PLAYER_BUILD_CHANNEL || 'production';
     const commit = env.PLAYER_RELEASE_COMMIT || env.GITHUB_SHA || '';
     if (channel === 'production') {
-        if (/(?:-|\.)(dev|staging)$/.test(packageVersion)) {
-            throw new Error('Development and staging versions cannot enter production');
-        }
-        const info = releaseInfo(
-            env.PLAYER_RELEASE_TAG ||
-                (env.GITHUB_REF === 'refs/heads/release'
-                    ? `player-v${packageVersion}`
-                    : env.GITHUB_REF_NAME || ''),
-            commit,
-            packageVersion,
-        );
+        const version = productionVersion(env.GITHUB_REF, 'player');
+        const info = releaseInfo(env.PLAYER_RELEASE_TAG || `player-v${version}`, commit, version);
         return { channel, info, prefix: `box-player-launcher/${info.tag}` };
     }
     if (channel !== 'staging') {

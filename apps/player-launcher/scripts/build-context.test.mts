@@ -83,21 +83,35 @@ test('main, tags, unknown channels and invalid run identities cannot enter the p
     );
 });
 
-test('production player tags keep their existing namespace and exact version validation', () => {
-    assert.equal(
-        playerBuildContext({ GITHUB_REF: 'refs/heads/release', GITHUB_SHA: commit }, '0.1.0').info
-            .tag,
-        'player-v0.1.0',
-    );
+test('production player versions come from their own versioned branch', () => {
     const context = playerBuildContext(
-        { GITHUB_REF_NAME: 'player-v0.1.0', GITHUB_SHA: commit },
-        '0.1.0',
+        { GITHUB_REF: 'refs/heads/player-release/v2026.1.3', GITHUB_SHA: commit },
+        '2026.1.2',
     );
     assert.equal(context.channel, 'production');
-    assert.equal(context.prefix, 'box-player-launcher/player-v0.1.0');
-    assert.equal(context.info.version, '0.1.0');
-    assert.throws(() =>
-        playerBuildContext({ GITHUB_REF_NAME: 'player-dev/profile', GITHUB_SHA: commit }, '0.1.0'),
+    assert.equal(context.prefix, 'box-player-launcher/player-v2026.1.3');
+    assert.equal(context.info.version, '2026.1.3');
+    for (const ref of [
+        'refs/heads/release',
+        'refs/heads/release/v2026.1.3',
+        'refs/tags/player-v2026.1.3',
+        'refs/heads/player-release/v2026.1.3-staging',
+    ]) {
+        assert.throws(() =>
+            playerBuildContext({ GITHUB_REF: ref, GITHUB_SHA: commit }, '2026.1.2'),
+        );
+    }
+    assert.throws(
+        () =>
+            playerBuildContext(
+                {
+                    GITHUB_REF: 'refs/heads/player-release/v2026.1.3',
+                    GITHUB_SHA: commit,
+                    PLAYER_RELEASE_TAG: 'player-v2026.1.2',
+                },
+                '2026.1.2',
+            ),
+        /does not match/,
     );
 });
 

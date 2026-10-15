@@ -1,7 +1,7 @@
 'use strict';
 
 const fs = require('node:fs');
-const path = require('node:path');
+const { productionVersion } = require('./packaging-context');
 
 function githubContext(env = process.env) {
     if (
@@ -41,48 +41,6 @@ async function githubGet(context, endpoint, request = fetch) {
     return response.json();
 }
 
-/** Only the exact merge result for the target branch can start a packaging job. */
-async function mergedBuild(
-    context,
-    branch,
-    get = (endpoint) => githubGet(context, endpoint),
-    wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-) {
-    if (!['staging', 'release'].includes(branch) || context.ref !== `refs/heads/${branch}`) {
-        return false;
-    }
-    for (let attempt = 0; attempt < 3; attempt++) {
-        for (let page = 1; page <= 10; page++) {
-            const pulls = await get(`commits/${context.commit}/pulls?per_page=100&page=${page}`);
-            if (!Array.isArray(pulls)) {
-                throw new Error('GitHub merge lookup did not return a pull request list');
-            }
-            if (
-                pulls.some(
-                    (pull) =>
-                        pull.merged_at &&
-                        pull.merge_commit_sha === context.commit &&
-                        pull.base?.ref === branch &&
-                        pull.base?.repo?.full_name?.toLowerCase() ===
-                            context.repository.toLowerCase(),
-                )
-            ) {
-                return true;
-            }
-            if (pulls.length < 100) {
-                break;
-            }
-            if (page === 10) {
-                throw new Error('GitHub merge lookup exceeded its pagination bound');
-            }
-        }
-        if (attempt < 2) {
-            await wait(1000 * (attempt + 1));
-        }
-    }
-    return false;
-}
-
 function releaseIdentity(kind, version) {
     if (
         !['engine', 'player'].includes(kind) ||
@@ -102,8 +60,9 @@ function releaseIdentity(kind, version) {
 
 /** Reruns may reuse their own tag, but never artifacts belonging to another commit. */
 async function checkRelease(context, identity, get = (endpoint) => githubGet(context, endpoint)) {
-    if (context.ref !== 'refs/heads/release') {
-        throw new Error('Production builds require the release branch');
+    const product = identity.tag.startsWith('player-v') ? 'player' : 'engine';
+    if (productionVersion(context.ref, product) !== identity.version) {
+        throw new Error('Release version does not match the versioned branch');
     }
     const reference = await get(`git/ref/tags/${encodeURIComponent(identity.tag)}`);
     if (!reference) {
@@ -116,7 +75,7 @@ async function checkRelease(context, identity, get = (endpoint) => githubGet(con
     }
     if (object?.type !== 'commit' || object.sha !== context.commit) {
         throw new Error(
-            `Version ${identity.tag} already belongs to another commit; increment package.json version`,
+            `Version ${identity.tag} already belongs to another commit; create a new versioned release branch`,
         );
     }
     return identity;
@@ -170,19 +129,11 @@ async function main() {
     const [command, value] = process.argv.slice(2);
     const context = githubContext();
     let outputs;
-    if (command === 'merge') {
-        outputs = { merged: String(await mergedBuild(context, value)) };
-    } else if (command === 'release') {
-        const manifest =
-            value === 'player' ? '../apps/player-launcher/package.json' : '../package.json';
-        const version = JSON.parse(
-            fs.readFileSync(path.resolve(__dirname, manifest), 'utf8'),
-        ).version;
+    if (command === 'release') {
+        const version = productionVersion(context.ref, value);
         outputs = await reserveRelease(context, releaseIdentity(value, version));
     } else {
-        throw new Error(
-            'Usage: github-build-gate.js merge <staging|release> | release <engine|player>',
-        );
+        throw new Error('Usage: github-build-gate.js release <engine|player>');
     }
     if (process.env.GITHUB_OUTPUT) {
         fs.appendFileSync(
@@ -204,7 +155,6 @@ if (require.main === module) {
 module.exports = {
     githubContext,
     githubGet,
-    mergedBuild,
     releaseIdentity,
     checkRelease,
     createTag,

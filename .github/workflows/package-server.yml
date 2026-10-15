@@ -124,10 +124,15 @@ jobs:
       - uses: docker/setup-buildx-action@v3
       - name: Confirm selected version matches this revision
         run: |
+          if [ "${GITHUB_REF:-}" = 'refs/tags/v${{ inputs.version }}' ]; then
+            GITHUB_REF='refs/heads/release/v${{ inputs.version }}' node scripts/release-context.js prepare
+          elif [[ "${GITHUB_REF:-}" == refs/heads/release/v* ]]; then
+            node scripts/release-context.js prepare
+          fi
           package_version="$(node -p "require('./package.json').version")"
           if [ "$package_version" != '${{ inputs.version }}' ]; then
             echo "Selected version ${{ inputs.version }} does not match package.json version $package_version." >&2
-            echo 'Run this workflow from the matching release tag or release branch.' >&2
+            echo 'Run this workflow from the matching release tag or release/v<version> branch.' >&2
             exit 1
           fi
           if [ '${{ inputs.publish_stable }}' = 'true' ]; then
