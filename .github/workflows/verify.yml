@@ -5,11 +5,9 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   push:
     branches:
-      - main
       - dev
-      - staging
+      - 'dev-*'
       - 'dev/**'
-      - 'release/**'
       - 'player-dev/**'
       - 'player-release/**'
 
@@ -22,6 +20,10 @@ defaults:
 
 jobs:
   verify:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.base_ref != 'main' && github.base_ref != 'staging' &&
+       !startsWith(github.base_ref, 'release/v'))
     runs-on: ubuntu-latest
     timeout-minutes: 30
 

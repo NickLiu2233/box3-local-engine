@@ -52,18 +52,18 @@ for (const [file, prefix, validation] of [
         const workflow = yaml.load(
             fs.readFileSync(path.join(__dirname, '../.github/workflows', file), 'utf8'),
         );
-        assert.ok(Object.hasOwn(workflow.on, 'create'));
+        assert.equal(Object.hasOwn(workflow.on, 'create'), false);
         assert.ok(workflow.on.push.branches.includes(`${prefix}/v*`));
         assert.equal(workflow.jobs['merge-gate'], undefined);
         const runs = (eventName, ref, event = {}) =>
+            Object.hasOwn(workflow.on, eventName) &&
             vm.runInNewContext(`Boolean(${workflow.jobs[validation].if})`, {
                 github: { event_name: eventName, ref, event },
                 startsWith: (value, beginning) => value.startsWith(beginning),
             });
         const ref = `refs/heads/${prefix}/v2026.1.5`;
         assert.equal(
-            Number(runs('create', ref, { ref_type: 'branch' })) +
-                Number(runs('push', ref, { created: true })),
+            Number(runs('workflow_dispatch', ref)) + Number(runs('push', ref, { created: true })),
             1,
         );
         assert.equal(runs('push', ref, { created: false }), true);
@@ -79,5 +79,59 @@ for (const [file, prefix, validation] of [
             assert.equal(runs('create', other, { ref_type: 'branch' }), false);
             assert.equal(runs('workflow_dispatch', other), false);
         }
+    });
+}
+
+const creationRouter = yaml.load(
+    fs.readFileSync(
+        path.join(__dirname, '../.github/workflows/release-branch-created.yml'),
+        'utf8',
+    ),
+);
+
+test('only branch creation can dispatch a product release', () => {
+    assert.ok(Object.hasOwn(creationRouter.on, 'create'));
+    assert.equal(creationRouter.permissions.actions, 'write');
+    assert.equal(creationRouter.jobs.dispatch.if, "github.event.ref_type == 'branch'");
+});
+
+for (const [ref, expected] of [
+    ['release/v2026.1.4', 'release.yml'],
+    ['player-release/v2026.1.2', 'player-launcher-release.yml'],
+    ['release/v2026.0.1', 'release.yml'],
+    ['staging', null],
+    ['dev-fish', null],
+    ['release', null],
+    ['release/v2026.1.4-staging', null],
+    ['release/v2026.01.4', null],
+    ['\u200brelease/v2026.1.4', null],
+    ['player-release/v2026.1.2\u200b', null],
+]) {
+    test(`creation router dispatches exactly the matching product for ${JSON.stringify(ref)}`, async () => {
+        const calls = [];
+        const script = creationRouter.jobs.dispatch.steps[0].with.script;
+        const dispatch = vm.runInNewContext(`(async () => { ${script} })()`, {
+            context: {
+                payload: { ref, ref_type: 'branch' },
+                repo: { owner: 'box3lab', repo: 'box3-local-engine' },
+            },
+            github: {
+                rest: {
+                    actions: {
+                        createWorkflowDispatch: async (request) => {
+                            calls.push({ ...request });
+                        },
+                    },
+                },
+            },
+            core: { notice() {} },
+        });
+        await dispatch;
+        assert.deepEqual(
+            calls,
+            expected
+                ? [{ owner: 'box3lab', repo: 'box3-local-engine', workflow_id: expected, ref }]
+                : [],
+        );
     });
 }
