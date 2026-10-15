@@ -1,7 +1,6 @@
 name: Build and Release BOX3 Player Launcher
 run-name: Player / ${{ github.ref_name }}
 'on':
-  create: {}
   push:
     branches:
       - staging
@@ -24,9 +23,8 @@ env:
 jobs:
   validate:
     if: >-
-      (github.ref == 'refs/heads/staging' && github.event_name != 'create') ||
+      github.ref == 'refs/heads/staging' ||
       (startsWith(github.ref, 'refs/heads/player-release/v') &&
-       (github.event_name != 'create' || github.event.ref_type == 'branch') &&
        (github.event_name != 'push' || github.event.created != true))
     runs-on: ubuntu-24.04
     permissions:
