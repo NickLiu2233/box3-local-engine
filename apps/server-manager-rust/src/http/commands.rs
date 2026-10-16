@@ -209,9 +209,9 @@ pub(crate) async fn command(
                     "authPortalMemoryMb": memory("BOX_AUTH_PORTAL_MEMORY_LIMIT", 128),
                     "authPortalCpuLimit": decimal("BOX_AUTH_PORTAL_CPU_LIMIT", 0.5),
                     "creatorMemoryMb": memory("BOX_CREATOR_MEMORY_LIMIT", 6144),
-                    "creatorCpuLimit": decimal("BOX_CREATOR_CPU_LIMIT", 4.0),
+                    "creatorCpuLimit": decimal("BOX_CREATOR_CPU_LIMIT", 2.0),
                     "playMemoryMb": memory("BOX_PLAY_MEMORY_LIMIT", 4096),
-                    "playCpuLimit": decimal("BOX_PLAY_CPU_LIMIT", 4.0)
+                    "playCpuLimit": decimal("BOX_PLAY_CPU_LIMIT", 2.0)
                 });
                 if let Some(view) = box_manager_core::public_access::view(&values).as_object() {
                     for (key,value) in view { configuration[key] = value.clone(); }

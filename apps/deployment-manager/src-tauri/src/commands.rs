@@ -225,9 +225,9 @@ impl Default for InstallConfigView {
             auth_portal_memory_mb: 128,
             auth_portal_cpu_limit: 0.5,
             creator_memory_mb: 6144,
-            creator_cpu_limit: 4.0,
+            creator_cpu_limit: 2.0,
             play_memory_mb: 4096,
-            play_cpu_limit: 4.0,
+            play_cpu_limit: 2.0,
         }
     }
 }
@@ -484,13 +484,13 @@ fn default_creator_memory_mb() -> u32 {
     6144
 }
 fn default_creator_cpu_limit() -> f64 {
-    4.0
+    2.0
 }
 fn default_play_memory_mb() -> u32 {
     4096
 }
 fn default_play_cpu_limit() -> f64 {
-    4.0
+    2.0
 }
 
 fn compose_output(app: &AppHandle, args: &[&str]) -> Result<String, String> {
@@ -2114,9 +2114,9 @@ fn get_install_config(app: AppHandle) -> InstallConfigView {
         auth_portal_memory_mb: memory_mebibytes(values.get("BOX_AUTH_PORTAL_MEMORY_LIMIT"), 128),
         auth_portal_cpu_limit: number_f64("BOX_AUTH_PORTAL_CPU_LIMIT", 0.5),
         creator_memory_mb: memory_mebibytes(values.get("BOX_CREATOR_MEMORY_LIMIT"), 6144),
-        creator_cpu_limit: number_f64("BOX_CREATOR_CPU_LIMIT", 4.0),
+        creator_cpu_limit: number_f64("BOX_CREATOR_CPU_LIMIT", 2.0),
         play_memory_mb: memory_mebibytes(values.get("BOX_PLAY_MEMORY_LIMIT"), 4096),
-        play_cpu_limit: number_f64("BOX_PLAY_CPU_LIMIT", 4.0),
+        play_cpu_limit: number_f64("BOX_PLAY_CPU_LIMIT", 2.0),
     }
 }
 

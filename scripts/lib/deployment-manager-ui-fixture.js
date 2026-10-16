@@ -25,7 +25,8 @@ import { chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx,
 import { confirmBackupAction, openBackupDialog } from ${JSON.stringify(path.join(src, 'operations/backups.js'))}
 import { checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate } from ${JSON.stringify(path.join(src, 'operations/updates.js'))}
 import { isNewerVersion, validateRelease } from ${JSON.stringify(path.join(src, 'utils/releases.js'))}
-globalThis.manager = { revealInvalidSetupField, openExternalNginxDialog, closeExternalNginxDialog, externalNginxConfiguration, state, render, setup, getServiceUrl, copyOwnerSecret, saveRawEnvironment, saveConfiguration, loadRawNginxConfig, saveRawNginxConfig, reloadRawNginxConfig, confirmBackupAction, openBackupDialog, sslRoutes, chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
+import { submitWebManagerToken } from ${JSON.stringify(path.join(src, 'operations/auth.js'))}
+globalThis.manager = { submitWebManagerToken, revealInvalidSetupField, openExternalNginxDialog, closeExternalNginxDialog, externalNginxConfiguration, state, render, setup, getServiceUrl, copyOwnerSecret, saveRawEnvironment, saveConfiguration, loadRawNginxConfig, saveRawNginxConfig, reloadRawNginxConfig, confirmBackupAction, openBackupDialog, sslRoutes, chooseCertificateInput, setCertificatePath, selectSslFile, reloadNginx, enableNginx, downloadNginx, chooseNginx, deleteSslCertificate, checkForUpdates, closeUpdateDialog, downloadUpdate, restartAndUpdate, isNewerVersion, validateRelease }
 `;
 const adapterSource = `
 export const invoke = (...args) => globalThis.adapterInvoke(...args)
@@ -168,6 +169,9 @@ class FixtureFormData {
     has(key) {
         return this.values.has(key);
     }
+    get(key) {
+        return this.values.get(key) ?? null;
+    }
     [Symbol.iterator]() {
         return this.entries();
     }
@@ -201,6 +205,7 @@ async function createFixture({
         aboutRepositoryButton = null,
         updateProgressLabel = null,
         updateProgressBar = null,
+        loginError = null,
         timerId = 0;
     const mainScroll = new FixtureElement(),
         setupScroll = new FixtureElement();
@@ -288,6 +293,7 @@ async function createFixture({
                       },
                   }
                 : null;
+            loginError = html.includes('id="web-login-error"') ? { textContent: '' } : null;
             form = html.includes('id="setup-form"') ? new FixtureForm(html) : null;
             rawTextarea = {
                 value: html.match(/id="raw-environment"[^>]*>([\s\S]*?)<\/textarea>/)?.[1] || '',
@@ -331,6 +337,9 @@ async function createFixture({
             events.get(name)?.delete(handler);
         },
         querySelector(selector) {
+            if (selector === '#web-login-error') {
+                return loginError;
+            }
             if (selector === '[data-check-version-updates]') {
                 return aboutUpdateButton;
             }
