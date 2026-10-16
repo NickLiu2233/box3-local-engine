@@ -4,6 +4,25 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const test = require('node:test');
+const os = require('node:os');
+const { execFileSync } = require('node:child_process');
+
+test('Play runtime copied files can load the map library without build-stage files', (context) => {
+    const root = path.resolve(__dirname, '..');
+    const dockerfile = fs.readFileSync(path.join(root, 'apps/local-engine/Dockerfile'), 'utf8');
+    const stage = dockerfile.split('FROM runtime-base AS play\n')[1].split(/^FROM /m)[0];
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'box-play-image-modules-'));
+    context.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+    for (const match of stage.matchAll(
+        /^COPY --from=play-build --chown=node:node (\/app\/apps\/local-engine\/src\/\S+\.js) \S+$/gm,
+    )) {
+        fs.copyFileSync(
+            path.join(root, match[1].slice('/app/'.length)),
+            path.join(directory, path.basename(match[1])),
+        );
+    }
+    execFileSync(process.execPath, ['-e', "require('./play-library.js')"], { cwd: directory });
+});
 
 test('shared engine image builds application dependencies before runtime assets', () => {
     const dockerfile = fs.readFileSync(

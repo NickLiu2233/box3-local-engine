@@ -326,6 +326,7 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-cont
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/project-compatibility.js /app/apps/local-engine/src/project-compatibility.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-image.js /app/apps/local-engine/src/play-image.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-library.js /app/apps/local-engine/src/play-library.js
+COPY --from=play-build --chown=node:node /app/apps/local-engine/src/play-derived-resources.js /app/apps/local-engine/src/play-derived-resources.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/teleport-room-manager.js /app/apps/local-engine/src/teleport-room-manager.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/map-identity.js /app/apps/local-engine/src/map-identity.js
 COPY --from=play-build --chown=node:node /app/apps/local-engine/src/runtime-lifecycle.js /app/apps/local-engine/src/runtime-lifecycle.js
@@ -334,7 +335,8 @@ COPY --from=play-build --chown=node:node /app/apps/local-engine/src/moderation-r
 COPY --from=play-build --chown=node:node /app/apps/local-engine/config /app/apps/local-engine/config
 COPY --from=play-build --chown=node:node /opt/runtime-data /app/apps/local-engine/data
 
-RUN mkdir -p /app/play-runtime-cache \
+RUN node -e "require('/app/apps/local-engine/src/play-library.js')" \
+    && mkdir -p /app/play-runtime-cache \
     && chown -R node:node /app/play-runtime-cache
 
 USER node
