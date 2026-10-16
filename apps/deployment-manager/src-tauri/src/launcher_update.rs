@@ -104,9 +104,15 @@ fn validate_archive(path: &Path) -> Result<(), String> {
     let mut size = 0u64;
     for i in 0..archive.len() {
         let mut entry = archive.by_index(i).map_err(|e| e.to_string())?;
+        // ZIP writers on Windows may use backslashes for ordinary directory
+        // separators. Validate both separator forms before platform extraction.
+        let normalized = entry.name().replace('\\', "/");
         if entry.enclosed_name().is_none()
-            || entry.name().contains('\\')
-            || entry.name().contains(':')
+            || normalized.starts_with('/')
+            || normalized.contains(':')
+            || normalized.split('/').any(|part| {
+                part == ".." || (part != "." && part.trim_end_matches([' ', '.']) != part)
+            })
             || entry
                 .unix_mode()
                 .is_some_and(|mode| mode & 0o170000 == 0o120000)
@@ -402,6 +408,14 @@ mod tests {
         let archive = root.join("update.zip");
         for (name, accepted) in [
             ("release/launcher", true),
+            ("release\\launcher.exe", true),
+            ("release\\assets/config.json", true),
+            ("release\\..\\launcher.exe", false),
+            ("release/..\\launcher.exe", false),
+            ("release\\.. \\launcher.exe", false),
+            ("\\\\server\\share\\launcher.exe", false),
+            ("\\launcher.exe", false),
+            ("release/file:stream", false),
             ("../launcher", false),
             ("/tmp/launcher", false),
             ("C:\\launcher", false),

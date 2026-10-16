@@ -6,8 +6,10 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 const zlib = require('node:zlib');
+const { execFileSync } = require('node:child_process');
 
 const {
+    createZip,
     archiveEntry,
     imageDetailsFromArchive,
     tauriBuildCommand,
@@ -16,6 +18,34 @@ const {
     macApplicationHasResourceSeal,
     ensureMacApplicationSignature,
 } = require('./build-desktop-offline-installer.js');
+
+test(
+    'Windows ZIPs use standard separators so existing updaters can install them',
+    { skip: process.platform !== 'win32' },
+    (context) => {
+        const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-windows-zip-'));
+        context.after(() => fs.rmSync(root, { recursive: true, force: true }));
+        const packageRoot = path.join(root, 'release');
+        fs.mkdirSync(path.join(packageRoot, 'assets'), { recursive: true });
+        fs.writeFileSync(path.join(packageRoot, 'launcher.exe'), 'launcher fixture');
+        fs.writeFileSync(path.join(packageRoot, 'assets', 'config.json'), '{}');
+        const archive = path.join(root, 'update.zip');
+        createZip(packageRoot, archive);
+        const output = execFileSync(
+            'powershell',
+            [
+                '-NoProfile',
+                '-Command',
+                `Add-Type -AssemblyName System.IO.Compression; Add-Type -AssemblyName System.IO.Compression.FileSystem; $zip=[System.IO.Compression.ZipFile]::OpenRead('${archive.replaceAll("'", "''")}'); try { ConvertTo-Json -InputObject @($zip.Entries | ForEach-Object { $_.FullName }) -Compress } finally { $zip.Dispose() }`,
+            ],
+            { encoding: 'utf8' },
+        );
+        assert.deepEqual(JSON.parse(output).sort(), [
+            'release/assets/config.json',
+            'release/launcher.exe',
+        ]);
+    },
+);
 
 function writeOctal(header, offset, length, value) {
     header.write(`${value.toString(8).padStart(length - 1, '0')}\0`, offset, length, 'ascii');
