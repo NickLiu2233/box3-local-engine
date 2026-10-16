@@ -31,6 +31,8 @@ const playerServiceRoutes = new Set([
     '/api/player-auth/session',
     '/api/player-auth/profile',
     '/api/player-auth/password',
+    '/api/player-auth/transfer',
+    '/api/player-internal/login-transfer',
     '/api/player-internal/map-library',
     '/api/player-internal/logout',
     '/api/player-internal/profile',

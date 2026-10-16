@@ -23,6 +23,8 @@ test('packaging preserves compiled self-service APIs and their routing manifests
         '/api/player-auth/profile',
         '/api/player-auth/password',
         '/api/realtime/session',
+        '/api/player-auth/transfer',
+        '/api/player-internal/login-transfer',
         '/projects',
     ];
     const pages = Object.fromEntries(routes.map((route) => [route, `pages${route}.js`]));
@@ -41,7 +43,7 @@ test('packaging preserves compiled self-service APIs and their routing manifests
             pages: Object.fromEntries(routes.map((route) => [route, ['bundle.js']])),
         });
         prunePlayerServiceBuild(root);
-        const kept = routes.slice(0, 3);
+        const kept = routes.filter((route) => route !== '/projects');
         assert.deepEqual(Object.keys(read('server/pages-manifest.json')), kept);
         assert.deepEqual(
             read('routes-manifest.json').staticRoutes.map((route) => route.page),

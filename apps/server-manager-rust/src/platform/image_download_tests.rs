@@ -101,6 +101,7 @@ fn real_http_download_streams_progress_resumes_and_reuses_verified_cache() {
         image_tag: "fixture".into(),
         platform: "linux/arm64".into(),
         size: bytes.len() as u64,
+        download_base_url: None,
     };
     let listener = TcpListener::bind("127.0.0.1:0").unwrap();
     let url = format!("http://{}/image", listener.local_addr().unwrap());
@@ -176,7 +177,7 @@ fn local_test_package_reuses_verified_archive_and_never_falls_back_to_network() 
     fs::write(root.join("BOX3-PACKAGE-MODE.json"),r#"{"mode":"local"}"#).unwrap();
     let bytes=b"local snapshot";
     let digest=format!("{:x}",Sha256::digest(bytes));
-    let image=RemoteImage {image:"box-local-engine-play".into(),image_id:format!("sha256:{digest}"),image_ids:vec![format!("sha256:{digest}")],archive:"fixture.tar.gz".into(),sha256:digest,image_tag:"fixture".into(),platform:"linux/arm64".into(),size:bytes.len() as u64};
+    let image=RemoteImage {image:"box-local-engine-play".into(),image_id:format!("sha256:{digest}"),image_ids:vec![format!("sha256:{digest}")],archive:"fixture.tar.gz".into(),sha256:digest,image_tag:"fixture".into(),platform:"linux/arm64".into(),size:bytes.len() as u64,download_base_url:None};
     let file=root.join("cache/engine-images/fixture.tar.gz");
     fs::write(&file,bytes).unwrap();
     let unavailable="http://127.0.0.1:1/should-never-be-contacted";
