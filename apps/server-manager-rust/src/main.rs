@@ -132,7 +132,8 @@ impl ServiceRuntime for WebRuntime<'_> {
         let mut prepared = Vec::new();
         for service in _services {
             if *service == "player-auth-portal"
-                && values.get("BOX_AUTH_PORTAL_IMAGE").is_some_and(|image| !image.trim().is_empty())
+                && box_manager_core::auth_portal::image(&values, image_tag)?
+                    != format!("box-local-engine-player-auth-portal:{image_tag}")
             {
                 continue;
             }

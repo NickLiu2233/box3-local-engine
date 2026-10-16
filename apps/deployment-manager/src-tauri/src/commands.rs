@@ -907,7 +907,7 @@ fn save_configuration(app: &AppHandle, mut config: InstallConfigInput) -> Result
     config.creator_host = public_host.clone();
     validate_install_configuration(&config)?;
     config.auth_portal_image =
-        box_manager_core::auth_portal::validate_image(&config.auth_portal_image)?;
+        box_manager_core::auth_portal::normalize_image(&config.auth_portal_image, IMAGE_TAG)?;
     let creator_host = validate_creator_host(&config.creator_host)?;
     validate_creator_network_mode(&config.creator_network_mode)?;
     config.play_public_address_override =
@@ -3140,8 +3140,10 @@ impl ServiceRuntime for DesktopRuntime<'_> {
         database_url(&generate_runtime_environment(self.0)?)?;
         docker_output(&["info", "--format", "{{.ServerVersion}}"])?;
         ensure_images(self.0, services)?;
+        let mut values = load_existing_env(self.0);
+        values.insert("BOX_IMAGE_TAG".into(), IMAGE_TAG.into());
         box_manager_core::auth_portal::prepare_custom_image(
-            &load_existing_env(self.0),
+            &values,
             if cfg!(target_arch = "aarch64") {
                 "linux/arm64"
             } else {

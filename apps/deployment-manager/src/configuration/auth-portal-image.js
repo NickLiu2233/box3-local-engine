@@ -9,5 +9,11 @@ export function defaultAuthPortalImage() {
 // An empty override follows the official image when the engine is upgraded.
 export function normalizeAuthPortalImage(value) {
     const image = String(value || '').trim();
-    return image === defaultAuthPortalImage() ? '' : image;
+    const tag = state.about?.imageTag || version;
+    const release = tag.replace(/^v/, '').replace(/-linux-(?:amd64|arm64)$/, '');
+    // Older forms displayed the application version before image metadata loaded.
+    const defaults = [tag, release, `v${release}`, version].map(
+        (value) => `box-local-engine-player-auth-portal:${value}`,
+    );
+    return defaults.includes(image) ? '' : image;
 }

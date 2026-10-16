@@ -888,8 +888,9 @@ pub(crate) fn configuration_document_for_save(
     let original_database_mode=existing.get("BOX_DATABASE_MODE").cloned();
 
     if let Some(value) = config.get("authPortalImage") {
-        let image = box_manager_core::auth_portal::validate_image(
+        let image = box_manager_core::auth_portal::normalize_image(
             value.as_str().ok_or("登录页面镜像必须是字符串")?,
+            existing.get("BOX_IMAGE_TAG").map(String::as_str).unwrap_or(""),
         )?;
         if image.is_empty() {
             box_manager_core::environment::remove_env(&mut source, "BOX_AUTH_PORTAL_IMAGE");

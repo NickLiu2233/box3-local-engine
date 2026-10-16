@@ -33,6 +33,10 @@ fn login_image_configuration_is_persisted_cleared_and_validated() {
     assert!(!parse_env(&restored).contains_key("BOX_AUTH_PORTAL_IMAGE"));
     let invalid = json!({"authPortalImage":"https://registry.test/image"});
     assert!(configuration_document_for_save(owner, invalid.as_object().unwrap()).is_err());
+    let owner = format!("{owner}BOX_IMAGE_TAG=v2026.1.4-linux-amd64\n");
+    let legacy = json!({"authPortalImage":"box-local-engine-player-auth-portal:2026.1.4"});
+    let normalized = configuration_document_for_save(&owner, legacy.as_object().unwrap()).unwrap();
+    assert!(!parse_env(&normalized).contains_key("BOX_AUTH_PORTAL_IMAGE"));
 }
 
 #[test]
