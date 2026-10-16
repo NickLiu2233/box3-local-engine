@@ -117,6 +117,11 @@ function install() {
     http.Server.prototype.emit = function (event, ...args) {
         if (event === 'request' && args[0]) {
             args[0].url = imageRequest(args[0].url);
+            if (configuration().basePath) {
+                // Prefix rewriting consumes text. Compression must happen after
+                // this adapter, otherwise compressed bytes become invalid UTF-8.
+                args[0].headers['accept-encoding'] = 'identity';
+            }
         }
         return emit.call(this, event, ...args);
     };
@@ -173,7 +178,9 @@ function install() {
             ? chunk
             : Buffer.from(chunk, typeof encoding === 'string' ? encoding : undefined);
         this.__boxSize = (this.__boxSize || 0) + bytes.length;
-        if (this.__boxSize > 8 * 1024 * 1024) {
+        // Map library pages can contain several inline cover images in their
+        // Next data. Retain a bound while allowing those legitimate responses.
+        if (this.__boxSize > 32 * 1024 * 1024) {
             this.destroy(new Error('HTML exceeds prefix adapter limit'));
             return false;
         }
@@ -191,6 +198,9 @@ function install() {
         }
         if (chunk) {
             this.write(chunk, typeof encoding === 'string' ? encoding : undefined);
+        }
+        if (this.destroyed) {
+            return this;
         }
         const source = Buffer.concat(this.__boxChunks || []).toString('utf8');
         const result = isCss(this) ? css(source, context(this)) : html(source, context(this));

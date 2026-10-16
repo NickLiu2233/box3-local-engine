@@ -69,12 +69,33 @@ pub fn validate_image(value: &str) -> Result<String, String> {
     Ok(value.into())
 }
 
+/// Legacy forms wrote the displayed version as an override. Official defaults
+/// must follow the engine's actual platform tag and normal image acquisition.
+pub fn normalize_image(value: &str, tag: &str) -> Result<String, String> {
+    let value = validate_image(value)?;
+    if !tag.is_empty() {
+        let release = tag.strip_prefix('v').unwrap_or(tag);
+        let release = release
+            .strip_suffix("-linux-amd64")
+            .or_else(|| release.strip_suffix("-linux-arm64"))
+            .unwrap_or(release);
+        if [tag.to_string(), release.to_string(), format!("v{release}")]
+            .iter()
+            .any(|tag| value == format!("box-local-engine-player-auth-portal:{tag}"))
+        {
+            return Ok(String::new());
+        }
+    }
+    Ok(value)
+}
+
 pub fn image(values: &BTreeMap<String, String>, tag: &str) -> Result<String, String> {
-    let custom = validate_image(
+    let custom = normalize_image(
         values
             .get("BOX_AUTH_PORTAL_IMAGE")
             .map(String::as_str)
             .unwrap_or(""),
+        tag,
     )?;
     Ok(if custom.is_empty() {
         format!("box-local-engine-player-auth-portal:{tag}")
@@ -89,9 +110,13 @@ pub fn prepare_custom_image(
     mut docker: impl FnMut(&[&str]) -> Result<String, String>,
     _progress: impl FnMut(&str, &str, u8),
 ) -> Result<(), String> {
-    let custom = validate_image(
+    let custom = normalize_image(
         values
             .get("BOX_AUTH_PORTAL_IMAGE")
+            .map(String::as_str)
+            .unwrap_or(""),
+        values
+            .get("BOX_IMAGE_TAG")
             .map(String::as_str)
             .unwrap_or(""),
     )?;
@@ -141,6 +166,30 @@ fn require_health_check(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn legacy_default_image_tags_follow_the_current_platform_without_custom_inspection() {
+        for tag in ["2026.1.4", "v2026.1.4", "v2026.1.4-linux-amd64"] {
+            let values = BTreeMap::from([
+                ("BOX_IMAGE_TAG".into(), "v2026.1.4-linux-amd64".into()),
+                (
+                    "BOX_AUTH_PORTAL_IMAGE".into(),
+                    format!("box-local-engine-player-auth-portal:{tag}"),
+                ),
+            ]);
+            assert_eq!(
+                image(&values, "v2026.1.4-linux-amd64").unwrap(),
+                "box-local-engine-player-auth-portal:v2026.1.4-linux-amd64"
+            );
+            prepare_custom_image(
+                &values,
+                "linux/amd64",
+                |_| panic!("official images must use normal image acquisition"),
+                |_, _, _| {},
+            )
+            .unwrap();
+        }
+    }
 
     #[test]
     fn validates_registry_tags_digests_and_default_selection() {

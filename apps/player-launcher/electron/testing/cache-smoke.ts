@@ -78,6 +78,21 @@ app.whenReady()
         ) {
             throw new Error(`Incorrect per-map cache statistics: ${JSON.stringify(maps)}`);
         }
+        await window.webContents.executeJavaScript(`(async()=>{
+            const cache=await caches.open('box-play-static:large-map:v1');
+            const body=new Uint8Array(512*1024);
+            for(let index=0;index<256;index++) await cache.put('/large-'+index,new Response(body));
+        })()`);
+        const measureStarted = performance.now();
+        const largeMaps = await inspectMapCaches(target, origin);
+        const largeMap = largeMaps.find((map) => map.mapId === 'large-map');
+        if (largeMap?.bytes !== 128 * 1024 * 1024 || largeMap.resources !== 256) {
+            throw new Error(`Large map statistics are incorrect: ${JSON.stringify(largeMap)}`);
+        }
+        console.log(
+            `Large cache inspection (256 resources, 128 MiB): ${Math.round(performance.now() - measureStarted)} ms`,
+        );
+        await inspectMapCaches(target, origin, 'large-map');
         await target.clearCache();
         const afterBrowser = await readResourceCache(target);
         const mapsAfterBrowser = await inspectMapCaches(target, origin);

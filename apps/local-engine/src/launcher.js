@@ -1215,6 +1215,7 @@ async function main() {
     if (usesPlayLibrary) {
         playLibrary = require('./play-library').startPlayLibrary({
             libraryRoot: playLibraryPath,
+            runtimeCacheRoot,
             host: playRuntimeHost,
             port: playPort,
             startRuntime: startLibraryRuntime,
