@@ -1,12 +1,10 @@
 import { BrowserWindow } from 'electron';
 
+import { measureCachedResources } from './cache-measurement';
+
 import type { Session } from 'electron';
 import type { CachedMap } from '../../shared/cache-types';
 
-interface CacheEntry {
-    requestURL:string;
-    requestHeaders:Array<{ name:string; value:string }>;
-}
 interface CacheInfo {
     cacheId:string;
     cacheName:string;
@@ -87,30 +85,11 @@ export async function inspectMapCaches(
                 bytes: 0,
                 resources: 0,
             };
-            let skipCount = 0;
-            while (true) {
-                const result = (await debuggerClient.sendCommand('CacheStorage.requestEntries', {
-                    cacheId: cache.cacheId,
-                    skipCount,
-                    pageSize: 100,
-                })) as { cacheDataEntries:CacheEntry[]; returnCount:number };
-                for (const entry of result.cacheDataEntries) {
-                    const response = (await debuggerClient.sendCommand(
-                        'CacheStorage.requestCachedResponse',
-                        {
-                            cacheId: cache.cacheId,
-                            requestURL: entry.requestURL,
-                            requestHeaders: entry.requestHeaders,
-                        },
-                    )) as { response:{ body:string } };
-                    map.bytes += Buffer.byteLength(response.response.body, 'base64');
-                    map.resources += 1;
-                }
-                skipCount += result.cacheDataEntries.length;
-                if (!result.cacheDataEntries.length || skipCount >= result.returnCount) {
-                    break;
-                }
-            }
+            const measured = (await window.webContents.executeJavaScript(
+                `(${measureCachedResources.toString()})(${JSON.stringify(cache.cacheName)})`,
+            )) as { bytes:number; resources:number };
+            map.bytes += measured.bytes;
+            map.resources += measured.resources;
             if (map.resources && map.bytes > 0) {
                 map.versions.push(version);
                 maps.set(mapId, map);

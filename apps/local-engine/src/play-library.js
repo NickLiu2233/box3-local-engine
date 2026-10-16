@@ -7,6 +7,7 @@ const path = require('path');
 const { createRuntimeLifecycle } = require('./runtime-lifecycle');
 const { waitForRuntimeReady } = require('./runtime-readiness');
 const { runtimeUpstream, runtimeHostHeader } = require('./runtime-upstream');
+const { serveDerivedPlayResource } = require('./play-derived-resources');
 const {
     createTeleportControlHandler,
     createTeleportRoomManager,
@@ -119,6 +120,7 @@ function parseWorldRequest(requestUrl) {
 
 function startPlayLibrary({
     libraryRoot,
+    runtimeCacheRoot = process.env.BOX_RUNTIME_CACHE_PATH,
     host,
     port,
     runtimePortStart = 10000,
@@ -331,6 +333,17 @@ function startPlayLibrary({
             }
             const { reference, roomId, forwardedPath } = parseWorldRequest(req.url);
             const resolvedWorld = resolveWorld(libraryRoot, reference);
+            if (
+                await serveDerivedPlayResource({
+                    world: resolvedWorld,
+                    runtimeCacheRoot,
+                    forwardedPath,
+                    request: req,
+                    response: res,
+                })
+            ) {
+                return;
+            }
             const id = resolvedWorld?.id || reference;
             const key = runtimeKey(id, roomId);
             if (forwardedPath === '/__local_runtime/status') {

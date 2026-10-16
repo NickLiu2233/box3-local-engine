@@ -34,7 +34,7 @@ test('staging and production use one workflow and the same engine jobs', () => {
         );
     }
     const publish = workflow.jobs.publish.steps.find(
-        (step) => step.uses === 'softprops/action-gh-release@v2',
+        (step) => step.uses === 'softprops/action-gh-release@v3',
     );
     assert.equal(publish.if, "startsWith(github.ref, 'refs/heads/release/v')");
     assert.equal(

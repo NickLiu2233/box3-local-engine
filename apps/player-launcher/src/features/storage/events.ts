@@ -14,15 +14,35 @@ export async function refreshStorage({ state, playerInvoke, render }:StorageOpti
         confirmMapId: '',
         confirmBrowser: false,
     };
+    const storage = state.storage;
     render();
     try {
-        const rows = await Promise.all(
-            state.servers.map(async (server) => ({
-                serverId: server.id,
-                ...(await playerInvoke('cache_status', { serverId: server.id })),
-            })),
+        const results = await Promise.allSettled(
+            state.servers.map(async (server) => {
+                const row = {
+                    serverId: server.id,
+                    ...(await playerInvoke('cache_status', { serverId: server.id })),
+                };
+                if (state.storage === storage) {
+                    storage.rows = [
+                        ...storage.rows.filter((item) => item.serverId !== server.id),
+                        row,
+                    ].sort(
+                        (left, right) =>
+                            state.servers.findIndex((item) => item.id === left.serverId) -
+                            state.servers.findIndex((item) => item.id === right.serverId),
+                    );
+                    render();
+                }
+            }),
         );
-        state.storage.rows = rows;
+        if (state.storage !== storage) {
+            return;
+        }
+        const failure = results.find((result) => result.status === 'rejected');
+        if (failure?.status === 'rejected') {
+            storage.error = failure.reason?.message || '部分服务器的缓存暂时无法统计。';
+        }
         if (
             !state.storage.rows.some(
                 (row) => row.serverId === state.storage.selectedServerId && row.maps?.length,
@@ -31,10 +51,14 @@ export async function refreshStorage({ state, playerInvoke, render }:StorageOpti
             state.storage.selectedServerId = '';
         }
     } catch (error) {
-        state.storage.error = error.message || '暂时无法统计本机缓存。';
+        if (state.storage === storage) {
+            storage.error = error.message || '暂时无法统计本机缓存。';
+        }
     } finally {
-        state.storage.loading = false;
-        render();
+        if (state.storage === storage) {
+            storage.loading = false;
+            render();
+        }
     }
 }
 

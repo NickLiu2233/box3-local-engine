@@ -39,7 +39,7 @@ test('one player workflow builds, checks and collects both channels before produ
     assert.equal(publish.if, undefined);
     assert.ok(publish.steps.some((step) => step.run?.endsWith('release.mts download')));
     assert.equal(
-        publish.steps.find((step) => step.uses === 'softprops/action-gh-release@v2').if,
+        publish.steps.find((step) => step.uses === 'softprops/action-gh-release@v3').if,
         "startsWith(github.ref, 'refs/heads/player-release/v')",
     );
 });
