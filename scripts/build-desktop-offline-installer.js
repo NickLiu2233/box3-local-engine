@@ -183,7 +183,18 @@ function createZip(packageRoot, destination) {
             ? [
                   '-NoProfile',
                   '-Command',
-                  `Compress-Archive -LiteralPath '${packageRoot.replaceAll("'", "''")}' -DestinationPath '${destination.replaceAll("'", "''")}' -Force`,
+                  // Compress-Archive writes backslash entry names on Windows.
+                  // Standard ZIP separators also work with already-installed
+                  // launchers whose updater rejects backslashes entirely.
+                  [
+                      "$ErrorActionPreference='Stop'",
+                      'Add-Type -AssemblyName System.IO.Compression.FileSystem',
+                      `$archive=[System.IO.Compression.ZipFile]::Open('${destination.replaceAll("'", "''")}',[System.IO.Compression.ZipArchiveMode]::Create)`,
+                      `try { Get-ChildItem -LiteralPath '${packageRoot.replaceAll("'", "''")}' -Recurse -File | ForEach-Object {`,
+                      `$entryName=$_.FullName.Substring(${parent.length + 1}).Replace([char]92,[char]47)`,
+                      '[System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$_.FullName,$entryName,[System.IO.Compression.CompressionLevel]::Optimal) | Out-Null',
+                      '} } finally { $archive.Dispose() }',
+                  ].join('; '),
               ]
             : process.platform === 'darwin'
               ? ['-c', '-k', '--norsrc', '--keepParent', name, destination]
@@ -547,6 +558,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+    createZip,
     archiveEntry,
     imageDetailsFromArchive,
     tauriBuildCommand,
