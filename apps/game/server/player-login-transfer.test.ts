@@ -67,8 +67,11 @@ test('cross-host login installs both session and device cookies at the destinati
   const state = login.searchParams.get('transferState')!;
   const cookie = String(initial.headers.get('Set-Cookie')).split(';')[0];
   expect(cookie).toContain('box_player_login_');
-  globalThis.fetch = jest.fn<typeof fetch>(async (_url, options) => {
-    const body = JSON.parse(String(options?.body));
+  globalThis.fetch = jest.fn<typeof fetch>(async (input) => {
+    const request = input as Request;
+    expect(request.url).toBe('http://player-service:3213/api/player-internal/login-transfer');
+    expect(request.headers.get('authorization')).toBe('Bearer test-internal-secret');
+    const body = await request.clone().json();
     expect(createHash('sha256').update(body.verifier).digest('base64url')).toBe(
       login.searchParams.get('transferChallenge'),
     );

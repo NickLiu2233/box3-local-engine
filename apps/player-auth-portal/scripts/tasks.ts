@@ -386,6 +386,7 @@ export class TemplateExporter {
             prepareStandalone(
                 path.join(temporary, name),
                 path.dirname(this.project.resolve('@box/deployment-routing/package.json')),
+                path.resolve(path.dirname(this.project.resolve('@box/apis')), '..'),
             );
             mkdirSync(path.dirname(output), { recursive: true });
             this.project.run('tar', ['-czf', output, '-C', temporary, name]);
