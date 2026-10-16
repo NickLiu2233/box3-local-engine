@@ -574,6 +574,9 @@ importers:
 
   ../../apps/player-auth-portal:
     dependencies:
+      '@box/apis':
+        specifier: workspace:0.2.0
+        version: link:../../internals/apis
       '@box/deployment-routing':
         specifier: workspace:0.1.0
         version: link:../../packages/deployment-routing

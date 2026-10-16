@@ -3,8 +3,34 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-/** Vendor the routing package for an independently installable template; preserve other locked dependencies. */
-function prepareStandalone(root, routingRoot) {
+/** Vendor routing and the canonical API SDK; preserve other locked dependencies. */
+function prepareStandalone(root, routingRoot, apisRoot) {
+    const apisDestination = path.join(root, 'vendor/apis');
+    apisRoot ||= fs.existsSync(path.join(apisDestination, 'src'))
+        ? apisDestination
+        : path.resolve(path.dirname(require.resolve('@box/apis')), '..');
+    const apis = JSON.parse(fs.readFileSync(path.join(apisRoot, 'package.json'), 'utf8'));
+    if (path.resolve(apisRoot) !== path.resolve(apisDestination)) {
+        fs.mkdirSync(apisDestination, { recursive: true });
+        fs.cpSync(path.join(apisRoot, 'src'), path.join(apisDestination, 'src'), {
+            recursive: true,
+        });
+    }
+    // Ship the canonical SDK sources, not a second hand-maintained API client.
+    const apisManifest = {
+        name: apis.name,
+        version: apis.version,
+        license: apis.license,
+        type: 'module',
+        main: 'src/index.ts',
+        types: 'src/index.ts',
+        exports: { '.': './src/index.ts' },
+        dependencies: apis.dependencies,
+    };
+    fs.writeFileSync(
+        path.join(apisDestination, 'package.json'),
+        JSON.stringify(apisManifest, null, 2) + '\n',
+    );
     const destination = path.join(root, 'vendor/deployment-routing');
     if (path.resolve(routingRoot) !== path.resolve(destination)) {
         fs.mkdirSync(destination, { recursive: true });
@@ -19,6 +45,7 @@ function prepareStandalone(root, routingRoot) {
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf8'));
     const lock = JSON.parse(fs.readFileSync(lockFile, 'utf8'));
     manifest.dependencies['@box/deployment-routing'] = 'file:vendor/deployment-routing';
+    manifest.dependencies['@box/apis'] = 'file:vendor/apis';
     lock.name = manifest.name;
     lock.version = manifest.version;
     lock.packages[''].version = manifest.version;
@@ -27,6 +54,13 @@ function prepareStandalone(root, routingRoot) {
     lock.packages['node_modules/@box/deployment-routing'] = {
         resolved: 'vendor/deployment-routing',
         link: true,
+    };
+    lock.packages['node_modules/@box/apis'] = { resolved: 'vendor/apis', link: true };
+    lock.packages['vendor/apis'] = {
+        name: apis.name,
+        version: apis.version,
+        license: apis.license,
+        dependencies: apis.dependencies,
     };
     lock.packages['vendor/deployment-routing'] = {
         name: routing.name,
@@ -39,5 +73,5 @@ function prepareStandalone(root, routingRoot) {
 
 module.exports = { prepareStandalone };
 if (require.main === module) {
-    prepareStandalone(process.argv[2], process.argv[3]);
+    prepareStandalone(process.argv[2], process.argv[3], process.argv[4]);
 }

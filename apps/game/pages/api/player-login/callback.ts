@@ -1,5 +1,6 @@
 import { parse, serialize } from 'cookie';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { ApiClient } from '@box/apis';
 import {
   applicationURL,
   decodeLoginState,
@@ -40,24 +41,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const secret = process.env.PERMISSION_TOKEN_SECRET;
     const internal = process.env.BOX_PLAYER_SERVICE_INTERNAL_URL;
     if (!secret || !internal) throw new Error('玩家身份服务未配置');
-    const response = await fetch(
-      `${internal.replace(/\/$/, '')}/api/player-internal/login-transfer`,
-      {
-        method: 'POST',
-        redirect: 'error',
-        signal: AbortSignal.timeout(10_000),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${secret}`,
-          'X-Box-Player-IP': requestPlayerServiceIp(req),
-          'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
-        },
-        body: JSON.stringify({ code, verifier: pending.verifier, source }),
+    const api = new ApiClient({
+      baseUrl: internal.replace(/\/$/, ''),
+      headers: {
+        'Authorization': `Bearer ${secret}`,
+        'X-Box-Player-IP': requestPlayerServiceIp(req),
+        'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
       },
-    );
-    const credentials = await response.json();
+    });
+    const { response, data: credentials } = await api.postApiPlayerInternalLoginTransferRaw({
+      body: { code, verifier: pending.verifier, source },
+      redirect: 'error',
+      signal: AbortSignal.timeout(10_000),
+    });
     if (
       !response.ok ||
+      !credentials ||
       !transferTokenPattern.test(credentials.session) ||
       !transferTokenPattern.test(credentials.device)
     )

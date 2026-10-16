@@ -28,7 +28,7 @@ test('standalone lock matches direct runtime and build dependencies', () => {
     }
 });
 
-test('standalone templates vendor routing and keep unrelated lock entries unchanged', () => {
+test('standalone templates vendor routing and the canonical SDK while preserving other locks', () => {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-portal-vendor-'));
     try {
         const project = path.resolve(import.meta.dirname, '..');
@@ -51,6 +51,12 @@ test('standalone templates vendor routing and keep unrelated lock entries unchan
         );
         assert.equal(lock.packages[''].version, manifest.version);
         assert.equal(lock.packages['node_modules/@box/deployment-routing'].link, true);
+        assert.equal(manifest.dependencies['@box/apis'], 'file:vendor/apis');
+        assert.equal(lock.packages['node_modules/@box/apis'].link, true);
+        assert.ok(fs.existsSync(path.join(root, 'vendor/apis/src/generated/client.ts')));
+        assert.ok(fs.existsSync(path.join(root, 'vendor/apis/src/generated/openapi.ts')));
+        assert.equal(lock.packages['vendor/apis'].dependencies['openapi-fetch'], '0.17.0');
+        assert.ok(!fs.existsSync(path.join(root, 'vendor/apis/node_modules')));
         assert.deepEqual(
             lock.packages['node_modules/react'],
             before.packages['node_modules/react'],

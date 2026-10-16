@@ -65,7 +65,7 @@ services:
     cap_drop:
       - ALL
     mem_limit: ${BOX_PLAY_MEMORY_LIMIT:-4g}
-    cpus: ${BOX_PLAY_CPU_LIMIT:-4.0}
+    cpus: ${BOX_PLAY_CPU_LIMIT:-2.0}
     pids_limit: ${BOX_PLAY_PIDS_LIMIT:-1024}
     depends_on:
       player-service:
