@@ -9,6 +9,7 @@ const zlib = require('node:zlib');
 const { execFileSync } = require('node:child_process');
 
 const {
+    zipEntries,
     createZip,
     archiveEntry,
     imageDetailsFromArchive,
@@ -18,6 +19,23 @@ const {
     macApplicationHasResourceSeal,
     ensureMacApplicationSignature,
 } = require('./build-desktop-offline-installer.js');
+
+test('ZIP entry names are independent of temporary directory names and path expansion', (context) => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'box-zip-short-path-vS-'));
+    context.after(() => fs.rmSync(root, { recursive: true, force: true }));
+    const packageRoot = path.join(root, 'release');
+    fs.mkdirSync(path.join(packageRoot, 'assets'), { recursive: true });
+    fs.writeFileSync(path.join(packageRoot, 'launcher.exe'), 'fixture');
+    fs.writeFileSync(path.join(packageRoot, 'assets', 'config.json'), '{}');
+    const entries = zipEntries(packageRoot);
+    assert.deepEqual(entries.map((entry) => entry.name).sort(), [
+        'release/assets/config.json',
+        'release/launcher.exe',
+    ]);
+    for (const entry of entries) {
+        assert.ok(fs.statSync(entry.file).isFile());
+    }
+});
 
 test(
     'Windows ZIPs use standard separators so existing updaters can install them',
