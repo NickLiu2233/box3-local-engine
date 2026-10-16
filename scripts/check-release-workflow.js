@@ -37,7 +37,7 @@ for (const job of ['images', 'desktop', 'headless-server', 'publish']) {
     );
 }
 const publication = release.jobs.publish.steps.find(
-    (step) => step.uses === 'softprops/action-gh-release@v2',
+    (step) => step.uses === 'softprops/action-gh-release@v3',
 );
 assert.equal(publication.with.tag_name, '${{ env.BOX_RELEASE_TAG }}');
 assert.equal(publication.with.target_commitish, '${{ github.sha }}');
@@ -79,7 +79,7 @@ assert.match(
     /docker builder prune --all --force/,
     'BuildKit cache must be pruned between image builds to fit GitHub runner disk limits',
 );
-assert.match(workflow, /architecture: amd64\s+runner: ubuntu-latest/);
+assert.match(workflow, /architecture: amd64\s+runner: ubuntu-24\.04/);
 assert.match(workflow, /architecture: arm64\s+runner: ubuntu-24\.04-arm/);
 assert.match(workflow, /^ {2}validate-release:/m);
 assert.equal(release.jobs.images.needs, 'validate-release');
