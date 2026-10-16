@@ -168,10 +168,35 @@ function ensureMacApplicationSignature(application) {
     }
 }
 
+function zipEntries(packageRoot) {
+    const entries = [];
+    const visit = (directory, relative) => {
+        for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+            const file = path.join(directory, entry.name);
+            const name = `${relative}/${entry.name}`;
+            if (entry.isDirectory()) {
+                visit(file, name);
+            } else if (entry.isFile()) {
+                entries.push({ file, name });
+            }
+        }
+    };
+    visit(packageRoot, path.basename(packageRoot));
+    return entries;
+}
+
 function createZip(packageRoot, destination) {
     fs.rmSync(destination, { force: true });
     const parent = path.dirname(packageRoot);
     const name = path.basename(packageRoot);
+    const staging =
+        process.platform === 'win32'
+            ? fs.mkdtempSync(path.join(os.tmpdir(), 'box-zip-entries-'))
+            : null;
+    const manifest = staging ? path.join(staging, 'entries.json') : null;
+    if (manifest) {
+        fs.writeFileSync(manifest, JSON.stringify(zipEntries(packageRoot)), { mode: 0o600 });
+    }
     const command =
         process.platform === 'win32'
             ? 'powershell'
@@ -191,20 +216,29 @@ function createZip(packageRoot, destination) {
                       'Add-Type -AssemblyName System.IO.Compression',
                       'Add-Type -AssemblyName System.IO.Compression.FileSystem',
                       `$archive=[System.IO.Compression.ZipFile]::Open('${destination.replaceAll("'", "''")}',[System.IO.Compression.ZipArchiveMode]::Create)`,
-                      `try { Get-ChildItem -LiteralPath '${packageRoot.replaceAll("'", "''")}' -Recurse -File | ForEach-Object {`,
-                      `$entryName=$_.FullName.Substring(${parent.length + 1}).Replace([char]92,[char]47)`,
-                      '[System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$_.FullName,$entryName,[System.IO.Compression.CompressionLevel]::Optimal) | Out-Null',
+                      // Node supplies exact relative entry names. PowerShell may
+                      // expand 8.3 temp paths, so its FullName cannot safely be
+                      // sliced using a path length calculated by Node.
+                      `try { $entries=ConvertFrom-Json -InputObject ([System.IO.File]::ReadAllText('${manifest?.replaceAll("'", "''")}')); $entries | ForEach-Object {`,
+                      '[System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($archive,$_.file,$_.name,[System.IO.Compression.CompressionLevel]::Optimal) | Out-Null',
                       '} } finally { $archive.Dispose() }',
                   ].join('; '),
               ]
             : process.platform === 'darwin'
               ? ['-c', '-k', '--norsrc', '--keepParent', name, destination]
               : ['-rq', destination, name];
-    const result = spawnSync(command, args, {
-        cwd: parent,
-        env: { ...process.env, COPYFILE_DISABLE: '1' },
-        stdio: 'inherit',
-    });
+    let result;
+    try {
+        result = spawnSync(command, args, {
+            cwd: parent,
+            env: { ...process.env, COPYFILE_DISABLE: '1' },
+            stdio: 'inherit',
+        });
+    } finally {
+        if (staging) {
+            fs.rmSync(staging, { recursive: true, force: true });
+        }
+    }
     if (result.status !== 0) {
         fail(`ZIP 打包失败，退出码 ${result.status}`);
     }
@@ -559,6 +593,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+    zipEntries,
     createZip,
     archiveEntry,
     imageDetailsFromArchive,
