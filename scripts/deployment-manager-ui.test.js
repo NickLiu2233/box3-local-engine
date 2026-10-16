@@ -335,6 +335,24 @@ test('login image has its own access-settings card with the current official ima
     );
 });
 
+test('legacy version-only default login images are not pinned as custom Docker images', async () => {
+    const version = require('../package.json').version;
+    const app = await createFixture({
+        responses: { get_about_info: { imageTag: `v${version}-linux-amd64` } },
+    });
+    app.api.state.page = 'setup';
+    app.api.state.status.services.push({ name: 'player-auth-portal', running: true });
+    app.api.state.setupSection = 'network';
+    app.api.render();
+    app.form.setValue('authPortalImage', `box-local-engine-player-auth-portal:${version}`);
+    app.results.save_configuration_command = ({ config }) => {
+        app.results.get_install_config = { ...config };
+    };
+    await app.api.saveConfiguration({ currentTarget: app.form, preventDefault() {} });
+    assert.equal(app.api.state.config.authPortalImage, '');
+    assert.ok(!app.calls.some((call) => call.command === 'control_service'));
+});
+
 test('custom login image stays editable across access-mode changes and is escaped in its standalone card', async () => {
     const app = await createFixture();
     app.api.state.page = 'setup';
