@@ -1,6 +1,45 @@
 use super::*;
 
 #[test]
+fn proxy_trust_follows_each_service_public_route_and_resets_when_disabled() {
+    let root = fixture_root();
+    std::fs::create_dir_all(root.join("https")).unwrap();
+    let mut settings = input().settings;
+    let template = settings.routes[0].clone();
+    settings.routes = ["play", "creator", "player-service", "player-auth-portal"]
+        .into_iter()
+        .map(|service| Route { service: service.into(), ..template.clone() })
+        .collect();
+    std::fs::write(root.join("https/routing.pending.json"), serde_json::to_string(&settings).unwrap()).unwrap();
+    let values = [("BOX_PLAY_NETWORK_MODE".into(), "public".into()), ("BOX_CREATOR_NETWORK_MODE".into(), "local".into())].into_iter().collect();
+    let mut derived = BTreeMap::new();
+    for service in SERVICES {
+        derived.insert(format!("{}_PUBLIC_URL", service.3.trim_end_matches("_PORT")), "http://127.0.0.1:3121".into());
+    }
+    apply_runtime_urls(&root, &values, &mut derived).unwrap();
+    for key in ["BOX_PLAY_TRUST_PROXY", "BOX_PLAYER_SERVICE_TRUST_PROXY", "BOX_AUTH_PORTAL_TRUST_PROXY"] {
+        assert_eq!(derived.get(key).map(String::as_str), Some("true"), "{key}");
+    }
+    assert_eq!(derived.get("BOX_CREATOR_TRUST_PROXY").map(String::as_str), Some("false"));
+    settings.mode = "external".into();
+    set_provider(&root, "external").unwrap();
+    std::fs::write(root.join("https/routing.pending.json"), serde_json::to_string(&settings).unwrap()).unwrap();
+    apply_runtime_urls(&root, &values, &mut derived).unwrap();
+    assert_eq!(derived.get("BOX_PLAY_TRUST_PROXY").map(String::as_str), Some("false"));
+    settings.upstream_ports.insert("play".into(), 13121);
+    std::fs::write(root.join("https/routing.pending.json"), serde_json::to_string(&settings).unwrap()).unwrap();
+    apply_runtime_urls(&root, &values, &mut derived).unwrap();
+    assert_eq!(derived.get("BOX_PLAY_TRUST_PROXY").map(String::as_str), Some("true"));
+    assert_eq!(derived.get("BOX_AUTH_PORTAL_TRUST_PROXY").map(String::as_str), Some("false"));
+    set_provider(&root, "external-manual").unwrap();
+    apply_runtime_urls(&root, &values, &mut derived).unwrap();
+    for key in ["BOX_PLAY_TRUST_PROXY", "BOX_PLAYER_SERVICE_TRUST_PROXY", "BOX_AUTH_PORTAL_TRUST_PROXY", "BOX_CREATOR_TRUST_PROXY"] {
+        assert_eq!(derived.get(key).map(String::as_str), Some("false"), "{key}");
+    }
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn nginx_defaults_to_managed_and_preserves_explicit_external_selection() {
     let root = fixture_root();
     let mut docker = |args: &[String]| -> Result<String, String> {
@@ -497,7 +536,10 @@ fn managed_https_runtime_links_use_listener_ports_without_changing_engine_ports(
     assert!(derived["BOX_PLAYER_AUTH_ALLOWED_ORIGINS"].contains("https://play.example.test"));
     assert_eq!(derived["BOX_CREATOR_PUBLIC_URL"], "http://127.0.0.1:3127");
     std::fs::write(root.join("https/provider"), "external").unwrap();
-    let original = derived.clone();
+    let mut original = derived.clone();
+    for service in SERVICES {
+        original.insert(format!("{}_TRUST_PROXY", service.3.trim_end_matches("_PORT")), "false".into());
+    }
     apply_runtime_urls(&root, &values, &mut derived).unwrap();
     assert_eq!(derived, original);
     std::fs::remove_dir_all(root).unwrap();

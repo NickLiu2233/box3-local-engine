@@ -1,2 +1,2 @@
-declare function prepareStandalone(root:string, routingRoot:string):void;
+declare function prepareStandalone(root:string, routingRoot:string, apisRoot?:string):void;
 export { prepareStandalone };

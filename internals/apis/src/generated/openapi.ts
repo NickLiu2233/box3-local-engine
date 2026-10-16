@@ -3386,6 +3386,14 @@ export interface operations {
                 "application/json": {
                     username: string;
                     password: string;
+                    /** @description 返回的应用：play 或 creator。 */
+                    source?: string;
+                    /** @description 由服务端校验的应用返回地址。 */
+                    returnUrl?: string;
+                    /** @description 目标站点发起的浏览器登录校验状态。 */
+                    transferState?: string;
+                    /** @description 目标站点持有的校验值对应的 SHA-256 挑战。 */
+                    transferChallenge?: string;
                 };
             };
         };
@@ -3397,7 +3405,10 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        player: components["schemas"]["PlayerLauncherSessionPlayer"];
+                        player: components["schemas"]["PlayerLauncherSessionPlayer"] | null;
+                        registrationEnabled?: boolean;
+                        /** @description 后端生成的安全回跳地址；跨站时为带一次性登录码的应用回调。 */
+                        returnUrl?: string;
                     };
                 };
             };
@@ -3630,22 +3641,35 @@ export interface operations {
             cookie?: never;
         };
         /** @description 执行“注册玩家账号”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    username: string;
+                    displayName: string;
+                    password: string;
+                    /** @description 返回的应用：play 或 creator。 */
+                    source?: string;
+                    /** @description 由服务端校验的应用返回地址。 */
+                    returnUrl?: string;
+                    /** @description 目标站点发起的浏览器登录校验状态。 */
+                    transferState?: string;
+                    /** @description 目标站点持有的校验值对应的 SHA-256 挑战。 */
+                    transferChallenge?: string;
                 };
             };
         };
         responses: {
-            /** @description 操作成功，返回“注册玩家账号”的处理结果。 */
-            200: {
+            /** @description 玩家账号已创建并登录。 */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: components["schemas"]["PlayerLauncherSessionPlayer"] | null;
+                        registrationEnabled?: boolean;
+                        /** @description 后端生成的安全回跳地址；跨站时为带一次性登录码的应用回调。 */
+                        returnUrl?: string;
                     };
                 };
             };
@@ -3662,7 +3686,16 @@ export interface operations {
     };
     getApiAuthSession: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description 返回的应用：play 或 creator。 */
+                source?: string;
+                /** @description 由服务端校验的应用返回地址。 */
+                returnUrl?: string;
+                /** @description 目标站点发起的浏览器登录校验状态。 */
+                transferState?: string;
+                /** @description 目标站点持有的校验值对应的 SHA-256 挑战。 */
+                transferChallenge?: string;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -3678,6 +3711,8 @@ export interface operations {
                     "application/json": {
                         player: components["schemas"]["PlayerLauncherSessionPlayer"] | null;
                         registrationEnabled?: boolean;
+                        /** @description 后端生成的安全回跳地址；跨站时为带一次性登录码的应用回调。 */
+                        returnUrl?: string;
                     };
                 };
             };
@@ -8827,11 +8862,9 @@ export interface operations {
             cookie?: never;
         };
         /** @description 执行“退出玩家账号”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
+        requestBody: {
             content: {
-                "application/json": {
-                    [key: string]: unknown;
-                };
+                "application/json": Record<string, never>;
             };
         };
         responses: {
@@ -9039,22 +9072,24 @@ export interface operations {
             cookie?: never;
         };
         /** @description 执行“注册玩家账号”所需的请求数据。具体字段以请求模型为准。 */
-        requestBody?: {
+        requestBody: {
             content: {
                 "application/json": {
-                    [key: string]: unknown;
+                    username: string;
+                    displayName: string;
+                    password: string;
                 };
             };
         };
         responses: {
-            /** @description 操作成功，返回“注册玩家账号”的处理结果。 */
-            200: {
+            /** @description 玩家账号已创建并登录。 */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": {
-                        [key: string]: unknown;
+                        player: components["schemas"]["PlayerLauncherSessionPlayer"];
                     };
                 };
             };

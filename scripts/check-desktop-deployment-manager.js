@@ -285,9 +285,9 @@ for (const [name, value] of [
     ['BOX_AUTH_PORTAL_MEMORY_LIMIT', '128m'],
     ['BOX_AUTH_PORTAL_CPU_LIMIT', '0.5'],
     ['BOX_CREATOR_MEMORY_LIMIT', '6g'],
-    ['BOX_CREATOR_CPU_LIMIT', '4.0'],
+    ['BOX_CREATOR_CPU_LIMIT', '2.0'],
     ['BOX_PLAY_MEMORY_LIMIT', '4g'],
-    ['BOX_PLAY_CPU_LIMIT', '4.0'],
+    ['BOX_PLAY_CPU_LIMIT', '2.0'],
     ['BOX_DATABASE_POOL_SIZE', '4'],
     ['STORAGE_CACHE_REDIS_TTL', '240'],
 ]) {
@@ -424,9 +424,9 @@ for (const [name, pattern] of [
     ['BOX_AUTH_PORTAL_MEMORY_LIMIT', /mem_limit: \$\{BOX_AUTH_PORTAL_MEMORY_LIMIT:-128m\}/],
     ['BOX_AUTH_PORTAL_CPU_LIMIT', /cpus: \$\{BOX_AUTH_PORTAL_CPU_LIMIT:-0\.5\}/],
     ['BOX_CREATOR_MEMORY_LIMIT', /mem_limit: \$\{BOX_CREATOR_MEMORY_LIMIT:-6g\}/],
-    ['BOX_CREATOR_CPU_LIMIT', /cpus: \$\{BOX_CREATOR_CPU_LIMIT:-4\.0\}/],
+    ['BOX_CREATOR_CPU_LIMIT', /cpus: \$\{BOX_CREATOR_CPU_LIMIT:-2\.0\}/],
     ['BOX_PLAY_MEMORY_LIMIT', /mem_limit: \$\{BOX_PLAY_MEMORY_LIMIT:-4g\}/],
-    ['BOX_PLAY_CPU_LIMIT', /cpus: \$\{BOX_PLAY_CPU_LIMIT:-4\.0\}/],
+    ['BOX_PLAY_CPU_LIMIT', /cpus: \$\{BOX_PLAY_CPU_LIMIT:-2\.0\}/],
 ]) {
     assert.match(compose, pattern, `${name} does not control a Docker resource limit`);
 }
@@ -761,7 +761,7 @@ assert.match(
 assert.doesNotMatch(frontend, /step: 0\.1 \}/);
 assert.match(frontend, /<form id="setup-form" novalidate/);
 assert.match(frontend, /function revealInvalidSetupField\(form\)/);
-assert.match(frontend, /state\.page = 'overview';\s*await refreshStatus\(\)/);
+assert.match(frontend, /state\.page = 'overview';\s*render\(\);\s*await refreshStatus\(\)/);
 assert.doesNotMatch(frontend, /onboardingStep|onboarding-shell|onboarding-next/);
 assert.match(frontend, /async function recheckDocker\(\)/);
 assert.match(frontend, /正在检测 \$\{dockerPlatform\(\)\.name\}/);

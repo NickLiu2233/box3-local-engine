@@ -75,7 +75,7 @@ const source = fs
     .replace(
         "import { ApiClient } from '@box/apis'",
         `import { ApiClient } from ${JSON.stringify(
-            pathToFileURL(path.join(__dirname, '../internals/apis/dist/index.es.js')).href,
+            pathToFileURL(path.join(__dirname, '../internals/apis/dist/index.es.mjs')).href,
         )}`,
     );
 const transport = import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);

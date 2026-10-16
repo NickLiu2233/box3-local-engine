@@ -13,6 +13,8 @@
 !tsconfig.json
 !tsconfig.library.json
 !Dockerfile.standalone
+!vendor/
+!vendor/**
 **/.env
 **/.env.*
 **/*.pem

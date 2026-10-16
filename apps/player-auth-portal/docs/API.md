@@ -14,7 +14,7 @@
 
 ## 六种账号操作
 
-页面调用 `PortalClient`；门户后端添加 `X-Box-Player-Auth-Key`，转发到对应的 `/api/player-auth/*` 接口。
+页面调用 `PortalClient`，前后端请求均使用 `@box/apis` 的 OpenAPI 生成客户端。门户后端添加 `X-Box-Player-Auth-Key`，通过对应的命名方法请求玩家服务。新增字段先更新契约并生成类型，不手写请求路径。
 
 | 功能 | 客户端方法                                     | 门户接口                  | 正文                                  |
 | ---- | ---------------------------------------------- | ------------------------- | ------------------------------------- |
@@ -72,7 +72,9 @@ Creator / Play 可以传入 `source`、`returnUrl`。客户端携带导航参数
 | `BOX_PLAYER_REGISTRATION_ENABLED`               | 注册开关                                                                                     |
 | `HOST`、`PORT`                                  | 监听地址与端口                                                                               |
 
-标准配置优先于兼容的 `AUTH_DEMO_*` 字段。跨子域登录时，在 Player Service 配置共同 Cookie 域，如 `BOX_PLAYER_COOKIE_DOMAIN=.example.com`，并设置允许来源、HTTPS 和可信代理。域名配置不会自动生成证书。
+标准配置优先于兼容的 `AUTH_DEMO_*` 字段。不同公网地址通过一次性登录码共享会话，不要求共同 Cookie 域。页面须保留 `source`、`returnUrl`、`transferState` 和 `transferChallenge`，并按后端返回的 `returnUrl` 回跳。域名配置不会自动生成证书。
+
+独立模板在 `vendor/apis` 中携带同一份 SDK 源码，构建时打包进前后端产物；运行镜像不需要额外安装工作区依赖。
 
 ## 复用或实现后端
 
