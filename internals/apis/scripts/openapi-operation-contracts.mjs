@@ -6,6 +6,18 @@ const object = (properties, required = Object.keys(properties)) => ({
   properties,
 })
 
+const loginNavigation = {
+  source: { type: 'string', description: '返回的应用：play 或 creator。' },
+  returnUrl: { type: 'string', description: '由服务端校验的应用返回地址。' },
+  transferState: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$', description: '目标站点发起的浏览器登录校验状态。' },
+  transferChallenge: { type: 'string', pattern: '^[A-Za-z0-9_-]{43}$', description: '目标站点持有的校验值对应的 SHA-256 挑战。' },
+}
+const portalSession = object({
+  player: { oneOf: [ref('PlayerLauncherSessionPlayer'), { type: 'null' }] },
+  registrationEnabled: { type: 'boolean' },
+  returnUrl: { type: 'string', description: '后端生成的安全回跳地址；跨站时为带一次性登录码的应用回调。' },
+}, ['player'])
+
 const moderationRecord = object({
   id:{type:'string',format:'uuid'},kind:{type:'string',enum:['account','ip','device']},scope:{type:'string',enum:['map','server']},
   userId:{type:['string','null']},reason:{type:'string'},createdAt:{type:'string',format:'date-time'},
@@ -40,11 +52,10 @@ const contracts = {
   'get /api/player-launcher/maps': object({ worlds: array('PlayerLauncherWorld') }),
   'get /api/player-launcher/maps/{mapId}/descriptor': ref('PlayerLauncherPackageDescriptor'),
   'get /api/player-launcher/maps/{mapId}/download-plan': ref('PlayerLauncherDownloadPlan'),
-  'post /api/auth/login': object({ player: ref('PlayerLauncherSessionPlayer') }),
-  'get /api/auth/session': object({
-    player: { oneOf: [ref('PlayerLauncherSessionPlayer'), { type: 'null' }] },
-    registrationEnabled: { type: 'boolean' },
-  }, ['player']),
+  'post /api/auth/login': portalSession,
+  'post /api/auth/register': portalSession,
+  'get /api/auth/session': portalSession,
+  'post /api/player-auth/register': object({ player: ref('PlayerLauncherSessionPlayer') }),
   'post /api/auth/logout': object({ loggedOut: { type: 'boolean' } }),
   'patch /api/play-profile': object({ player: ref('PlayerLauncherSessionPlayer') }),
   'get /api/play-library': object({
@@ -115,9 +126,12 @@ const requestContracts = {
     played: { type: 'boolean' },
   }, ['mapId']),
   'patch /api/play-profile': object({ displayName: { type: 'string' }, avatarSkinId: { type: 'string' } }, []),
-  'post /api/auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
+  'post /api/auth/login': object({ username: { type: 'string' }, password: { type: 'string' }, ...loginNavigation }, ['username', 'password']),
+  'post /api/auth/register': object({ username: { type: 'string' }, displayName: { type: 'string' }, password: { type: 'string' }, ...loginNavigation }, ['username', 'displayName', 'password']),
   'post /api/auth/logout': object({}),
   'post /api/player-auth/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
+  'post /api/player-auth/register': object({ username: { type: 'string' }, displayName: { type: 'string' }, password: { type: 'string' } }),
+  'post /api/player-auth/logout': object({}),
   'post /api/play-admin/login': object({ username: { type: 'string' }, password: { type: 'string' } }),
   'post /api/play-admin/admins': object({
     username: { type: 'string' },
@@ -140,6 +154,13 @@ const requestContracts = {
 }
 
 export function applyOperationContracts(paths) {
+  const portalSessionOperation = paths['/api/auth/session']?.get
+  if (portalSessionOperation) {
+    portalSessionOperation.parameters = [
+      ...(portalSessionOperation.parameters || []).filter(parameter => !Object.hasOwn(loginNavigation, parameter.name)),
+      ...Object.entries(loginNavigation).map(([name, schema]) => ({ name, in: 'query', required: false, description: schema.description, schema })),
+    ]
+  }
   for (const [path, status] of [['/api/player-login/start', 302], ['/api/player-login/callback', 303]]) {
     const operation = paths[path]?.get
     if (!operation) continue
@@ -164,6 +185,12 @@ export function applyOperationContracts(paths) {
     const operation = paths[apiPath]?.[method]
     if (!operation) continue
     operation.responses[200].content['application/json'].schema = schema
+  }
+  for (const apiPath of ['/api/auth/register', '/api/player-auth/register']) {
+    const operation = paths[apiPath]?.post
+    if (!operation) continue
+    operation.responses[201] = { ...operation.responses[200], description: '玩家账号已创建并登录。' }
+    delete operation.responses[200]
   }
   for (const [key, schema] of Object.entries(requestContracts)) {
     const [method, apiPath] = key.split(' ')

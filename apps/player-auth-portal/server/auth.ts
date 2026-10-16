@@ -1,3 +1,5 @@
+import { ApiClient } from '@box/apis';
+
 import { PortalConfig } from './config';
 import { Http, HttpError, JsonBody } from './http';
 
@@ -48,9 +50,6 @@ export class AuthOperation {
     }
     public get hasBody():boolean {
         return this.method !== 'GET';
-    }
-    public get path():string {
-        return `/api/player-auth/${this.name}`;
     }
     public payload(body:Body):Body | undefined {
         if (this.selfService && Object.keys(body).some((key) => !this.fields.includes(key))) {
@@ -147,8 +146,16 @@ export class PlayerServiceClient {
         }
         return headers;
     }
-    private async response(response:Response):Promise<Reply> {
-        const parsed:unknown = await response.json().catch(() => null);
+    private response(result:{ response:Response; data?:unknown; error?:unknown }):Reply {
+        const { response } = result;
+        let parsed:unknown = result.data ?? result.error;
+        if (typeof parsed === 'string') {
+            try {
+                parsed = JSON.parse(parsed);
+            } catch {
+                parsed = null;
+            }
+        }
         const valid = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
         return {
             status: valid ? response.status : 502,
@@ -157,6 +164,64 @@ export class PlayerServiceClient {
                 : { code: 'INVALID_UPSTREAM_RESPONSE', message: '玩家服务返回了无法解析的响应' },
             headers: this.responseHeaders(response),
         };
+    }
+    private sendOperation(
+        api:ApiClient,
+        operation:AuthOperation,
+        payload:Body | undefined,
+        signal:AbortSignal,
+    ) {
+        const options = { signal, redirect: 'manual' as const, parseAs: 'text' as const };
+        const text = (field:string):string => {
+            const value = payload?.[field];
+            if (typeof value !== 'string') {
+                throw new HttpError(400, 'INVALID_INPUT', '请求字段格式无效');
+            }
+            return value;
+        };
+        switch (operation.name) {
+            case 'login':
+                return api.postApiPlayerAuthLoginRaw({
+                    ...options,
+                    body: { username: text('username'), password: text('password') },
+                });
+            case 'register':
+                return api.postApiPlayerAuthRegisterRaw({
+                    ...options,
+                    body: {
+                        username: text('username'),
+                        displayName: text('displayName'),
+                        password: text('password'),
+                    },
+                });
+            case 'session':
+                return api.getApiPlayerAuthSessionRaw(options);
+            case 'logout':
+                return api.postApiPlayerAuthLogoutRaw({ ...options, body: {} });
+            case 'profile':
+                return api.patchApiPlayerAuthProfileRaw({
+                    ...options,
+                    body: { displayName: text('displayName') },
+                });
+            case 'password':
+                return api.postApiPlayerAuthPasswordRaw({
+                    ...options,
+                    body: {
+                        currentPassword: text('currentPassword'),
+                        newPassword: text('newPassword'),
+                    },
+                });
+            case 'transfer': {
+                const source = text('source');
+                if (source !== 'play' && source !== 'creator') {
+                    throw new HttpError(400, 'INVALID_INPUT', '登录目标无效');
+                }
+                return api.postApiPlayerAuthTransferRaw({
+                    ...options,
+                    body: { source, challenge: text('challenge') },
+                });
+            }
+        }
     }
     private failure(error:unknown):Reply {
         const timeout = error instanceof Error && error.name === 'AbortError';
@@ -177,14 +242,13 @@ export class PlayerServiceClient {
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), this.config.requestTimeoutMs);
         try {
-            const upstream = await fetch(new URL(operation.path, this.config.playerServiceURL), {
-                method: operation.method,
+            const api = new ApiClient({
+                baseUrl: this.config.playerServiceURL.origin,
                 headers: this.headers(request, payload),
-                body: payload ? JSON.stringify(payload) : undefined,
-                redirect: 'manual',
-                signal: controller.signal,
             });
-            return await this.response(upstream);
+            return this.response(
+                await this.sendOperation(api, operation, payload, controller.signal),
+            );
         } catch (error) {
             return this.failure(error);
         } finally {

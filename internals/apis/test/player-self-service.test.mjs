@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { ApiClient } from '../dist/index.es.js'
+import { ApiClient } from '../dist/index.es.mjs'
 
 const document = JSON.parse(readFileSync(new URL('../openapi/openapi.json', import.meta.url), 'utf8'))
 

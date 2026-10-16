@@ -315,7 +315,21 @@
                   ],
                   "properties": {
                     "player": {
-                      "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "registrationEnabled": {
+                      "type": "boolean"
+                    },
+                    "returnUrl": {
+                      "type": "string",
+                      "description": "后端生成的安全回跳地址；跨站时为带一次性登录码的应用回调。"
                     }
                   }
                 }
@@ -349,6 +363,24 @@
                   },
                   "password": {
                     "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "返回的应用：play 或 creator。"
+                  },
+                  "returnUrl": {
+                    "type": "string",
+                    "description": "由服务端校验的应用返回地址。"
+                  },
+                  "transferState": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "description": "目标站点发起的浏览器登录校验状态。"
+                  },
+                  "transferChallenge": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "description": "目标站点持有的校验值对应的 SHA-256 挑战。"
                   }
                 }
               }
@@ -716,13 +748,34 @@
         ],
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "操作成功，返回“注册玩家账号”的处理结果。",
+          "201": {
+            "description": "玩家账号已创建并登录。",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "player"
+                  ],
+                  "properties": {
+                    "player": {
+                      "oneOf": [
+                        {
+                          "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "registrationEnabled": {
+                      "type": "boolean"
+                    },
+                    "returnUrl": {
+                      "type": "string",
+                      "description": "后端生成的安全回跳地址；跨站时为带一次性登录码的应用回调。"
+                    }
+                  }
                 }
               }
             }
@@ -739,12 +792,45 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [
+                  "username",
+                  "displayName",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "source": {
+                    "type": "string",
+                    "description": "返回的应用：play 或 creator。"
+                  },
+                  "returnUrl": {
+                    "type": "string",
+                    "description": "由服务端校验的应用返回地址。"
+                  },
+                  "transferState": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "description": "目标站点发起的浏览器登录校验状态。"
+                  },
+                  "transferChallenge": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{43}$",
+                    "description": "目标站点持有的校验值对应的 SHA-256 挑战。"
+                  }
+                }
               }
             }
           },
@@ -767,7 +853,50 @@
         "x-box-deployment-modes": [
           "auth-portal"
         ],
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": false,
+            "description": "返回的应用：play 或 creator。",
+            "schema": {
+              "type": "string",
+              "description": "返回的应用：play 或 creator。"
+            }
+          },
+          {
+            "name": "returnUrl",
+            "in": "query",
+            "required": false,
+            "description": "由服务端校验的应用返回地址。",
+            "schema": {
+              "type": "string",
+              "description": "由服务端校验的应用返回地址。"
+            }
+          },
+          {
+            "name": "transferState",
+            "in": "query",
+            "required": false,
+            "description": "目标站点发起的浏览器登录校验状态。",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "目标站点发起的浏览器登录校验状态。"
+            }
+          },
+          {
+            "name": "transferChallenge",
+            "in": "query",
+            "required": false,
+            "description": "目标站点持有的校验值对应的 SHA-256 挑战。",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{43}$",
+              "description": "目标站点持有的校验值对应的 SHA-256 挑战。"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "操作成功，返回“读取当前玩家会话”的处理结果。",
@@ -791,6 +920,10 @@
                     },
                     "registrationEnabled": {
                       "type": "boolean"
+                    },
+                    "returnUrl": {
+                      "type": "string",
+                      "description": "后端生成的安全回跳地址；跨站时为带一次性登录码的应用回调。"
                     }
                   }
                 }
@@ -9632,12 +9765,13 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [],
+                "properties": {}
               }
             }
           },
@@ -9948,13 +10082,20 @@
         ],
         "parameters": [],
         "responses": {
-          "200": {
-            "description": "操作成功，返回“注册玩家账号”的处理结果。",
+          "201": {
+            "description": "玩家账号已创建并登录。",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
-                  "additionalProperties": true
+                  "required": [
+                    "player"
+                  ],
+                  "properties": {
+                    "player": {
+                      "$ref": "#/components/schemas/PlayerLauncherSessionPlayer"
+                    }
+                  }
                 }
               }
             }
@@ -9971,12 +10112,27 @@
           }
         },
         "requestBody": {
-          "required": false,
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "additionalProperties": true
+                "required": [
+                  "username",
+                  "displayName",
+                  "password"
+                ],
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "displayName": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                }
               }
             }
           },

@@ -6,12 +6,12 @@
   "keywords": [],
   "author": "Code Infinity",
   "main": "dist/index.js",
-  "module": "dist/index.es.js",
+  "module": "dist/index.es.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.es.js",
+      "import": "./dist/index.es.mjs",
       "require": "./dist/index.js"
     }
   },

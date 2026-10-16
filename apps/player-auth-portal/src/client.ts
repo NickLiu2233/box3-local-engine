@@ -1,3 +1,5 @@
+import { ApiClient } from '@box/apis';
+
 export interface Player {
     subjectId?:string;
     userId?:string;
@@ -33,6 +35,7 @@ export class PortalError extends Error {
 
 /** 页面只复用这个客户端，不接触服务密钥或 HttpOnly Cookie。 */
 export class PortalClient {
+    private readonly api:ApiClient;
     public readonly navigation:{
         source:string;
         returnUrl:string;
@@ -40,6 +43,9 @@ export class PortalClient {
         transferChallenge:string;
     };
     public constructor(search = location.search) {
+        this.api = new ApiClient({
+            baseUrl: typeof location === 'undefined' ? '' : location.origin,
+        });
         const query = new URLSearchParams(search);
         this.navigation = {
             source: query.get('source') || '',
@@ -48,66 +54,82 @@ export class PortalClient {
             transferChallenge: query.get('transferChallenge') || '',
         };
     }
-    private async request<T>(path:string, method = 'GET', body?:object):Promise<T> {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 15000);
-        try {
-            const response = await fetch(path, {
-                method,
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: body ? { 'Content-Type': 'application/json' } : undefined,
-                body: body ? JSON.stringify(body) : undefined,
-                signal: controller.signal,
-            });
-            const parsed:unknown = await response.json().catch(() => null);
-            const valid = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
-            const data = valid ? (parsed as Record<string, unknown>) : {};
-            if (!response.ok || !valid) {
-                throw new PortalError(
-                    typeof data.message === 'string'
-                        ? data.message
-                        : `请求失败（HTTP ${response.status}）`,
-                    response,
-                    data,
-                );
-            }
-            return data as T;
-        } finally {
-            clearTimeout(timeout);
+    private navigationParams():Record<string, string> {
+        return Object.fromEntries(Object.entries(this.navigation).filter(([, value]) => value));
+    }
+    private options() {
+        return {
+            credentials: 'same-origin' as const,
+            cache: 'no-store' as const,
+            signal: AbortSignal.timeout(15000),
+        };
+    }
+    private async request<T extends object>(
+        pending:Promise<{ response:Response; data?:T; error?:unknown }>,
+    ):Promise<T> {
+        const { response, data, error } = await pending;
+        const parsed:unknown = data ?? error;
+        const valid = parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed);
+        if (!response.ok || !valid || !data) {
+            const details = valid ? (parsed as Record<string, unknown>) : {};
+            throw new PortalError(
+                typeof details.message === 'string'
+                    ? details.message
+                    : `请求失败（HTTP ${response.status}）`,
+                response,
+                details,
+            );
         }
+        return data;
     }
     public session():Promise<Session> {
-        return this.request(`/api/auth/session?${new URLSearchParams(this.navigation)}`);
+        return this.request(
+            this.api.getApiAuthSessionRaw({
+                ...this.options(),
+                params: { query: this.navigationParams() },
+            }),
+        );
     }
     public login(username:string, password:string):Promise<Session> {
-        return this.request('/api/auth/login', 'POST', { username, password, ...this.navigation });
+        return this.request(
+            this.api.postApiAuthLoginRaw({
+                ...this.options(),
+                body: { username, password, ...this.navigationParams() },
+            }),
+        );
     }
     public register(username:string, displayName:string, password:string):Promise<Session> {
-        return this.request('/api/auth/register', 'POST', {
-            username,
-            displayName,
-            password,
-            ...this.navigation,
-        });
+        return this.request(
+            this.api.postApiAuthRegisterRaw({
+                ...this.options(),
+                body: { username, displayName, password, ...this.navigationParams() },
+            }),
+        );
     }
     public logout():Promise<{ loggedOut:boolean }> {
-        return this.request('/api/auth/logout', 'POST', {});
+        return this.request(this.api.postApiAuthLogoutRaw({ ...this.options(), body: {} }));
     }
     public updateNickname(displayName:string):Promise<{ player:Player }> {
-        return this.request('/api/auth/profile', 'PATCH', { displayName });
+        return this.request(
+            this.api.patchApiAuthProfileRaw({ ...this.options(), body: { displayName } }),
+        );
     }
     public changePassword(
         currentPassword:string,
         newPassword:string,
     ):Promise<{ changed:boolean; reloginRequired:boolean }> {
-        return this.request('/api/auth/password', 'POST', { currentPassword, newPassword });
+        return this.request(
+            this.api.postApiAuthPasswordRaw({
+                ...this.options(),
+                body: { currentPassword, newPassword },
+            }),
+        );
     }
     public static message(error:unknown):string {
         if (error instanceof PortalError && error.banReason !== undefined) {
             return `${error.message}\n封禁原因：${error.banReason || '未说明'}\n封禁期限：${error.bannedUntil ? new Date(error.bannedUntil).toLocaleString('zh-CN') : '永久'}`;
         }
-        if (error instanceof Error && error.name === 'AbortError') {
+        if (error instanceof Error && ['AbortError', 'TimeoutError'].includes(error.name)) {
             return '请求超时，请稍后重试；不要连续重复提交。';
         }
         return error instanceof Error ? error.message : '请求失败，请稍后重试';

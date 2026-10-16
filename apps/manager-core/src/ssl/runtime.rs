@@ -128,6 +128,14 @@ pub fn apply_runtime_urls(
 ) -> Result<(), String> {
     for service in SERVICES {
         derived.insert(
+            service.3.trim_end_matches("_PORT").to_owned() + "_TRUST_PROXY",
+            if values.get("BOX_TRUST_PROXY").is_some_and(|value| value == "true") {
+                "true"
+            } else {
+                "false"
+            }.into(),
+        );
+        derived.insert(
             service.3.trim_end_matches("_PORT").to_owned() + "_BASE_PATH",
             String::new(),
         );
@@ -201,6 +209,12 @@ pub fn apply_runtime_urls(
             continue;
         }
         let key = service.3.trim_end_matches("_PORT");
+        // Managed routes have no published application ports; generated
+        // external routes bind their upstreams to loopback. Only these
+        // isolated services may automatically trust Nginx's replaced headers.
+        if settings.mode == "managed" || settings.upstream_ports.contains_key(&route.service) {
+            derived.insert(format!("{key}_TRUST_PROXY"), "true".into());
+        }
         let port = route.port.unwrap_or(if route.secure {
             settings.https_port
         } else {
