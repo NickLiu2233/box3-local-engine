@@ -71,6 +71,7 @@ fn find_payload(root: &Path, name: &std::ffi::OsStr) -> Result<PathBuf, String> 
     }
 }
 
+#[cfg(not(target_os = "windows"))]
 fn quote(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
 }
@@ -371,6 +372,7 @@ mod tests {
         assert!(root.join(".box-launcher-backup-not-ours").exists());
         fs::remove_dir_all(root).unwrap();
     }
+    #[cfg(not(target_os = "windows"))]
     #[test]
     fn shell_paths_are_literal() {
         assert_eq!(

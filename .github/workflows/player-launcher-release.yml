@@ -34,10 +34,10 @@ jobs:
       prerelease: ${{ steps.version.outputs.prerelease }}
       tag: ${{ steps.version.outputs.tag }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
       - name: Check current release source
@@ -76,12 +76,12 @@ jobs:
             runner: ubuntu-22.04-arm
             architecture: arm64
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
           architecture: ${{ matrix.architecture }}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
           architecture: ${{ matrix.architecture }}
@@ -153,11 +153,11 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.12'
       - name: Install OSS-compatible transfer client
@@ -165,7 +165,7 @@ jobs:
       - name: Collect and verify all player installers from Aliyun OSS
         run: node --experimental-strip-types apps/player-launcher/scripts/release.mts download
       - name: Publish independent player GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ needs.validate.outputs.tag }}
           target_commitish: ${{ github.sha }}

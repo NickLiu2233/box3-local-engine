@@ -47,14 +47,14 @@ env:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       package_matrix: ${{ steps.package-matrix.outputs.value }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
       - name: Check current release source
@@ -95,10 +95,10 @@ jobs:
         run: |
           case '${{ inputs.architecture }}' in
             all)
-              value='{"include":[{"architecture":"amd64","runner":"ubuntu-latest"},{"architecture":"arm64","runner":"ubuntu-24.04-arm"}]}'
+              value='{"include":[{"architecture":"amd64","runner":"ubuntu-24.04"},{"architecture":"arm64","runner":"ubuntu-24.04-arm"}]}'
               ;;
             amd64)
-              value='{"include":[{"architecture":"amd64","runner":"ubuntu-latest"}]}'
+              value='{"include":[{"architecture":"amd64","runner":"ubuntu-24.04"}]}'
               ;;
             arm64)
               value='{"include":[{"architecture":"arm64","runner":"ubuntu-24.04-arm"}]}'
@@ -117,11 +117,11 @@ jobs:
       matrix: ${{ fromJSON(needs.validate.outputs.package_matrix) }}
     runs-on: ${{ matrix.runner }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
       - name: Confirm selected version matches this revision
         run: |
           if [ "${GITHUB_REF:-}" = 'refs/tags/v${{ inputs.version }}' ]; then
@@ -240,10 +240,10 @@ jobs:
   publish-stable-bootstrap:
     needs: package
     if: ${{ inputs.publish_stable }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .node-version
       - name: Configure Aliyun OSS client

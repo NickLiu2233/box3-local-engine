@@ -284,11 +284,12 @@ export function createGameWindowManager({
         },
         async cacheStatus(serverId, endpoint) {
             const target = sessions.fromPartition(cachePartition(serverId), { cache: true });
+            const usage = await readResourceCache(target);
             return {
                 serverId,
-                ...(await readResourceCache(target)),
+                ...usage,
                 inUse: activeServerId === serverId,
-                maps: await inspectMapCaches(target, endpoint),
+                maps: usage.staticBytes ? await inspectMapCaches(target, endpoint) : [],
             };
         },
         async clearResources(serverId) {
