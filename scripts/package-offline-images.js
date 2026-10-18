@@ -45,6 +45,27 @@ const outputDirectory =
               local ? 'apps/local-engine/dist/local-images' : 'apps/local-engine/dist/images',
           );
 const packagedServices = selectedService ? [selectedService] : services;
+const imageTagByService = Object.fromEntries(
+    services.map((service) => [
+        service,
+        process.env[
+            {
+                'player-service': 'BOX_PLAYER_SERVICE_IMAGE_TAG',
+                'player-auth-portal': 'BOX_AUTH_PORTAL_IMAGE_TAG',
+                'server-manager': 'BOX_SERVER_MANAGER_IMAGE_TAG',
+                'creator': 'BOX_CREATOR_IMAGE_TAG',
+                'play': 'BOX_PLAY_IMAGE_TAG',
+                'voxa': 'BOX_VOXA_IMAGE_TAG',
+            }[service]
+        ] || tag,
+    ]),
+);
+const rebuildServices = new Set(
+    String(process.env.BOX_REBUILD_IMAGE_SERVICES || '')
+        .split(',')
+        .map((value) => value.trim())
+        .filter(Boolean),
+);
 const output = path.join(
     outputDirectory,
     `box-local-engine-images-${tag}${selectedService ? `-${selectedService}` : ''}.tar.gz`,
@@ -52,6 +73,12 @@ const output = path.join(
 const environment = {
     ...process.env,
     BOX_IMAGE_TAG: tag,
+    BOX_PLAYER_SERVICE_IMAGE_TAG: imageTagByService['player-service'],
+    BOX_AUTH_PORTAL_IMAGE_TAG: imageTagByService['player-auth-portal'],
+    BOX_SERVER_MANAGER_IMAGE_TAG: imageTagByService['server-manager'],
+    BOX_CREATOR_IMAGE_TAG: imageTagByService.creator,
+    BOX_PLAY_IMAGE_TAG: imageTagByService.play,
+    BOX_VOXA_IMAGE_TAG: imageTagByService.voxa,
     BOX_PLAY_PLATFORM: `linux/${architecture}`,
     DOCKER_DEFAULT_PLATFORM: `linux/${architecture}`,
     BOX_BUILD_CHANNEL: channel,
@@ -65,29 +92,31 @@ for (const service of packagedServices) {
     // architecture even when DOCKER_DEFAULT_PLATFORM is set. Bake receives an
     // explicit target platform and loads that single-platform image locally so
     // the exported archive always matches its filename.
-    const result = local
-        ? { status: 0 }
-        : spawnSync(
-              'docker',
-              [
-                  'buildx',
-                  'bake',
-                  '--load',
-                  '--set',
-                  `${service}.platform=linux/${architecture}`,
-                  service,
-              ],
-              {
-                  cwd: root,
-                  env: environment,
-                  stdio: 'inherit',
-              },
-          );
+    const serviceTag = imageTagByService[service];
+    const result =
+        local || (rebuildServices.size > 0 && !rebuildServices.has(service))
+            ? { status: 0 }
+            : spawnSync(
+                  'docker',
+                  [
+                      'buildx',
+                      'bake',
+                      '--load',
+                      '--set',
+                      `${service}.platform=linux/${architecture}`,
+                      service,
+                  ],
+                  {
+                      cwd: root,
+                      env: environment,
+                      stdio: 'inherit',
+                  },
+              );
     if (result.status !== 0) {
         fail(`构建 ${service} 镜像失败，退出码 ${result.status ?? 'unknown'}`);
     }
 
-    const image = `box-local-engine-${service}:${tag}`;
+    const image = `box-local-engine-${service}:${serviceTag}`;
     const inspectedArchitecture = spawnSync(
         'docker',
         ['image', 'inspect', image, '--format', '{{.Architecture}}'],
@@ -107,7 +136,13 @@ fs.mkdirSync(outputDirectory, { recursive: true });
 fs.rmSync(output, { force: true });
 const save = spawn(
     'docker',
-    ['image', 'save', ...packagedServices.map((service) => `box-local-engine-${service}:${tag}`)],
+    [
+        'image',
+        'save',
+        ...packagedServices.map(
+            (service) => `box-local-engine-${service}:${imageTagByService[service]}`,
+        ),
+    ],
     {
         cwd: root,
         env: environment,

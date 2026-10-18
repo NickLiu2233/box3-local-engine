@@ -31,17 +31,15 @@ export const getServerSideProps: GetServerSideProps<{
     ? 'zh-Hans'
     : 'en';
   const messages = (await loadLocaleData(locale)).default;
-  const clientUserInfo: UserInfo = {
-    avatar: '',
-    userId: 1,
-    isAdmin: true,
-  };
   const access = await resolveVoxaModelManagement(
     context.req as any,
     context.res as any,
   );
-  if (access !== 'allowed') context.res.statusCode = access === 'unauthenticated' ? 401 : access === 'denied' ? 403 : 503;
-
+  const clientUserInfo: UserInfo = {
+    avatar: '',
+    userId: access === 'allowed' ? 1 : 0,
+    isAdmin: access === 'allowed',
+  };
   const clientEnv: ClientRuntimeConfig = {
     appEnv: 'development',
     appEdition: 'createra',
@@ -87,26 +85,12 @@ function Index(props: IndexProp): JSX.Element {
     injectClientConfig(clientEnv);
   }, [clientEnv]);
 
-  if (access !== 'allowed') {
-    const copy = access === 'unauthenticated'
-      ? '请先登录创作者账号后再打开 VOXA。'
-      : access === 'denied'
-        ? '当前账号没有“管理模型”权限，不能进入 VOXA 编辑模型。'
-        : '暂时无法验证模型管理权限，请确认玩家服务正在运行。';
-    return <main style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 24, background: '#17181c', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
-      <section style={{ width: 'min(440px, 100%)', padding: 28, borderRadius: 12, background: '#26282e', boxShadow: '0 16px 48px rgba(0,0,0,.28)' }}>
-        <h1 style={{ margin: '0 0 10px', fontSize: 20 }}>无法打开 VOXA</h1>
-        <p style={{ margin: 0, color: '#b7bbc5', lineHeight: 1.6 }}>{copy}</p>
-      </section>
-    </main>;
-  }
-
   return (
     <>
       <Head>
         <title>{props.clientEnv.appTitle}</title>
       </Head>
-      <ContainerNoSSR intl={intl} userInfo={userInfo} setLocale={setLocale} />
+      <ContainerNoSSR intl={intl} userInfo={userInfo} setLocale={setLocale} serverSaveAllowed={access === 'allowed'} />
     </>
   );
 }

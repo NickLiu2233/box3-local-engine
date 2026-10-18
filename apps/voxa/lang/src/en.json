@@ -19,10 +19,6 @@
     "defaultMessage": "Toggle mirror on X-axis",
     "description": "Mirror X Button Tooltip Text"
   },
-  "1EuXM8": {
-    "defaultMessage": "Publish",
-    "description": "Publish button"
-  },
   "1nRmF9": {
     "defaultMessage": "Color Picker",
     "description": "toolColorPicker"
@@ -67,9 +63,17 @@
     "defaultMessage": "Undo",
     "description": "Undo"
   },
+  "4HPwE/": {
+    "defaultMessage": "Delete this local draft?",
+    "description": "Confirm delete local draft"
+  },
   "4fc2TC": {
     "defaultMessage": "工程导出失败",
     "description": "VOXA project export error"
+  },
+  "5D5V6M": {
+    "defaultMessage": "Delete local draft",
+    "description": "Delete local draft"
   },
   "5L7Io3": {
     "defaultMessage": "Extrude",
@@ -110,6 +114,10 @@
   "9Tfd42": {
     "defaultMessage": "模型工程和皮肤工程不能互相导入",
     "description": "VOXA project import type mismatch"
+  },
+  "9dUUDl": {
+    "defaultMessage": "Delete",
+    "description": "Delete local draft title"
   },
   "9df2WV": {
     "defaultMessage": "Profiler",
@@ -250,6 +258,10 @@
   "I2zGOR": {
     "defaultMessage": "导入工程",
     "description": "File menu import VOXA project"
+  },
+  "IgTAJX": {
+    "defaultMessage": "Save locally",
+    "description": "Save locally button"
   },
   "J7uU3S": {
     "defaultMessage": "Create a new object",
@@ -411,6 +423,10 @@
     "defaultMessage": "Create",
     "description": "Animator tool create title"
   },
+  "UVFv3l": {
+    "defaultMessage": "Cancel",
+    "description": "Cancel delete local draft button"
+  },
   "Uu2DmJ": {
     "defaultMessage": "Delete color group",
     "description": "Title of deleting palette group with items"
@@ -527,6 +543,10 @@
     "defaultMessage": "No Project",
     "description": "Empty Card List"
   },
+  "dsEI5s": {
+    "defaultMessage": "Delete",
+    "description": "Confirm delete local draft button"
+  },
   "dtHrXZ": {
     "defaultMessage": "Please check your network connection",
     "description": "Content of failing to save model"
@@ -610,6 +630,10 @@
   "kLrg2G": {
     "defaultMessage": "Color",
     "description": "Palette Collapse Panel"
+  },
+  "lLtmnX": {
+    "defaultMessage": "Local draft",
+    "description": "Local draft label"
   },
   "lStPSE": {
     "defaultMessage": "Shrink bounding box to fit voxels",
@@ -799,6 +823,10 @@
     "defaultMessage": "Delete",
     "description": "Motion list context menu delete"
   },
+  "zIkZc0": {
+    "defaultMessage": "Unnamed model",
+    "description": "Unnamed local draft"
+  },
   "zY3nY2": {
     "defaultMessage": "Keep",
     "description": "clearUnusedColorsCancel"
@@ -806,5 +834,9 @@
   "ziZtWz": {
     "defaultMessage": "Fail to restore. Please try again later.",
     "description": "Restore error"
+  },
+  "ztQjyD": {
+    "defaultMessage": "Saved locally",
+    "description": "Save VOXA project locally"
   }
 }

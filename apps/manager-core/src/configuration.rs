@@ -491,7 +491,14 @@ pub fn runtime_environment(
         ("BOX_IMAGE_TAG", input.image_tag.into()),
         (
             "BOX_AUTH_PORTAL_IMAGE",
-            crate::auth_portal::image(values, input.image_tag)?,
+            crate::auth_portal::image(
+                values,
+                values
+                    .get("BOX_AUTH_PORTAL_IMAGE_TAG")
+                    .filter(|tag| !tag.trim().is_empty())
+                    .map(String::as_str)
+                    .unwrap_or(input.image_tag),
+            )?,
         ),
         ("BOX_PLAY_PLATFORM", input.platform.into()),
         ("BOX_BIND_IP", network.play_bind_ip.into()),

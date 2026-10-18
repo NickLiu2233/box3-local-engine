@@ -327,6 +327,20 @@ export class AnimatorApp {
     this.stage.resetCamera({ max: TEMP_BOX.max, min: TEMP_BOX.min });
   }
 
+  public focusSelection() {
+    const { activeSkinPartIds } = store.getState().animator;
+    if (!activeSkinPartIds.length) {
+      this.resetCamera();
+      return;
+    }
+    TEMP_BOX.makeEmpty();
+    activeSkinPartIds.forEach((id) => {
+      const node = this.nodeManager.getSkinNode(id);
+      node && TEMP_BOX.expandByObject(node);
+    });
+    this.stage.resetCamera({ max: TEMP_BOX.max, min: TEMP_BOX.min });
+  }
+
   /**
    * 是否显示骨骼
    * @param show 是否显示

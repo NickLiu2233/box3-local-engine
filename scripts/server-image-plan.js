@@ -85,26 +85,38 @@ function sourceFingerprint(root, service, files) {
 
 function planImages(root, architecture, catalog, files) {
     const version = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8')).version;
-    const imageTag = `v${version}-linux-${architecture}`;
+    const releaseTag = `v${version}-linux-${architecture}`;
     if (catalog) {
         validateCatalog(catalog, architecture);
-        if (catalog.imageTag !== imageTag) {
-            throw new Error('Cached image catalog version mismatch');
-        }
     }
+    const forced = new Set(
+        String(process.env.BOX_REBUILD_IMAGE_SERVICES || '')
+            .split(',')
+            .map((value) => value.trim())
+            .filter(Boolean),
+    );
     return services.map((service) => {
         const fingerprint = sourceFingerprint(root, service, files);
         const previous = catalog?.images.find(
             (image) => image.image === `box-local-engine-${service}`,
         );
+        // A release version identifies the package, while an image tag identifies
+        // the bytes for one service. Reuse an unchanged service's published tag
+        // across package releases so a VOXA-only update does not rebuild or
+        // redownload Creator, Play, or the identity services.
+        const unchanged =
+            previous &&
+            !forced.has(service) &&
+            (!previous.sourceFingerprint || previous.sourceFingerprint === fingerprint);
+        const imageTag = unchanged ? previous.imageTag : releaseTag;
         return {
             service,
             sourceFingerprint: fingerprint,
             imageTag,
             build:
                 !previous ||
-                previous.imageTag !== imageTag ||
-                previous.sourceFingerprint !== fingerprint,
+                forced.has(service) ||
+                (!previous.sourceFingerprint ? false : previous.sourceFingerprint !== fingerprint),
         };
     });
 }
@@ -126,7 +138,14 @@ function mergeImages(architecture, catalog, plan, directory) {
         return item.build ? { ...image, sourceFingerprint: item.sourceFingerprint } : image;
     });
     return validateCatalog(
-        { formatVersion: 2, platform: `linux/${architecture}`, imageTag: plan[0].imageTag, images },
+        {
+            formatVersion: 2,
+            platform: `linux/${architecture}`,
+            // This is the package/release tag. Individual entries may point at
+            // older immutable image tags retained from the previous catalog.
+            imageTag: `v${JSON.parse(fs.readFileSync(path.join(__dirname, '../package.json'), 'utf8')).version}-linux-${architecture}`,
+            images,
+        },
         architecture,
     );
 }
@@ -140,15 +159,32 @@ function planManagerImage(root, architecture, catalog, files) {
     const plan = planImages(root, architecture, catalog, files);
     return plan.map((item) => {
         if (item.service === 'server-manager') {
+            const previous = catalog.images.find(
+                (image) => image.image === 'box-local-engine-server-manager',
+            );
+            if (
+                !previous.sourceFingerprint &&
+                process.env.BOX_REUSE_UNFINGERPRINTED_IMAGES !== 'true'
+            ) {
+                const version = JSON.parse(
+                    fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
+                ).version;
+                return { ...item, build: true, imageTag: `v${version}-linux-${architecture}` };
+            }
             return item;
         }
         const previous = catalog.images.find(
             (image) => image.image === `box-local-engine-${item.service}`,
         );
-        if (previous.imageTag !== item.imageTag) {
-            throw new Error(`Published application image version mismatch: ${item.service}`);
-        }
-        return { ...item, build: false, sourceFingerprint: previous.sourceFingerprint };
+        return {
+            ...item,
+            // Application images are published by release.yml and are immutable.
+            // Their catalog tag is authoritative even when the package version
+            // has advanced.
+            imageTag: previous.imageTag,
+            build: false,
+            sourceFingerprint: previous.sourceFingerprint,
+        };
     });
 }
 

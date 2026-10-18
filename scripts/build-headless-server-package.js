@@ -13,6 +13,14 @@ const outputRoot =
 const templateRoot = path.join(repoRoot, 'distribution/server');
 const supportedArchitectures = new Set(['amd64', 'arm64']);
 const { splitArchive, validateCatalog, localImageTag } = require('./build-image-downloads');
+const serviceTagKeys = {
+    'player-service': 'BOX_PLAYER_SERVICE_IMAGE_TAG',
+    'player-auth-portal': 'BOX_AUTH_PORTAL_IMAGE_TAG',
+    'server-manager': 'BOX_SERVER_MANAGER_IMAGE_TAG',
+    'creator': 'BOX_CREATOR_IMAGE_TAG',
+    'play': 'BOX_PLAY_IMAGE_TAG',
+    'voxa': 'BOX_VOXA_IMAGE_TAG',
+};
 
 function fail(message) {
     console.error(`ERROR: ${message}`);
@@ -151,8 +159,8 @@ function main() {
         imageTag = localImageTag(catalog);
         catalog.imageTag = imageTag;
     }
-    if (catalog.imageTag !== imageTag) {
-        fail('镜像清单版本与服务器包版本不匹配');
+    if (!catalog.imageTag) {
+        fail('镜像清单缺少发行包版本标签');
     }
     fs.writeFileSync(
         path.join(packageRoot, 'BOX3-IMAGE-CATALOG.json'),
@@ -196,10 +204,23 @@ function main() {
         fs.rmSync(splitRoot, { recursive: true, force: true });
     }
 
-    const envTemplate = fs
+    let envTemplate = fs
         .readFileSync(path.join(templateRoot, '.env.example'), 'utf8')
         .replaceAll('__BOX_IMAGE_TAG__', imageTag)
         .replaceAll('__BOX_PLAY_PLATFORM__', `linux/${architecture}`);
+    for (const image of catalog.images) {
+        const service = image.image.replace(/^box-local-engine-/, '');
+        const key = serviceTagKeys[service];
+        if (key) {
+            const pattern = new RegExp(`^${key}=.*$`, 'm');
+            const replacement = `${key}=${image.imageTag}`;
+            if (pattern.test(envTemplate)) {
+                envTemplate = envTemplate.replace(pattern, replacement);
+            } else {
+                envTemplate += `\n${replacement}\n`;
+            }
+        }
+    }
     fs.writeFileSync(path.join(packageRoot, '.env.example'), envTemplate);
     const installer = fs
         .readFileSync(path.join(packageRoot, 'install.sh'), 'utf8')

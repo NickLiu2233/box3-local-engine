@@ -35,6 +35,11 @@ function readDotEnvValue(name) {
 
 function getPlayImageConfig() {
     const tag = process.env.BOX_IMAGE_TAG || readDotEnvValue('BOX_IMAGE_TAG') || '2026.1.4';
+    const playTag = process.env.BOX_PLAY_IMAGE_TAG || readDotEnvValue('BOX_PLAY_IMAGE_TAG') || tag;
+    const playerServiceTag =
+        process.env.BOX_PLAYER_SERVICE_IMAGE_TAG ||
+        readDotEnvValue('BOX_PLAYER_SERVICE_IMAGE_TAG') ||
+        tag;
     const platform =
         process.env.BOX_PLAY_PLATFORM || readDotEnvValue('BOX_PLAY_PLATFORM') || 'linux/amd64';
     if (!supportedPlatforms.has(platform)) {
@@ -57,11 +62,12 @@ function getPlayImageConfig() {
 
     return {
         archive,
-        image: `box-local-engine-play:${tag}`,
-        playerServiceImage: `box-local-engine-player-service:${tag}`,
+        image: `box-local-engine-play:${playTag}`,
+        playerServiceImage: `box-local-engine-player-service:${playerServiceTag}`,
+        playerServiceTag,
         playerServiceArchive,
         platform,
-        tag,
+        tag: playTag,
     };
 }
 
@@ -75,6 +81,8 @@ function dockerEnvironment(config, extra = {}) {
     return {
         ...process.env,
         BOX_IMAGE_TAG: config.tag,
+        BOX_PLAY_IMAGE_TAG: config.tag,
+        BOX_PLAYER_SERVICE_IMAGE_TAG: config.playerServiceTag,
         BOX_PLAY_PLATFORM: config.platform,
         // Compose parses the play volume even for image-only build commands.
         BOX_PLAY_LIBRARY_DIR: configuredPlayLibraryDir(),

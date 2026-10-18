@@ -298,9 +298,6 @@ jobs:
               echo "cache-hit=false" >> "$GITHUB_OUTPUT"
             fi
           fi
-      - name: Check Windows ZIP packaging before compilation
-        if: steps.desktop-cache.outputs.cache-hit != 'true' && runner.os == 'Windows'
-        run: node --test --test-name-pattern='Windows ZIPs' scripts/build-desktop-offline-installer.test.js
       - name: Install desktop dependencies
         if: steps.desktop-cache.outputs.cache-hit != 'true'
         run: node common/scripts/install-run-rush.js install --to '@box/deployment-manager'

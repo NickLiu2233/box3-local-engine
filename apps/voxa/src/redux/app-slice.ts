@@ -160,6 +160,8 @@ export type AppState = {
    * 是否开启数据统计
    */
   profilerEnabled: boolean;
+  /** Whether the current session may persist changes to the VOXA server. */
+  serverSaveAllowed: boolean;
 };
 
 const initialState: AppState = {
@@ -193,6 +195,7 @@ const initialState: AppState = {
   editType: EditType.Normal,
   sourceMapId: 0,
   profilerEnabled: false,
+  serverSaveAllowed: false,
 };
 
 export type SetAppMode = PayloadAction<AppMode>;
@@ -275,6 +278,9 @@ export const appSlice = createSlice({
     setProfilerEnabled(state, action: PayloadAction<boolean>) {
       state.profilerEnabled = action.payload;
     },
+    setServerSaveAllowed(state, action: PayloadAction<boolean>) {
+      state.serverSaveAllowed = action.payload;
+    },
   },
 });
 
@@ -302,6 +308,7 @@ export const {
   setSourceMapId,
   setNodeAlphaCache,
   setProfilerEnabled,
+  setServerSaveAllowed,
 } = appSlice.actions;
 
 export type AppSlice = typeof appSlice.actions;

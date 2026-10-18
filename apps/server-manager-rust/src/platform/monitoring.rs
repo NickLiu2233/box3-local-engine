@@ -152,12 +152,26 @@ pub(crate) fn test_connection(app: &App, body: &BTreeMap<String, Value>) -> Resu
 }
 pub(crate) fn service_images() -> Vec<Value> {
     let tag = env::var("BOX_IMAGE_TAG").unwrap_or_default();
+    let default_tag = if tag.is_empty() { "0.2.0".into() } else { tag };
+    let service_tag = |service: &str| {
+        let key = match service {
+            "creator" => "BOX_CREATOR_IMAGE_TAG",
+            "voxa" => "BOX_VOXA_IMAGE_TAG",
+            "play" => "BOX_PLAY_IMAGE_TAG",
+            "player-service" => "BOX_PLAYER_SERVICE_IMAGE_TAG",
+            "player-auth-portal" => "BOX_AUTH_PORTAL_IMAGE_TAG",
+            _ => "BOX_IMAGE_TAG",
+        };
+        env::var(key)
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .unwrap_or_else(|| default_tag.clone())
+    };
     let platform = match env::consts::ARCH {
         "x86_64" => "linux/amd64",
         "aarch64" | "arm64" => "linux/arm64",
         _ => "linux",
     };
-    let image_tag = if tag.is_empty() { "0.2.0".into() } else { tag };
     [
         ("地图创作工具 / 创作作品管理", "box-local-engine-creator"),
         ("模型创作工具", "box-local-engine-voxa"),
@@ -167,6 +181,8 @@ pub(crate) fn service_images() -> Vec<Value> {
     ]
     .into_iter()
     .map(|(name, image)| {
+        let service = image.strip_prefix("box-local-engine-").unwrap_or(image);
+        let image_tag = service_tag(service);
         let full = format!("{image}:{image_tag}");
         let inspect = docker(&["image", "inspect", &full]);
         let (image_id, created_at, source_revision, build_source) = inspect
