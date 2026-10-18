@@ -86,10 +86,15 @@ assert.equal(release.jobs.images.needs, 'validate-release');
 assert.match(workflow, /sync-root-version\.js --check/);
 assert.match(release['run-name'], /github\.ref_name/);
 assert.doesNotMatch(workflow, /docker\/setup-qemu-action/);
-assert.match(
+assert.doesNotMatch(
     workflow,
     /box-local-engine-images-\$\{\{ env\.BOX_RELEASE_TAG \}\}-linux-\$\{\{ matrix\.architecture \}\}\.tar\.gz/,
 );
+assert.match(workflow, /REBUILD_SERVICES:/);
+assert.match(workflow, /REUSE_FROM_VERSION:/);
+assert.match(workflow, /Prepare per-service image cache/);
+assert.match(workflow, /merge-image-catalog\.js/);
+assert.match(workflow, /split-image-archive\.py image-updates\/source\.tar\.gz/);
 assert.match(workflow, /docker builder prune --all --force/);
 assert.match(workflow, /export BOX_BUILD_VERSION="\$\{\{ env\.BOX_RELEASE_TAG \}\}"/);
 assert.match(workflow, /export BOX_BUILD_COMMIT="\$\{\{ github\.sha \}\}"/);
@@ -98,7 +103,7 @@ assert.match(
     /export BOX_BUILD_DATE="\$\(TZ=Asia\/Shanghai date \+'%Y-%m-%dT%H:%M:%S%:z'\)"/,
 );
 assert.match(workflow, /export BOX_BUILD_SOURCE="github-actions"/);
-assert.match(workflow, /test -f "\$archive"/);
+assert.match(workflow, /test -f "\$catalog"/);
 assert.match(workflow, /node-version-file: \.node-version/);
 assert.match(workflow, /install-run-rush\.js install/);
 assert.match(workflow, /install-run-rush\.js package-desktop/);
@@ -160,7 +165,7 @@ assert.doesNotMatch(headlessComposeSource, /box-play-storage/);
 // artifacts. Keep this contract in sync with release.yml so the workflow check
 // catches accidental regressions to the quota-limited artifact service.
 for (const step of [
-    'Upload images to Aliyun OSS',
+    'Build and upload per-service image downloads',
     'Download desktop image catalog from Aliyun OSS',
     'Download Server Manager image catalog from Aliyun OSS',
     'Upload desktop installer to Aliyun OSS',

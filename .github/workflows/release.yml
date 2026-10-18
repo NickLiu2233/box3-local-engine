@@ -12,6 +12,16 @@ run-name: Engine / ${{ github.ref_name }}
         type: boolean
         required: false
         default: false
+      rebuild_services:
+        description: Comma-separated services to rebuild (use all for a full image release)
+        type: string
+        required: false
+        default: all
+      reuse_from_version:
+        description: Existing production version whose unchanged service archives may be reused
+        type: string
+        required: false
+        default: ''
 permissions:
   contents: read
 defaults:
@@ -94,6 +104,8 @@ jobs:
       BOX_BUILD_SOURCE: github-actions
       BOX_ALLOW_DIRTY_RELEASE: ${{ github.ref == 'refs/heads/staging' && 'true' || 'false' }}
       FORCE_REBUILD: ${{ github.ref == 'refs/heads/staging' && inputs.rebuild_images || false }}
+      REBUILD_SERVICES: ${{ inputs.rebuild_services || 'all' }}
+      REUSE_FROM_VERSION: ${{ inputs.reuse_from_version || '' }}
     needs: validate-release
     strategy:
       fail-fast: false
@@ -124,89 +136,91 @@ jobs:
           docker builder prune --all --force || true
           echo 'Disk usage after cleanup:'
           df -h
-      - name: Check cached image archive in Aliyun OSS
+      - name: Prepare per-service image cache in Aliyun OSS
         id: image-cache
         run: |
-          if [ "$FORCE_REBUILD" = true ]; then
-            echo "cache-hit=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
           if ! command -v ossutil >/dev/null 2>&1; then
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          archive="box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.tar.gz"
-          object="oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive"
-          if ossutil stat "$object" >/tmp/oss-stat.txt 2>&1; then
-            echo "cache-hit=true" >> "$GITHUB_OUTPUT"
-            echo "Found cached image archive: $archive"
-          elif ossutil cp "$object" "$archive" >/tmp/oss-cache-download.txt 2>&1; then
-            # Some RAM policies allow GetObject but not HeadObject (used by
-            # `stat`). A successful download is still a valid cache hit.
-            echo "cache-hit=true" >> "$GITHUB_OUTPUT"
-            echo "Found cached image archive by download: $archive"
-          else
-            echo "cache-hit=false" >> "$GITHUB_OUTPUT"
-            echo "No cached image archive found: $archive"
-            cat /tmp/oss-stat.txt || true
-            cat /tmp/oss-cache-download.txt || true
+          if [ "$BOX_BUILD_CHANNEL" = staging ] && [ -n "$REUSE_FROM_VERSION" ]; then
+            echo 'Staging builds cannot reuse production image catalogs.' >&2
+            exit 1
           fi
-      - name: Build offline images
-        if: steps.image-cache.outputs.cache-hit != 'true'
+          mkdir -p apps/local-engine/dist/images image-updates
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
+          if ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog" >/tmp/current-catalog.log 2>&1; then
+            echo 'current' > image-updates/base-kind
+            echo 'true' > image-updates/current-catalog
+          elif [ -n "$REUSE_FROM_VERSION" ]; then
+            reuse_prefix="local-engine/v${REUSE_FROM_VERSION}"
+            base="image-updates/base-catalog.json"
+            if ! ossutil cp "oss://$OSS_BUCKET/$reuse_prefix/box-local-engine-images-v${REUSE_FROM_VERSION}-linux-${{ matrix.architecture }}.json" "$base" >/tmp/base-catalog.log 2>&1; then
+              echo "Unable to find reusable catalog for version $REUSE_FROM_VERSION." >&2
+              cat /tmp/base-catalog.log >&2
+              exit 1
+            fi
+            echo "$reuse_prefix" > image-updates/base-prefix
+          else
+            echo '-' > image-updates/base-catalog.json
+          fi
+          if [ ! -f image-updates/current-catalog ] && [ ! -f image-updates/base-prefix ]; then
+            echo 'No existing catalog found; all services will be built.'
+          fi
+          echo "cache-hit=false" >> "$GITHUB_OUTPUT"
+      - name: Build and upload per-service image downloads
         env:
           BOX_IMAGE_TAG: ${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}
           BOX_PLAY_PLATFORM: linux/${{ matrix.architecture }}
         run: |
-          # Keep the OCI labels embedded in every image aligned with this
-          # release. The desktop launcher reads these labels after importing
-          # the offline archive; without them it can only report `unknown`
-          # and incorrectly categorises a GitHub build as a local build.
+          # Keep OCI labels embedded in every service image aligned with this
+          # release. The launcher reads these labels from each service archive;
+          # without them it can only report `unknown` and misclassify a build.
           export BOX_BUILD_VERSION="${{ env.BOX_RELEASE_TAG }}"
           export BOX_BUILD_COMMIT="${{ github.sha }}"
           export BOX_BUILD_DATE="$(TZ=Asia/Shanghai date +'%Y-%m-%dT%H:%M:%S%:z')"
           export BOX_BUILD_SOURCE="github-actions"
-          # Build one service at a time and discard its intermediate BuildKit
-          # cache immediately. The loaded image is retained for image save,
-          # while Rush's pnpm tree and Next standalone tracing layers cannot
-          # accumulate until a later Creator/Play build exhausts runner disk.
+          version="${BOX_RELEASE_TAG#v}"
+          catalog="apps/local-engine/dist/images/box-local-engine-images-${BOX_RELEASE_TAG}-linux-${{ matrix.architecture }}.json"
+          base_catalog="image-updates/base-catalog.json"
+          if [ -f image-updates/current-catalog ]; then
+            base_catalog="$catalog"
+          fi
+          rebuild_services="${REBUILD_SERVICES:-all}"
+          should_rebuild() {
+            [ "$FORCE_REBUILD" = true ] || [ "$rebuild_services" = all ] || [[ ",$rebuild_services," == *",$1,"* ]]
+          }
           for service in player-service player-auth-portal server-manager creator play voxa; do
+            existing_archive="$(node -e "const fs=require('fs'); const p=process.argv[1]; if (!fs.existsSync(p) || p === '-') process.exit(0); const c=require('./'+p); console.log(c.images.find(i=>i.image==='box-local-engine-'+process.argv[2])?.archive || '')" "$base_catalog" "$service")"
+            source_prefix="$OSS_BUILD_PREFIX"
+            if [ ! -f image-updates/current-catalog ]; then
+              source_prefix="$(cat image-updates/base-prefix 2>/dev/null || true)"
+            fi
+            if [ -n "$existing_archive" ] && ! should_rebuild "$service"; then
+              if ossutil stat "oss://$OSS_BUCKET/$source_prefix/$existing_archive" >/tmp/service-cache.log 2>&1; then
+                if [ "$source_prefix" != "$OSS_BUILD_PREFIX" ]; then
+                  ossutil cp "oss://$OSS_BUCKET/$source_prefix/$existing_archive" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$existing_archive" --update
+                fi
+                echo "Reuse $service: $existing_archive"
+                continue
+              fi
+              echo "Missing archive for $service; rebuilding it."
+            fi
             docker compose build "$service"
+            docker image save "box-local-engine-$service:$BOX_IMAGE_TAG" | gzip -1 > image-updates/source.tar.gz
+            python3 scripts/split-image-archive.py image-updates/source.tar.gz \
+              '${{ matrix.architecture }}' "image-updates/$service.json" "$version" "$service"
+            archive="$(node -e "console.log(require('./image-updates/'+process.argv[1]+'.json').images[0].archive)" "$service")"
+            ossutil cp "image-updates/$archive" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" --update
+            rm -f "image-updates/$archive" image-updates/source.tar.gz
             docker builder prune --all --force
           done
-          docker image save \
-            "box-local-engine-player-service:${BOX_IMAGE_TAG}" \
-            "box-local-engine-player-auth-portal:${BOX_IMAGE_TAG}" \
-            "box-local-engine-server-manager:${BOX_IMAGE_TAG}" \
-            "box-local-engine-creator:${BOX_IMAGE_TAG}" \
-            "box-local-engine-play:${BOX_IMAGE_TAG}" \
-            "box-local-engine-voxa:${BOX_IMAGE_TAG}" \
-            | gzip -1 > "box-local-engine-images-${BOX_IMAGE_TAG}.tar.gz"
-          # Keep the builder empty before artifact upload as a final safeguard.
-          docker builder prune --all --force
-      - name: Build and upload per-service image downloads
-        run: |
-          archive="box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.tar.gz"
-          if ! test -f "$archive"; then
-            ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$archive" "$archive"
-          fi
-          catalog="box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
-          node scripts/build-image-downloads.js "$archive" '${{ matrix.architecture }}' "$catalog"
+          node scripts/merge-image-catalog.js '${{ matrix.architecture }}' "$version" "$base_catalog" image-updates "$catalog"
           if [ "$BOX_BUILD_CHANNEL" = staging ]; then
             node scripts/staging-build-context.js prepare "$catalog" '${{ matrix.architecture }}'
           fi
-          for image in box-local-engine-image-*.tar.gz; do
-            ossutil cp "$image" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
-          done
-          ossutil cp "$catalog" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
-      - name: Upload images to Aliyun OSS
-        if: steps.image-cache.outputs.cache-hit != 'true'
-        run: |
-          if ! command -v ossutil >/dev/null 2>&1; then
-            curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
-          fi
-          ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          ossutil cp "box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.tar.gz" \
-            "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/" --update
+          ossutil cp "$catalog" "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" --update
+          docker builder prune --all --force
   desktop:
     env:
       BOX_RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}

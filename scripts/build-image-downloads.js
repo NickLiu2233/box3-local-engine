@@ -142,4 +142,5 @@ module.exports = {
     validateDevCatalog,
     localImageTag,
     validDownloadBase,
+    services,
 };
