@@ -92,6 +92,7 @@ import type {
 import { getMeshId } from '../voxel-app/voxel-manager';
 import { everyNode, isSkinPart } from '../animator-app/util';
 import { mat4SetFromMat3 } from '../rendering/utils/math';
+import { loadLocalDraft, saveLocalDraft } from '../../local-draft';
 
 type InitParams = {
   voxelApp: VoxelApp;
@@ -1023,6 +1024,41 @@ export class ProjectManager {
       url.searchParams.delete('modelId');
       window.history.replaceState({}, '', url);
     }
+  }
+
+  /** Save the editable project bytes locally without creating server blobs. */
+  public async saveLocalProject() {
+    const projectData = await this.getData();
+    const basicModelData = await this.getBasicModelData();
+    const previewData = ModelDataSchema.clone(ModelDataSchema.identity);
+    previewData.nodes = basicModelData.nodes;
+    if (basicModelData.meshCount > 0) {
+      previewData.meshes = basicModelData.mesher.getMeshes();
+      previewData.texture = await basicModelData.mesher.getTexture(
+        basicModelData.paletteList,
+        basicModelData.emissiveList,
+      );
+    }
+    const preview = await this.getScreenshot(previewData, basicModelData.bounds);
+    await saveLocalDraft({
+      projectName: store.getState().app.projectName,
+      editType: store.getState().app.editType,
+      bytes: projectSchemaToBytes(projectData),
+      preview,
+    });
+    this.diffTool.setSnapshot({
+      projectData,
+      projectName: store.getState().app.projectName,
+    });
+  }
+
+  public async loadLocalProject(projectName?: string) {
+    const draft = await loadLocalDraft(projectName);
+    if (!draft) return false;
+    const projectData = migrateProject(draft.bytes);
+    if (!projectData) return false;
+    this.loadImportedProject(projectData, draft.projectName || DEFAULT_PROJECT_NAME);
+    return true;
   }
 
   public async loadDefaultProject() {

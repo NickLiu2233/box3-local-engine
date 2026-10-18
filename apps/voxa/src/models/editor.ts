@@ -22,6 +22,7 @@ import {
   EditType,
   setSourceMapId,
   setProfilerEnabled,
+  setCurrentTime,
 } from '../redux/app-slice';
 import { store } from '../redux/store';
 import { AnimatorApp } from './animator-app';
@@ -57,7 +58,9 @@ import {
   AnimatorMode,
   PivotMode,
   ProjectNodeType,
+  setGridVisible,
 } from '../redux/animator-slice';
+import { setVoxelGridVisible } from '../redux/editing-slice';
 import { AIModel } from './ai-model';
 import { ShapELoader } from './shap-e-loader';
 import { ROOT_SKIN_ID } from '../defs';
@@ -73,6 +76,8 @@ import {
   voxelShapeToObjSize,
 } from '../utils/math';
 import { VoxaProfiler } from './profiler';
+import { getMotionBoneIds } from './animator-app/motion-manager/util';
+import { LocateKeyframeType } from './motion-player/const';
 
 export type VoxelEditorOptions = {
   regl: Regl;
@@ -668,13 +673,6 @@ export class VoxelEditor {
     // 先进行权限判定
     await this.updatePermissions();
 
-    if (!store.getState().permission.edit) {
-      return {
-        isSuccess: false,
-        body: 'notPermitted',
-      };
-    }
-
     const loadResult = await this.loadProjectOnLaunch();
 
     const launchState = loadResult.isSuccess
@@ -784,6 +782,20 @@ export class VoxelEditor {
    * - 失败时会弹出重试的弹窗
    */
   public manualSave = async (params: ManualSaveParams = {}) => {
+    if (!store.getState().app.serverSaveAllowed) {
+      if (store.getState().app.saveState === SaveState.Saving) return;
+      store.dispatch(setSaveState(SaveState.Saving));
+      try {
+        await this.projectManager.saveLocalProject();
+        this.showLocalSaveSuccessToast();
+      } catch (error) {
+        console.error('Failed to save local VOXA draft', error);
+        params.onFail?.({ type: SaveErrorType.Unknown });
+      } finally {
+        store.dispatch(setSaveState(SaveState.Idle));
+      }
+      return;
+    }
     const {
       saveState,
       editType,
@@ -814,6 +826,13 @@ export class VoxelEditor {
     store.dispatch(setSaveState(SaveState.Idle));
 
     if (isSuccess) {
+      // Keep a browser-local recovery copy as well. This is best-effort and
+      // never changes the result of the authorized server save.
+      try {
+        await this.projectManager.saveLocalProject();
+      } catch (error) {
+        console.warn('Failed to update local VOXA recovery draft', error);
+      }
       this.showSaveSuccessToast();
 
       onSuccess?.({
@@ -906,6 +925,16 @@ export class VoxelEditor {
       content: this.intl.formatMessage({
         description: 'Save model successfully',
         defaultMessage: 'Successfully saved',
+      }),
+    });
+  }
+
+  private showLocalSaveSuccessToast() {
+    if (!this.intl) return;
+    Toast.success({
+      content: this.intl.formatMessage({
+        description: 'Save VOXA project locally',
+        defaultMessage: 'Saved locally',
       }),
     });
   }
@@ -1044,6 +1073,60 @@ export class VoxelEditor {
 
     // 避免掉一些坑。比如 shift + z = Z
     const key = e.key.toLowerCase();
+
+    if (key === 's' && isMetaKeyPressed(e)) {
+      e.preventDefault();
+      void this.manualSave();
+      return;
+    }
+
+    if (key === 'o' && isMetaKeyPressed(e)) {
+      e.preventDefault();
+      this.events.emit('openFileMenu');
+      return;
+    }
+
+    if (key === 'g' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      const state = store.getState();
+      if (state.app.mode === AppMode.Voxel) {
+        const visible = !state.editing.voxelGridVisible;
+        this.voxelApp.models.toggleGrid(visible);
+        store.dispatch(setVoxelGridVisible({ voxelGridVisible: visible }));
+      } else {
+        this.animatorApp.toggleGrid(!state.animator.gridVisible);
+      }
+      return;
+    }
+
+    if ((key === 'arrowleft' || key === 'arrowright' || key === 'home') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      const state = store.getState();
+      const { activeIds, relativeIds, hierarchyData, activeMotionId } = state.animator;
+      const { boneIds } = getMotionBoneIds(activeIds, relativeIds, hierarchyData);
+      this.motionPlayer.pause();
+      if (!activeMotionId) {
+        if (key === 'home') store.dispatch(setCurrentTime(0));
+        return;
+      }
+      const type = key === 'arrowleft' ? LocateKeyframeType.Prev : key === 'arrowright' ? LocateKeyframeType.Next : LocateKeyframeType.First;
+      this.motionPlayer.locateKeyframe(boneIds, type);
+      return;
+    }
+
+    if (!e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      if (key === ' ') {
+        e.preventDefault();
+        if (store.getState().app.motionPanel.playing) this.motionPlayer.pause();
+        else this.motionPlayer.play();
+        return;
+      }
+      if (key === 'f') {
+        e.preventDefault();
+        this.animatorApp.focusSelection();
+        return;
+      }
+    }
 
     switch (key) {
       case 'a':
