@@ -17,11 +17,6 @@ run-name: Engine / ${{ github.ref_name }}
         type: string
         required: false
         default: all
-      reuse_from_version:
-        description: Existing production version whose unchanged service archives may be reused
-        type: string
-        required: false
-        default: ''
 permissions:
   contents: read
 defaults:
@@ -105,7 +100,6 @@ jobs:
       BOX_ALLOW_DIRTY_RELEASE: ${{ github.ref == 'refs/heads/staging' && 'true' || 'false' }}
       FORCE_REBUILD: ${{ github.ref == 'refs/heads/staging' && inputs.rebuild_images || false }}
       REBUILD_SERVICES: ${{ inputs.rebuild_services || 'all' }}
-      REUSE_FROM_VERSION: ${{ inputs.reuse_from_version || '' }}
     needs: validate-release
     strategy:
       fail-fast: false
@@ -143,24 +137,29 @@ jobs:
             curl -fsSL https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
           fi
           ossutil config -i "$OSS_ACCESS_KEY_ID" -k "$OSS_ACCESS_KEY_SECRET" -e "https://$OSS_ENDPOINT"
-          if [ "$BOX_BUILD_CHANNEL" = staging ] && [ -n "$REUSE_FROM_VERSION" ]; then
-            echo 'Staging builds cannot reuse production image catalogs.' >&2
-            exit 1
-          fi
           mkdir -p apps/local-engine/dist/images image-updates
           catalog="apps/local-engine/dist/images/box-local-engine-images-${{ env.BOX_RELEASE_TAG }}-linux-${{ matrix.architecture }}.json"
-          if ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog" >/tmp/current-catalog.log 2>&1; then
-            echo 'current' > image-updates/base-kind
-            echo 'true' > image-updates/current-catalog
-          elif [ -n "$REUSE_FROM_VERSION" ]; then
-            reuse_prefix="local-engine/v${REUSE_FROM_VERSION}"
+          latest_manifest=/tmp/box3-latest-server.json
+          reuse_from_version=""
+          if ossutil cp "oss://$OSS_BUCKET/local-engine/latest-server.json" "$latest_manifest" >/tmp/latest-server.log 2>&1; then
+            reuse_from_version="$(node -e "const m=require(process.argv[1]); const v=String(m.version || '').replace(/^v/, '').replace(/-staging$/, ''); if (/^\\d+\\.\\d+\\.\\d+$/.test(v)) console.log(v)" "$latest_manifest")"
+          fi
+          current_version="${BOX_RELEASE_TAG#v}"
+          if [ "$reuse_from_version" = "$current_version" ]; then
+            reuse_from_version=""
+          fi
+          if [ -n "$reuse_from_version" ]; then
+            reuse_prefix="local-engine/v${reuse_from_version}"
             base="image-updates/base-catalog.json"
-            if ! ossutil cp "oss://$OSS_BUCKET/$reuse_prefix/box-local-engine-images-v${REUSE_FROM_VERSION}-linux-${{ matrix.architecture }}.json" "$base" >/tmp/base-catalog.log 2>&1; then
-              echo "Unable to find reusable catalog for version $REUSE_FROM_VERSION." >&2
+            if ! ossutil cp "oss://$OSS_BUCKET/$reuse_prefix/box-local-engine-images-v${reuse_from_version}-linux-${{ matrix.architecture }}.json" "$base" >/tmp/base-catalog.log 2>&1; then
+              echo "Unable to find reusable catalog for version $reuse_from_version." >&2
               cat /tmp/base-catalog.log >&2
               exit 1
             fi
             echo "$reuse_prefix" > image-updates/base-prefix
+          elif ossutil cp "oss://$OSS_BUCKET/$OSS_BUILD_PREFIX/$(basename "$catalog")" "$catalog" >/tmp/current-catalog.log 2>&1; then
+            echo 'current' > image-updates/base-kind
+            echo 'true' > image-updates/current-catalog
           else
             rm -f image-updates/base-catalog.json image-updates/base-prefix
           fi
