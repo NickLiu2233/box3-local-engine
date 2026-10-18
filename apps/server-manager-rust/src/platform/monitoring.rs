@@ -185,43 +185,62 @@ pub(crate) fn service_images() -> Vec<Value> {
         let image_tag = service_tag(service);
         let full = format!("{image}:{image_tag}");
         let inspect = docker(&["image", "inspect", &full]);
-        let (image_id, created_at, source_revision, build_source) = inspect
+        let (image_id, created_at, source_revision, build_source, image_version) = inspect
             .ok()
             .and_then(|text| serde_json::from_str::<Vec<Value>>(&text).ok())
             .and_then(|mut list| list.pop())
             .map(|value| {
+                let labels = value.get("Config").and_then(|c| c.get("Labels")).cloned();
+                let label = |key: &str| {
+                    labels
+                        .as_ref()
+                        .and_then(|items| items.get(key))
+                        .and_then(Value::as_str)
+                        .filter(|value| !value.trim().is_empty())
+                        .map(String::from)
+                };
                 let image_id = value
                     .get("Id")
+                    .or_else(|| value.get("id"))
                     .and_then(Value::as_str)
-                    .unwrap_or("unknown")
-                    .to_string();
+                    .filter(|value| !value.trim().is_empty())
+                    .map(String::from)
+                    .or_else(|| {
+                        value
+                            .get("RepoDigests")
+                            .and_then(Value::as_array)
+                            .and_then(|items| items.first())
+                            .and_then(Value::as_str)
+                            .map(String::from)
+                    })
+                    .unwrap_or_else(|| "unknown".to_string());
                 let created_at = value
                     .get("Created")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown")
-                    .to_string();
-                let labels = value.get("Config").and_then(|c| c.get("Labels")).cloned();
-                let source_revision = labels
-                    .as_ref()
-                    .and_then(|l| l.get("org.opencontainers.image.revision"))
+                    .or_else(|| value.get("created"))
                     .and_then(Value::as_str)
                     .map(String::from)
-                    .unwrap_or_else(|| {
+                    .or_else(|| label("org.opencontainers.image.created"))
+                    .unwrap_or_else(|| "unknown".to_string());
+                let source_revision =
+                    label("org.opencontainers.image.revision").unwrap_or_else(|| {
                         option_env!("BOX_BUILD_COMMIT")
                             .unwrap_or("unknown")
                             .to_string()
                     });
-                let build_source = labels
-                    .as_ref()
-                    .and_then(|l| l.get("org.opencontainers.image.source"))
-                    .and_then(Value::as_str)
-                    .map(String::from)
-                    .unwrap_or_else(|| {
-                        option_env!("BOX_BUILD_SOURCE")
-                            .unwrap_or("local")
-                            .to_string()
-                    });
-                (image_id, created_at, source_revision, build_source)
+                let build_source = label("org.opencontainers.image.source").unwrap_or_else(|| {
+                    option_env!("BOX_BUILD_SOURCE")
+                        .unwrap_or("local")
+                        .to_string()
+                });
+                let image_version =
+                    label("org.opencontainers.image.version").unwrap_or_else(|| image_tag.clone());
+                (
+                    image_id,
+                    created_at,
+                    source_revision,
+                    build_source,
+                    image_version,
+                )
             })
             .unwrap_or_else(|| {
                 (
@@ -233,12 +252,14 @@ pub(crate) fn service_images() -> Vec<Value> {
                     option_env!("BOX_BUILD_SOURCE")
                         .unwrap_or("local")
                         .to_string(),
+                    image_tag.clone(),
                 )
             });
         json!({
             "name": name,
             "image": image,
             "tag": image_tag,
+            "version": image_version,
             "platform": platform,
             "imageId": image_id,
             "createdAt": created_at,

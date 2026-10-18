@@ -23,15 +23,20 @@ function stagingContext(version, architecture, commit = process.env.GITHUB_SHA) 
     };
 }
 
+function isReusableProductionImage(image, architecture) {
+    return new RegExp(`^v\\d+\\.\\d+\\.\\d+-linux-${architecture}$`).test(image.imageTag || '');
+}
+
 function prepareCatalog(catalog, version, architecture) {
     const context = stagingContext(version, architecture);
     validateCatalog(catalog, architecture);
     if (
-        !catalog.images.every(
-            (image) =>
+        !catalog.images.every((image) => {
+            const current =
                 image.imageTag === context.imageTag &&
-                image.sourceRevision === process.env.GITHUB_SHA,
-        )
+                image.sourceRevision === process.env.GITHUB_SHA;
+            return current || isReusableProductionImage(image, architecture);
+        })
     ) {
         throw new Error('Staging catalog contains images from another version or channel');
     }
@@ -48,7 +53,14 @@ function prepareCatalog(catalog, version, architecture) {
 }
 
 function validateStagingCatalog(catalog, version, architecture) {
-    const expected = stagingContext(version, architecture, catalog.images?.[0]?.sourceRevision);
+    const currentRevision = catalog.images
+        ?.map((image) => image.sourceRevision)
+        .find((revision) => /^[a-f0-9]{40}$/.test(revision || ''));
+    const expected = stagingContext(
+        version,
+        architecture,
+        currentRevision || process.env.GITHUB_SHA,
+    );
     validateCatalog(catalog, architecture);
     if (
         catalog.channel !== 'staging' ||
@@ -56,7 +68,8 @@ function validateStagingCatalog(catalog, version, architecture) {
         catalog.imageTag !== expected.imageTag ||
         !catalog.images.every(
             (image) =>
-                image.imageTag === expected.imageTag &&
+                (image.imageTag === expected.imageTag ||
+                    isReusableProductionImage(image, architecture)) &&
                 image.downloadBaseUrl === expected.downloadBaseUrl,
         )
     ) {
