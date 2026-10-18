@@ -30,6 +30,8 @@ test('release images are cached and published per service', () => {
         /ossutil stat "oss:\/\/\$OSS_BUCKET\/\$source_prefix\/\$existing_archive"/,
     );
     assert.match(workflowSource, /merge-image-catalog\.js/);
+    assert.match(workflowSource, /rm -f image-updates\/base-catalog\.json/);
+    assert.doesNotMatch(workflowSource, /echo '-' > image-updates\/base-catalog\.json/);
     assert.doesNotMatch(
         workflowSource,
         /box-local-engine-images-\$\{\{ env\.BOX_RELEASE_TAG \}\}-linux-\$\{\{ matrix\.architecture \}\}\.tar\.gz/,

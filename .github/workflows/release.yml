@@ -162,7 +162,7 @@ jobs:
             fi
             echo "$reuse_prefix" > image-updates/base-prefix
           else
-            echo '-' > image-updates/base-catalog.json
+            rm -f image-updates/base-catalog.json image-updates/base-prefix
           fi
           if [ ! -f image-updates/current-catalog ] && [ ! -f image-updates/base-prefix ]; then
             echo 'No existing catalog found; all services will be built.'
