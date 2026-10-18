@@ -25,7 +25,7 @@ flowchart TD
 
 ## 本地开发包
 
-本机执行 `package:images`、`export:images`、`package:desktop`、`package:web`、`package:player-launcher`（含平台后缀）统一生成 `dev` 包，与当前检出的分支无关。引擎版本为 `2026.1.4-dev`，玩家版本为 `2026.1.2-dev`，镜像标签如 `v2026.1.4-dev-linux-arm64`；源码中的发布版本保持不变。
+本机执行 `package:images`、`export:images`、`package:desktop`、`package:web`、`package:player-launcher`（含平台后缀）统一生成 `dev` 包，与当前检出的分支无关。引擎版本为 `2026.1.5-dev`，玩家版本为 `2026.1.2-dev`，镜像标签如 `v2026.1.5-dev-linux-arm64`；源码中的发布版本保持不变。
 
 开发部署包内置 dev 镜像，使用独立应用标识、数据目录和桌面容器项目，不检查线上更新；更新时重新打包。已有正式或 staging 镜像归档不能作为 dev 包输入，需先重新执行 `package:images`。`--mode local` 继续表示复用本机已构建的 dev 镜像。
 
@@ -35,12 +35,16 @@ flowchart TD
 
 | 内容       | 正式示例                                          | 预发布示例                                                |
 | ---------- | ------------------------------------------------- | --------------------------------------------------------- |
-| 引擎版本   | `2026.1.4`                                        | `2026.1.4-staging`                                        |
-| 部署启动器 | `BOX-Local-Engine-2026.1.4-macos-arm64.zip`       | `BOX-Local-Engine-2026.1.4-staging-macos-arm64.zip`       |
-| Linux 包   | `BOX3-Engine-Server-2026.1.4-linux-arm64.zip`     | `BOX3-Engine-Server-2026.1.4-staging-linux-arm64.zip`     |
-| 镜像标签   | `v2026.1.4-linux-arm64`                           | `v2026.1.4-staging-linux-arm64`                           |
+| 引擎版本   | `2026.1.5`                                        | `2026.1.5-staging`                                        |
+| 部署启动器 | `BOX-Local-Engine-2026.1.5-macos-arm64.zip`       | `BOX-Local-Engine-2026.1.5-staging-macos-arm64.zip`       |
+| Linux 包   | `BOX3-Engine-Server-2026.1.5-linux-arm64.zip`     | `BOX3-Engine-Server-2026.1.5-staging-linux-arm64.zip`     |
+| 镜像标签   | `v2026.1.5-linux-arm64`                           | `v2026.1.5-staging-linux-arm64`                           |
 | 玩家版本   | `2026.1.2`                                        | `2026.1.2-staging`                                        |
 | 玩家安装包 | `BOX3-Player-Launcher-2026.1.2-windows-amd64.exe` | `BOX3-Player-Launcher-2026.1.2-staging-windows-amd64.exe` |
+
+部署包的 `BOX_IMAGE_TAG` 表示发行包版本；清单中的每个 `images[].imageTag` 才是该服务实际使用的不可变镜像标签。需要只升级一个服务时，可以把 VOXA 设为 `v2026.1.5-linux-<arch>`，其余服务继续引用 `v2026.1.4-linux-<arch>`。打包器会把这些标签写入 `BOX_*_IMAGE_TAG`，服务器管理器和桌面启动器按服务检查、下载和加载；已经存在且摘要匹配的旧归档会直接复用，不会因为发行包版本升高而重新下载或删除。
+
+本地导出混合版本镜像时，为要重建的服务设置 `BOX_REBUILD_IMAGE_SERVICES=voxa`，并为六个 `BOX_*_IMAGE_TAG` 填写清单中的实际标签；未列入重建集合的服务必须已经以对应旧标签存在于 Docker 中。服务器补打包会直接复用 OSS 清单里的旧归档，只有缺失或摘要不匹配的服务才会下载。
 
 预发布后缀属于实际应用版本，不只是 ZIP 名称。流水线在临时构建工作区准备版本，无需把源码版本手工改成 staging，也不创建 staging Git Tag。正式 Tag 仍由流水线固定为 `v<引擎版本>` / `player-v<玩家版本>`。
 

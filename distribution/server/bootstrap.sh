@@ -303,9 +303,11 @@ existing_installation_matches_target() {
   [ -f "$INSTALL_DIRECTORY/compose.yml" ] || return 1
   [ -x "$INSTALL_DIRECTORY/start.sh" ] || return 1
 
-  installed_image_tag=$(sed -n 's/^BOX_IMAGE_TAG=//p' "$INSTALL_DIRECTORY/.env" | tail -n 1)
+  installed_image_tag=$(sed -n 's/^BOX_SERVER_MANAGER_IMAGE_TAG=//p' "$INSTALL_DIRECTORY/.env" | tail -n 1)
+  [ -n "$installed_image_tag" ] || installed_image_tag=$(sed -n 's/^BOX_IMAGE_TAG=//p' "$INSTALL_DIRECTORY/.env" | tail -n 1)
   installed_platform=$(sed -n 's/^BOX_PLAY_PLATFORM=//p' "$INSTALL_DIRECTORY/.env" | tail -n 1)
-  expected_image_tag="v${version}-linux-${architecture}"
+  expected_image_tag=$(sed -n 's/^BOX_SERVER_MANAGER_IMAGE_TAG=//p' "$package_directory/.env.example" | tail -n 1)
+  [ -n "$expected_image_tag" ] || expected_image_tag="v${version}-linux-${architecture}"
   [ "$installed_image_tag" = "$expected_image_tag" ] || return 1
   [ "$installed_platform" = "linux/${architecture}" ] || return 1
 
@@ -353,13 +355,6 @@ fi
 # Databases, Redis and map runtime containers keep their own lifecycle and are
 # never removed by the updater.
 previously_running_services=$(running_application_services | tr '\n' ' ' || true)
-previous_image_tag=$(read_env_value BOX_IMAGE_TAG)
-previous_manager_image_id=''
-if [ -n "$previous_image_tag" ]; then
-  previous_manager_image_id=$(docker image inspect --format '{{.Id}}' \
-    "box-local-engine-server-manager:$previous_image_tag" 2>/dev/null || true)
-fi
-
 info "安装到 $INSTALL_DIRECTORY"
 mkdir -p "$INSTALL_DIRECTORY"
 # The release package never contains .env, licences, maps, models or database
@@ -380,6 +375,16 @@ if [ -f .env ]; then
   [ -n "$new_play_platform" ] || fail '发行包缺少 BOX_PLAY_PLATFORM。'
   set_env_value BOX_IMAGE_TAG "$new_image_tag"
   set_env_value BOX_PLAY_PLATFORM "$new_play_platform"
+  for service_tag_key in \
+    BOX_PLAYER_SERVICE_IMAGE_TAG \
+    BOX_AUTH_PORTAL_IMAGE_TAG \
+    BOX_SERVER_MANAGER_IMAGE_TAG \
+    BOX_CREATOR_IMAGE_TAG \
+    BOX_PLAY_IMAGE_TAG \
+    BOX_VOXA_IMAGE_TAG; do
+    service_tag=$(release_env_value "$service_tag_key")
+    [ -n "$service_tag" ] && set_env_value "$service_tag_key" "$service_tag"
+  done
 fi
 if ! ./install.sh; then
   if [ -n "$environment_backup" ]; then
@@ -416,32 +421,9 @@ if [ -n "$previously_running_services" ]; then
     esac
   done
 fi
-new_image_tag=$(read_env_value BOX_IMAGE_TAG)
-if [ -n "$previous_image_tag" ] && [ "$previous_image_tag" != "$new_image_tag" ]; then
-  for service in player-service player-auth-portal creator play voxa; do
-    docker image rm "box-local-engine-$service:$previous_image_tag" >/dev/null 2>&1 || true
-  done
-  # The detached updater still runs from the old manager image; remove its old
-  # tag now. Docker reclaims the layers after the helper exits.
-  docker image rm --force "box-local-engine-server-manager:$previous_image_tag" >/dev/null 2>&1 || true
-fi
-if [ -n "${BOX3_UPDATE_HELPER_NAME:-}" ] && [ -n "$previous_manager_image_id" ]; then
-  new_manager_image="box-local-engine-server-manager:$new_image_tag"
-  new_manager_image_id=$(docker image inspect --format '{{.Id}}' "$new_manager_image" 2>/dev/null || true)
-  if [ -n "$new_manager_image_id" ] && [ "$new_manager_image_id" != "$previous_manager_image_id" ]; then
-    socket=$(read_env_value BOX_DOCKER_SOCKET)
-    socket=${socket:-/var/run/docker.sock}
-    cleanup_name="box3-image-cleanup-$$"
-    cleanup_mount="type=bind,source=$socket,target=/var/run/docker.sock"
-    docker run --detach --rm --name "$cleanup_name" --network host \
-      --mount "$cleanup_mount" "$new_manager_image" /bin/sh -c '
-        helper=$1
-        old_image=$2
-        while docker container inspect "$helper" >/dev/null 2>&1; do sleep 2; done
-        docker image rm --force "$old_image" >/dev/null 2>&1 || true
-      ' sh "$BOX3_UPDATE_HELPER_NAME" "$previous_manager_image_id" >/dev/null 2>&1 || true
-  fi
-fi
+# Keep every immutable service tag available for rollback and for services that
+# were intentionally left on an older image during a partial release. Docker
+# will reclaim layers only when the operator explicitly removes them.
 open_manager_firewall "$manager_port"
 lan_ip=$(read_env_value BOX_LAN_IP)
 if [ -z "$lan_ip" ] && command -v hostname >/dev/null 2>&1; then

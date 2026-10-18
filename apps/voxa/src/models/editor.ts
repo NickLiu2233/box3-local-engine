@@ -1099,6 +1099,15 @@ export class VoxelEditor {
       return;
     }
 
+    if (key === 'p' && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+      e.preventDefault();
+      // Keep the camera position and orbit target while switching between the
+      // two projection modes exposed by the bottom toolbar.
+      const stageCamera = this.stage.getCamera();
+      this.stage.switchCameraMode(stageCamera !== this.stage.perspectiveCamera);
+      return;
+    }
+
     if ((key === 'arrowleft' || key === 'arrowright' || key === 'home') && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
       e.preventDefault();
       const state = store.getState();

@@ -133,6 +133,8 @@ function dockerEnvironment(extra = {}) {
         ...process.env,
         ...automaticBuildMetadata,
         BOX_IMAGE_TAG: config.tag,
+        BOX_PLAY_IMAGE_TAG: config.tag,
+        BOX_PLAYER_SERVICE_IMAGE_TAG: config.playerServiceTag,
         BOX_PLAY_PLATFORM: config.platform,
         BOX_PLAY_LIBRARY_DIR: configuredPlayLibraryDir(),
         ...extra,

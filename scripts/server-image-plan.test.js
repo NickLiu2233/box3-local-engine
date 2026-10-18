@@ -127,15 +127,24 @@ test('same version/source skips images; a Web manager change rebuilds only that 
             () => planManagerImage(root, 'amd64', releaseCatalog, files),
             /Invalid per-service/,
         );
-        assert.throws(
-            () =>
-                planManagerImage(
-                    root,
-                    'arm64',
-                    { ...releaseCatalog, imageTag: 'v0.2.0-linux-arm64' },
-                    files,
-                ),
-            /version mismatch/,
+        const mixedRelease = planManagerImage(
+            root,
+            'arm64',
+            { ...releaseCatalog, imageTag: 'v0.2.0-linux-arm64' },
+            files,
+        );
+        assert.deepEqual(
+            mixedRelease.filter((item) => item.build).map((item) => item.service),
+            ['server-manager'],
+        );
+        assert.ok(
+            mixedRelease.every(
+                (item) =>
+                    item.imageTag ===
+                    releaseCatalog.images.find(
+                        (image) => image.image === `box-local-engine-${item.service}`,
+                    ).imageTag,
+            ),
         );
         fs.writeFileSync(path.join(root, 'apps/game/src/main.ts'), 'original');
         assert.ok(planImages(root, 'arm64', catalog, files).every((item) => !item.build));

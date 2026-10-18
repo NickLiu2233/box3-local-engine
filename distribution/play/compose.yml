@@ -1,6 +1,6 @@
 services:
   player-service:
-    image: box-local-engine-player-service:${BOX_IMAGE_TAG:-2026.1.4}
+    image: box-local-engine-player-service:${BOX_PLAYER_SERVICE_IMAGE_TAG:-${BOX_IMAGE_TAG:-2026.1.5}}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -39,7 +39,7 @@ services:
       - "${BOX_PLAYER_SERVICE_HOST_IP:-127.0.0.1}:${BOX_PLAYER_SERVICE_PORT:-3124}:3213"
 
   play-storage-init:
-    image: box-local-engine-play:${BOX_IMAGE_TAG:-2026.1.4}
+    image: box-local-engine-play:${BOX_PLAY_IMAGE_TAG:-${BOX_IMAGE_TAG:-2026.1.5}}
     user: "0:0"
     command:
       - sh
@@ -58,7 +58,7 @@ services:
       - box-play-runtime-cache:/app/play-runtime-cache
 
   play:
-    image: box-local-engine-play:${BOX_IMAGE_TAG:-2026.1.4}
+    image: box-local-engine-play:${BOX_PLAY_IMAGE_TAG:-${BOX_IMAGE_TAG:-2026.1.5}}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
