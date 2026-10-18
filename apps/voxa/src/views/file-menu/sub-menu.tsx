@@ -31,6 +31,7 @@ import {
   getProjectBundleFileName,
   readProjectBundle,
 } from '../../models/file-tools/project-bundle';
+import { deleteLocalDraft, listLocalDrafts } from '../../local-draft';
 
 export const SubMenu = memo(SubMenuView);
 
@@ -79,16 +80,12 @@ function SubMenuHistory() {
         return;
       }
 
-      const snapshotList = await editor.projectManager.getSnapshotList({
-        autoSave,
-        signal,
-      });
+      const [snapshotList, localDrafts] = await Promise.all([
+        editor.projectManager.getSnapshotList({ autoSave, signal }),
+        autoSave ? Promise.resolve([]) : listLocalDrafts().catch(() => []),
+      ]);
 
-      if (!snapshotList) {
-        return;
-      }
-
-      const cardList = snapshotList.map((snapshot): CardProps => {
+      const cardList = (snapshotList || []).map((snapshot): CardProps => {
         const { createdAt, snapshotId, projectFileHash, modelPreviewHash } =
           snapshot;
 
@@ -102,6 +99,25 @@ function SubMenuHistory() {
           }),
         };
       });
+
+      cardList.unshift(
+        ...localDrafts.map((localDraft) => ({
+          id: `local-draft-${localDraft.projectName}`,
+          localDraft: true,
+          localDraftName: localDraft.projectName,
+          localPreview: localDraft.preview,
+          onDelete: () => {
+            void deleteLocalDraft(localDraft.projectName).then(() => {
+              setCardList((current) => current.filter((card) => card.id !== `local-draft-${localDraft.projectName}`));
+            });
+          },
+          modelName: localDraft.projectName,
+          dateTime: formatDateTime({
+            intl,
+            createAt: new Date(localDraft.savedAt).toISOString(),
+          }),
+        })),
+      );
 
       setCardList(cardList);
     },

@@ -59,7 +59,7 @@ fn remove_content_tag(runtime: &impl Runtime, image: &ImageRelease) {
 
 pub(crate) fn prepare(
     catalog: &ImageCatalog,
-    tag: &str,
+    _tag: &str,
     services: &[&str],
     runtime: &impl Runtime,
 ) -> Result<(), String> {
@@ -73,7 +73,7 @@ pub(crate) fn prepare(
         if service == "server-manager" || !services.contains(&service) {
             continue;
         }
-        let reference = format!("{}:{tag}", image.image);
+        let reference = format!("{}:{}", image.image, image.image_tag);
         let previous = image_id(runtime, &reference);
         let mut old_ids = runtime.previous(service)?;
         if let Some(id) = &previous {
@@ -129,7 +129,7 @@ pub(crate) fn prepare(
         if service == "server-manager" || !services.contains(&service) {
             continue;
         }
-        let reference = format!("{}:{tag}", image.image);
+        let reference = format!("{}:{}", image.image, image.image_tag);
         let mut actual = installed(runtime, image);
         let archive = if actual.is_none() {
             let archive = archives
@@ -495,7 +495,7 @@ mod tests {
         prepare(&catalog(), "next-launcher", &["play"], &fake).unwrap();
         assert_eq!(*fake.downloads.borrow(), 0);
         assert_eq!(
-            fake.tags.borrow()["box-local-engine-play:next-launcher"],
+            fake.tags.borrow()["box-local-engine-play:same-version"],
             id('b')
         );
     }
@@ -528,7 +528,7 @@ mod tests {
         prepare(&catalog, "next-launcher", &["play"], &fake).unwrap();
         assert_eq!(*fake.downloads.borrow(), 0);
         assert_eq!(
-            fake.tags.borrow()["box-local-engine-play:next-launcher"],
+            fake.tags.borrow()["box-local-engine-play:same-version"],
             id('c')
         );
         assert_eq!(fake.records.borrow()[0].new_id, id('c'));

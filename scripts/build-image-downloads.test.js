@@ -27,15 +27,16 @@ with tarfile.open(sys.argv[1],'w:gz') as archive:
   header=tarfile.TarInfo(name);header.size=len(data);archive.addfile(header,io.BytesIO(data))
  for service in services:
   name=service+'.json'
+  tag='new-voxa' if service == 'voxa' else 'original'
   config=json.dumps({'os':'linux','architecture':'arm64','config':{'Labels':{'service':service}}}).encode()
   add(name,config)
   if sys.argv[2]=='oci':
    digest=hashlib.sha256(config).hexdigest();config_name='blobs/sha256/'+digest;add(config_name,config)
    data=json.dumps({'schemaVersion':2,'mediaType':'application/vnd.oci.image.manifest.v1+json','config':{'mediaType':'application/vnd.oci.image.config.v1+json','digest':'sha256:'+digest,'size':len(config)},'layers':[]}).encode()
    manifest_digest=hashlib.sha256(data).hexdigest();add('blobs/sha256/'+manifest_digest,data)
-   descriptors.append({'mediaType':'application/vnd.oci.image.manifest.v1+json','digest':'sha256:'+manifest_digest,'size':len(data),'annotations':{'io.containerd.image.name':'docker.io/library/box-local-engine-'+service+':original'}})
+   descriptors.append({'mediaType':'application/vnd.oci.image.manifest.v1+json','digest':'sha256:'+manifest_digest,'size':len(data),'annotations':{'io.containerd.image.name':'docker.io/library/box-local-engine-'+service+':'+tag}})
    name=config_name
-  manifest.append({'Config':name,'RepoTags':['box-local-engine-'+service+':original'],'Layers':[]})
+  manifest.append({'Config':name,'RepoTags':['box-local-engine-'+service+':'+tag],'Layers':[]})
  add('manifest.json',json.dumps(manifest).encode())
  if descriptors:
   add('index.json',json.dumps({'schemaVersion':2,'manifests':descriptors}).encode())
@@ -50,6 +51,16 @@ with tarfile.open(sys.argv[1],'w:gz') as archive:
             const catalog = splitArchive(source, 'arm64', path.join(root, 'first/catalog.json'));
             const repeated = splitArchive(source, 'arm64', path.join(root, 'second/catalog.json'));
             assert.equal(catalog.images.length, 6);
+            const mixed = structuredClone(catalog);
+            mixed.imageTag = 'v2026.1.5-linux-arm64';
+            mixed.images.find((image) => image.image === 'box-local-engine-voxa').imageTag =
+                'v2026.1.5-linux-arm64';
+            mixed.images
+                .filter((image) => image.image !== 'box-local-engine-voxa')
+                .forEach((image) => {
+                    image.imageTag = 'v2026.1.4-linux-arm64';
+                });
+            assert.doesNotThrow(() => validateCatalog(mixed, 'arm64'));
             const partialPath = path.join(root, 'manager-only/catalog.json');
             const partial = spawnSync(
                 process.platform === 'win32' ? 'python' : 'python3',

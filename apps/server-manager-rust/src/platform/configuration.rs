@@ -50,10 +50,7 @@ fn image_catalog(app: &App, service: &str, image_tag: &str) -> Result<RemoteImag
         _ => return Err("当前服务器架构不支持按需下载镜像".into()),
     };
     let platform = format!("linux/{architecture}");
-    if catalog.format_version != 2
-        || catalog.platform != platform
-        || catalog.image_tag != image_tag
-    {
+    if catalog.format_version != 2 || catalog.platform != platform || catalog.image_tag.is_empty() {
         return Err("按需镜像清单与当前版本或服务器架构不匹配".into());
     }
     let image_name = format!("box-local-engine-{service}");

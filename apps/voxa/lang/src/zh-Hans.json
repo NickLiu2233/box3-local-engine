@@ -19,10 +19,6 @@
     "defaultMessage": "开启在X轴上的镜像编辑",
     "description": "Mirror X Button Tooltip Text"
   },
-  "1EuXM8": {
-    "defaultMessage": "发布",
-    "description": "Publish button"
-  },
   "1nRmF9": {
     "defaultMessage": "颜色定位",
     "description": "toolColorPicker"
@@ -67,9 +63,17 @@
     "defaultMessage": "撤销",
     "description": "Undo"
   },
+  "4HPwE/": {
+    "defaultMessage": "删除这个本地草稿？",
+    "description": "Confirm delete local draft"
+  },
   "4fc2TC": {
     "defaultMessage": "工程导出失败",
     "description": "VOXA project export error"
+  },
+  "5D5V6M": {
+    "defaultMessage": "删除本地草稿",
+    "description": "Delete local draft"
   },
   "5L7Io3": {
     "defaultMessage": "面拉伸",
@@ -110,6 +114,10 @@
   "9Tfd42": {
     "defaultMessage": "模型工程和皮肤工程不能互相导入",
     "description": "VOXA project import type mismatch"
+  },
+  "9dUUDl": {
+    "defaultMessage": "删除",
+    "description": "Delete local draft title"
   },
   "9df2WV": {
     "defaultMessage": "数据统计",
@@ -250,6 +258,10 @@
   "I2zGOR": {
     "defaultMessage": "导入工程",
     "description": "File menu import VOXA project"
+  },
+  "IgTAJX": {
+    "defaultMessage": "保存到本地",
+    "description": "Save locally button"
   },
   "J7uU3S": {
     "defaultMessage": "创建一个新的部件",
@@ -411,6 +423,10 @@
     "defaultMessage": "创建",
     "description": "Animator tool create title"
   },
+  "UVFv3l": {
+    "defaultMessage": "取消",
+    "description": "Cancel delete local draft button"
+  },
   "Uu2DmJ": {
     "defaultMessage": "删除颜色组",
     "description": "Title of deleting palette group with items"
@@ -527,6 +543,10 @@
     "defaultMessage": "暂无项目",
     "description": "Empty Card List"
   },
+  "dsEI5s": {
+    "defaultMessage": "删除",
+    "description": "Confirm delete local draft button"
+  },
   "dtHrXZ": {
     "defaultMessage": "请检查您的网络连接",
     "description": "Content of failing to save model"
@@ -610,6 +630,10 @@
   "kLrg2G": {
     "defaultMessage": "色板",
     "description": "Palette Collapse Panel"
+  },
+  "lLtmnX": {
+    "defaultMessage": "本地草稿",
+    "description": "Local draft label"
   },
   "lStPSE": {
     "defaultMessage": "使部件框贴合体素内容",
@@ -799,6 +823,10 @@
     "defaultMessage": "删除",
     "description": "Motion list context menu delete"
   },
+  "zIkZc0": {
+    "defaultMessage": "未命名模型",
+    "description": "Unnamed local draft"
+  },
   "zY3nY2": {
     "defaultMessage": "保留",
     "description": "clearUnusedColorsCancel"
@@ -806,5 +834,9 @@
   "ziZtWz": {
     "defaultMessage": "恢复失败，请稍后再试。",
     "description": "Restore error"
+  },
+  "ztQjyD": {
+    "defaultMessage": "已保存到本地",
+    "description": "Save VOXA project locally"
   }
 }

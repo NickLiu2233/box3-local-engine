@@ -28,6 +28,21 @@ if (!hostArchitecture) {
 // runtime Compose deployments and may legitimately point at an older image;
 // it must not change which freshly built release images this command exports.
 const imageTag = defaultExportImageTag(packageVersion, hostArchitecture);
+const imageTagByService = Object.fromEntries(
+    services.map((service) => [
+        service,
+        process.env[
+            {
+                'player-service': 'BOX_PLAYER_SERVICE_IMAGE_TAG',
+                'player-auth-portal': 'BOX_AUTH_PORTAL_IMAGE_TAG',
+                'server-manager': 'BOX_SERVER_MANAGER_IMAGE_TAG',
+                'creator': 'BOX_CREATOR_IMAGE_TAG',
+                'play': 'BOX_PLAY_IMAGE_TAG',
+                'voxa': 'BOX_VOXA_IMAGE_TAG',
+            }[service]
+        ] || imageTag,
+    ]),
+);
 
 function fail(message) {
     console.error(`ERROR: ${message}`);
@@ -57,7 +72,9 @@ function inspectImage(image) {
     return result.status === 0 ? String(result.stdout || '').trim() : '';
 }
 
-const images = services.map((service) => `box-local-engine-${service}:${imageTag}`);
+const images = services.map(
+    (service) => `box-local-engine-${service}:${imageTagByService[service]}`,
+);
 const missingImages = images.filter((image) => !inspectImage(image));
 if (missingImages.length) {
     fail(
@@ -118,7 +135,8 @@ try {
 
     fs.renameSync(temporaryOutput, output);
     console.log(`\n启动器镜像归档：${output}`);
-    console.log(`镜像标签：${imageTag}`);
+    console.log(`发行包标签：${imageTag}`);
+    console.log(`服务镜像标签：${JSON.stringify(imageTagByService)}`);
     console.log(`镜像架构：${platform}`);
     console.log(`导入命令：docker load -i ${output}\n`);
 } catch (error) {

@@ -792,6 +792,39 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
             web_manager: false,
         },
     )?;
+    // A package can carry a mixed catalog (for example a new VOXA with older
+    // Creator/Play images). Persist those immutable tags into the generated
+    // Compose environment so each service resolves its own archive.
+    if let Some(catalog) = crate::image_download::embedded_release()? {
+        for image in catalog.images {
+            let Some(service) = image.image.strip_prefix("box-local-engine-") else { continue };
+            let key = match service {
+                "player-service" => "BOX_PLAYER_SERVICE_IMAGE_TAG",
+                "player-auth-portal" => "BOX_AUTH_PORTAL_IMAGE_TAG",
+                "server-manager" => "BOX_SERVER_MANAGER_IMAGE_TAG",
+                "creator" => "BOX_CREATOR_IMAGE_TAG",
+                "play" => "BOX_PLAY_IMAGE_TAG",
+                "voxa" => "BOX_VOXA_IMAGE_TAG",
+                _ => continue,
+            };
+            derived.insert(key.into(), image.image_tag);
+            if service == "player-auth-portal"
+                && box_manager_core::auth_portal::normalize_image(
+                    values
+                        .get("BOX_AUTH_PORTAL_IMAGE")
+                        .map(String::as_str)
+                        .unwrap_or(""),
+                    IMAGE_TAG,
+                )
+                .is_ok_and(|value| value.is_empty())
+            {
+                derived.insert(
+                    "BOX_AUTH_PORTAL_IMAGE".into(),
+                    format!("box-local-engine-player-auth-portal:{}", derived["BOX_AUTH_PORTAL_IMAGE_TAG"]),
+                );
+            }
+        }
+    }
     box_manager_core::ssl::apply_runtime_urls(&runtime_root(app)?, &values, &mut derived)?;
     let (runtime, runtime_values) = assemble_runtime_environment(owner, derived)?;
     let runtime_path = runtime_env_path(app)?;
@@ -1483,12 +1516,18 @@ fn offline_image_digest_path(app: &AppHandle) -> Result<PathBuf, String> {
 /// Report whether any application image the launcher starts is absent.
 /// `inspect` returns true when the image is missing.
 fn application_images_missing(tag: &str, inspect: &mut dyn FnMut(&str) -> bool) -> bool {
+    let release = crate::image_download::embedded_release().ok().flatten();
     SERVICE_NAMES.iter().any(|name| {
         let image = match *name {
             "player-auth-portal" => "box-local-engine-player-auth-portal".to_string(),
             other => format!("box-local-engine-{other}"),
         };
-        inspect(&format!("{image}:{tag}"))
+        let image_tag = release
+            .as_ref()
+            .and_then(|catalog| catalog.images.iter().find(|entry| entry.image == image))
+            .map(|entry| entry.image_tag.as_str())
+            .unwrap_or(tag);
+        inspect(&format!("{image}:{image_tag}"))
     })
 }
 

@@ -9,10 +9,11 @@ import styles from './style.module.scss';
 function SaveButtonView() {
   const editor = useContext(VoxelEditorContext);
   const intl = useIntl();
-  const { parentType, saveState, isPublishing } = useAppSelector(({ app }) => ({
+  const { parentType, saveState, isPublishing, serverSaveAllowed } = useAppSelector(({ app }) => ({
     parentType: app.parentType,
     saveState: app.saveState,
     isPublishing: app.isPublishing,
+    serverSaveAllowed: app.serverSaveAllowed,
   }));
 
   const save = useCallback(() => {
@@ -38,10 +39,9 @@ function SaveButtonView() {
       break;
     case SaveState.Failed:
     default:
-      text = intl.formatMessage({
-        description: 'Save button',
-        defaultMessage: 'Save',
-      });
+      text = serverSaveAllowed
+        ? intl.formatMessage({ description: 'Save button', defaultMessage: 'Save' })
+        : intl.formatMessage({ description: 'Save locally button', defaultMessage: 'Save locally' });
       onClick = save;
       break;
   }

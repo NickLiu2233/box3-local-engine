@@ -21,11 +21,11 @@ function main() {
     assert.equal(catalog.formatVersion, 2);
     assert.match(catalog.platform, /^linux\/(amd64|arm64)$/);
     assert.equal(manager.platform, catalog.platform);
-    assert.equal(manager.imageTag, catalog.imageTag);
     assert.equal(manager.image, 'box-local-engine-server-manager');
     assert.equal(catalog.images.length, 6);
     const managerEntry = catalog.images.find((image) => image.image === manager.image);
     assert.ok(managerEntry, 'server manager missing from image catalog');
+    assert.equal(manager.imageTag, managerEntry.imageTag);
     assert.equal(managerEntry.archive, manager.archive);
     assert.equal(managerEntry.sha256, manager.sha256);
     assert.equal(managerEntry.size, manager.size);

@@ -20,6 +20,9 @@ interface EventMap {
    * ”取消选中“
    */
   deSelect: undefined;
+
+  /** Open the file menu at its default History section. */
+  openFileMenu: undefined;
 }
 
 type OptionalIfUndefined<T> = undefined extends T ? [param?: T] : [param: T];

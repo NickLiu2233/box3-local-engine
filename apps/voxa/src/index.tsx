@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IntlShape, RawIntlProvider } from 'react-intl';
 import { Provider, useDispatch } from 'react-redux';
 import { store, useAppSelector } from './redux/store';
-import { LaunchState, setLaunchState, setUserInfo } from './redux/app-slice';
+import { LaunchState, setLaunchState, setServerSaveAllowed, setUserInfo } from './redux/app-slice';
 import { OnRetry, Launcher } from './views/launcher';
 import { RootContext } from './root-context';
 import type { UserInfo } from './interface';
@@ -12,15 +12,17 @@ interface Props {
   intl: IntlShape;
   userInfo: UserInfo;
   setLocale: (locale: LangType) => void;
+  serverSaveAllowed: boolean;
 }
 
 export default function VoxelBuilder(props: Props) {
-  const { intl, userInfo, setLocale } = props;
+  const { intl, userInfo, setLocale, serverSaveAllowed } = props;
 
   useMemo(() => {
     store.dispatch(setUserInfo(userInfo));
+    store.dispatch(setServerSaveAllowed(serverSaveAllowed));
 
-  }, [userInfo]);
+  }, [userInfo, serverSaveAllowed]);
 
   return (
     <RawIntlProvider value={intl}>

@@ -2,6 +2,7 @@ import React, {
   ReactNode,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -81,6 +82,15 @@ export function NavBar(props: TopBarProps) {
   const dispatch = useDispatch();
 
   const [showFileMenu, setShowFileMenu] = useState(false);
+
+  useEffect(() => {
+    if (!editor) return;
+    const openFileMenu = () => setShowFileMenu(true);
+    editor.events.addListener('openFileMenu', openFileMenu);
+    return () => {
+      editor.events.removeListener('openFileMenu', openFileMenu);
+    };
+  }, [editor]);
 
   const { delay, setDisplayed } = useSharedTipsDelay();
 

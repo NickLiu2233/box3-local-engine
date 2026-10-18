@@ -28,7 +28,7 @@ function validateCatalog(catalog, architecture) {
         !['amd64', 'arm64'].includes(architecture) ||
         catalog.formatVersion !== 2 ||
         catalog.platform !== `linux/${architecture}` ||
-        !catalog.imageTag ||
+        !/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/.test(catalog.imageTag || '') ||
         !Array.isArray(catalog.images) ||
         catalog.images.length !== services.length
     ) {
@@ -52,7 +52,7 @@ function validateCatalog(catalog, architecture) {
             image.imageIds.some((id) => !/^sha256:[a-f0-9]{64}$/.test(id)) ||
             image.formatVersion !== 1 ||
             image.platform !== catalog.platform ||
-            !image.imageTag ||
+            !/^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$/.test(image.imageTag || '') ||
             image.archive !==
                 `box-local-engine-image-${service}-${architecture}-${image.sha256}.tar.gz` ||
             !/^[a-f0-9]{64}$/.test(image.sha256 || '') ||

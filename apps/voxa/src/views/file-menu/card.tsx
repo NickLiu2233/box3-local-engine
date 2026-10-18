@@ -1,4 +1,4 @@
-import React, { ReactNode, useContext, useMemo, useState } from 'react';
+import React, { ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import { Toast, ModalView } from '@box/box-design';
 import { useAppSelector } from '../../redux/store';
@@ -14,12 +14,16 @@ export type CardProps = {
   modelPreviewHash?: string;
   projectFileHash?: string;
   dateTime?: DateTime;
+  localDraft?: boolean;
+  localDraftName?: string;
+  onDelete?: () => void;
+  localPreview?: Blob;
 };
 
-function Card(params: { img: ReactNode; desc: ReactNode }) {
-  const { img, desc } = params;
+function Card(params: { img: ReactNode; desc: ReactNode; onClick?: () => void }) {
+  const { img, desc, onClick } = params;
   return (
-    <div className={styles.card}>
+    <div className={styles.card} onClick={onClick}>
       <div className={styles.cardImgBorder}>{img}</div>
       <div className={styles.cardDesc}>{desc}</div>
     </div>
@@ -61,6 +65,7 @@ export function CardLoad(params: CardProps) {
 
   const projectName = useAppSelector((state) => state.app.projectName);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const {
@@ -68,7 +73,16 @@ export function CardLoad(params: CardProps) {
     modelPreviewHash,
     modelName,
     dateTime,
+    localDraft = false,
+    localDraftName,
+    onDelete,
+    localPreview,
   } = params;
+  const localPreviewUrl = useMemo(
+    () => (localDraft && localPreview ? URL.createObjectURL(localPreview) : ''),
+    [localDraft, localPreview],
+  );
+  useEffect(() => () => localPreviewUrl && URL.revokeObjectURL(localPreviewUrl), [localPreviewUrl]);
 
   // 确认加载历史文件的模态框
   const restoreModal = useMemo(() => {
@@ -82,10 +96,15 @@ export function CardLoad(params: CardProps) {
       }
       setLoading(true);
       try {
-        await editor.projectManager.loadProjectFile({
-          projectFileHash: projectFileHash,
-          projectName,
-        });
+        if (localDraft) {
+          const loaded = await editor.projectManager.loadLocalProject(localDraftName);
+          if (!loaded) throw new Error('LOCAL_DRAFT_INVALID');
+        } else {
+          await editor.projectManager.loadProjectFile({
+            projectFileHash: projectFileHash,
+            projectName,
+          });
+        }
         Toast.success({
           content: intl.formatMessage({
             description: 'Restore successfully',
@@ -136,11 +155,38 @@ export function CardLoad(params: CardProps) {
         confirmLoading={loading}
       />
     );
-  }, [editor, intl, loading, onClose, projectFileHash, projectName, showModal]);
+  }, [editor, intl, loading, localDraft, localDraftName, onClose, projectFileHash, projectName, showModal]);
+
+  const deleteModal = useMemo(() => {
+    if (!showDeleteModal || !onDelete) return null;
+    return (
+      <ModalView
+        title={intl.formatMessage({ description: 'Delete local draft title', defaultMessage: 'Delete' })}
+        content={intl.formatMessage({ description: 'Confirm delete local draft', defaultMessage: 'Delete this local draft?' })}
+        confirmText={intl.formatMessage({ description: 'Confirm delete local draft button', defaultMessage: 'Delete' })}
+        cancelText={intl.formatMessage({ description: 'Cancel delete local draft button', defaultMessage: 'Cancel' })}
+        onConfirm={() => { onDelete(); setShowDeleteModal(false); }}
+        onCancel={() => setShowDeleteModal(false)}
+        buttonSort="rtl"
+      />
+    );
+  }, [intl, onDelete, showDeleteModal]);
 
   let desc: ReactNode;
 
-  const img = modelPreviewHash ? (
+  const img = localPreviewUrl ? (
+      <div className={styles.localPreview}>
+      <img className={styles.cardImg} src={localPreviewUrl} alt="local draft preview" width={160} height={160} />
+      <span className={styles.localBadge}>{intl.formatMessage({ description: 'Local draft label', defaultMessage: 'Local draft' })}</span>
+        {onDelete && <button type="button" className={styles.localDelete} aria-label={intl.formatMessage({ description: 'Delete local draft', defaultMessage: 'Delete local draft' })} onClick={(event) => { event.stopPropagation(); setShowDeleteModal(true); }}>×</button>}
+    </div>
+  ) : localDraft ? (
+    <div className={styles.localPreview}>
+      <div className={styles.cardImg}><span>VOXA</span></div>
+      <span className={styles.localBadge}>{intl.formatMessage({ description: 'Local draft label', defaultMessage: 'Local draft' })}</span>
+      {onDelete && <button type="button" className={styles.localDelete} aria-label={intl.formatMessage({ description: 'Delete local draft', defaultMessage: 'Delete local draft' })} onClick={(event) => { event.stopPropagation(); setShowDeleteModal(true); }}>×</button>}
+    </div>
+  ) : modelPreviewHash ? (
     <img
       className={styles.cardImg}
       onClick={() => setShowModal(true)}
@@ -151,7 +197,14 @@ export function CardLoad(params: CardProps) {
     />
   ) : undefined;
 
-  if (modelName) {
+  if (localDraft) {
+    desc = (
+      <div className={styles.time}>
+        <span>{modelName || intl.formatMessage({ description: 'Unnamed local draft', defaultMessage: 'Unnamed model' })}</span>
+        {dateTime && <span>{dateTime.date} {dateTime.time}</span>}
+      </div>
+    );
+  } else if (modelName) {
     desc = <span>{modelName}</span>;
   } else if (dateTime) {
     desc = (
@@ -164,8 +217,9 @@ export function CardLoad(params: CardProps) {
 
   return (
     <>
-      <Card img={img} desc={desc} />
+      <Card img={img} desc={desc} onClick={localDraft ? () => setShowModal(true) : undefined} />
       {restoreModal}
+      {deleteModal}
     </>
   );
 }

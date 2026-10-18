@@ -136,7 +136,8 @@ if [ "$actual_sha" != "$expected_sha" ]; then
 fi
 echo 'Loading the Linux Web manager image…'
 docker load -i "$archive_path"
-image_tag=$(sed -n 's/^BOX_IMAGE_TAG=//p' .env | tail -n 1)
+image_tag=$(sed -n 's/^BOX_SERVER_MANAGER_IMAGE_TAG=//p' .env | tail -n 1)
+[ -n "$image_tag" ] || image_tag=$(sed -n 's/^BOX_IMAGE_TAG=//p' .env | tail -n 1)
 case "$image_tag" in
   ''|*[!A-Za-z0-9._-]*) echo 'Invalid BOX_IMAGE_TAG in .env' >&2; exit 1 ;;
 esac

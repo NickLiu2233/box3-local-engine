@@ -129,17 +129,29 @@ impl ServiceRuntime for WebRuntime<'_> {
         )?;
         let values = parse_env(&fs::read_to_string(env_path(self.0)).map_err(|error| error.to_string())?);
         let image_tag = values.get("BOX_IMAGE_TAG").map(String::as_str).ok_or("镜像版本未配置")?;
+        let service_tag = |service: &str| {
+            let key = match service {
+                "player-service" => "BOX_PLAYER_SERVICE_IMAGE_TAG",
+                "player-auth-portal" => "BOX_AUTH_PORTAL_IMAGE_TAG",
+                "server-manager" => "BOX_SERVER_MANAGER_IMAGE_TAG",
+                "creator" => "BOX_CREATOR_IMAGE_TAG",
+                "play" => "BOX_PLAY_IMAGE_TAG",
+                "voxa" => "BOX_VOXA_IMAGE_TAG",
+                _ => "BOX_IMAGE_TAG",
+            };
+            values.get(key).filter(|tag| !tag.trim().is_empty()).map(String::as_str).unwrap_or(image_tag)
+        };
         let mut prepared = Vec::new();
         for service in _services {
             if *service == "player-auth-portal"
-                && box_manager_core::auth_portal::image(&values, image_tag)?
-                    != format!("box-local-engine-player-auth-portal:{image_tag}")
+                && box_manager_core::auth_portal::image(&values, service_tag(service))?
+                    != format!("box-local-engine-player-auth-portal:{}", service_tag(service))
             {
                 continue;
             }
             // A local version tag can still point at an older build of the
             // same version. Always validate its content against the catalog.
-            prepared.push(plan_application_image(self.0, service, image_tag)?);
+            prepared.push(plan_application_image(self.0, service, service_tag(service))?);
         }
         if let Some(id) = &self.0.operation_id {
             self.0.operations.begin_downloads(id, prepared.iter().filter_map(|image| image.download_row()).collect());

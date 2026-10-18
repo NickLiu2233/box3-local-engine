@@ -133,6 +133,7 @@
 }
 
 .card {
+  cursor: pointer;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -194,6 +195,43 @@
         left: 14px;
       }
     }
+  }
+
+  .localPreview {
+    position: relative;
+    height: 160px;
+    width: 160px;
+  }
+
+  .localBadge {
+    position: absolute;
+    right: 6px;
+    bottom: 6px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: rgba(30, 30, 30, 0.78);
+    color: #fff;
+    font-size: 11px;
+    line-height: 16px;
+  }
+
+  .localDelete {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(30, 30, 30, 0.82);
+    color: #fff;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 22px;
+  }
+
+  .localDelete:hover {
+    background: #d64444;
   }
 
   .cardDesc {
