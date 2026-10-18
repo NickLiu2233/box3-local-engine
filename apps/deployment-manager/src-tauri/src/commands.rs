@@ -808,6 +808,21 @@ fn generate_runtime_environment(app: &AppHandle) -> Result<BTreeMap<String, Stri
                 _ => continue,
             };
             derived.insert(key.into(), image.image_tag);
+            if service == "player-auth-portal"
+                && box_manager_core::auth_portal::normalize_image(
+                    values
+                        .get("BOX_AUTH_PORTAL_IMAGE")
+                        .map(String::as_str)
+                        .unwrap_or(""),
+                    IMAGE_TAG,
+                )
+                .is_ok_and(|value| value.is_empty())
+            {
+                derived.insert(
+                    "BOX_AUTH_PORTAL_IMAGE".into(),
+                    format!("box-local-engine-player-auth-portal:{}", derived["BOX_AUTH_PORTAL_IMAGE_TAG"]),
+                );
+            }
         }
     }
     box_manager_core::ssl::apply_runtime_urls(&runtime_root(app)?, &values, &mut derived)?;

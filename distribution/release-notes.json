@@ -14,11 +14,19 @@
       {
         "title": "快捷键",
         "items": [
-          "Cmd/Ctrl + S：保存当前工程；Cmd/Ctrl + O：打开历史面板。",
-          "Cmd/Ctrl + Z：撤销；Cmd/Ctrl + Shift + Z：重做。",
-          "Backspace：删除当前选中内容；Cmd/Ctrl + A：全选；Cmd/Ctrl + D：取消选择。",
-          "Space：播放或暂停动画；F：聚焦当前选中部件或模型；G：显示或隐藏网格。",
-          "P：在透视与正交视图之间切换；← / →：切换上一个或下一个关键帧；Home：时间轴回到起点。"
+          "Cmd/Ctrl + S：保存当前工程。",
+          "Cmd/Ctrl + O：打开历史面板。",
+          "Cmd/Ctrl + Z：撤销。",
+          "Cmd/Ctrl + Shift + Z：重做。",
+          "Backspace：删除当前选中内容。",
+          "Cmd/Ctrl + A：全选。",
+          "Cmd/Ctrl + D：取消选择。",
+          "Space：播放或暂停动画。",
+          "F：聚焦当前选中部件或模型。",
+          "G：显示或隐藏网格。",
+          "P：在透视与正交视图之间切换。",
+          "← / →：切换上一个或下一个关键帧。",
+          "Home：时间轴回到起点。"
         ]
       },
       {

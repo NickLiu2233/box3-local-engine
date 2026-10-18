@@ -73,6 +73,12 @@ pub fn validate_image(value: &str) -> Result<String, String> {
 /// must follow the engine's actual platform tag and normal image acquisition.
 pub fn normalize_image(value: &str, tag: &str) -> Result<String, String> {
     let value = validate_image(value)?;
+    // The official image has no custom configuration. Treat any persisted
+    // version of this exact repository as the default so a mixed release can
+    // replace an older global tag with the service-specific tag.
+    if value.starts_with("box-local-engine-player-auth-portal:") {
+        return Ok(String::new());
+    }
     if !tag.is_empty() {
         let release = tag.strip_prefix('v').unwrap_or(tag);
         let release = release
@@ -90,13 +96,20 @@ pub fn normalize_image(value: &str, tag: &str) -> Result<String, String> {
 }
 
 pub fn image(values: &BTreeMap<String, String>, tag: &str) -> Result<String, String> {
-    let custom = normalize_image(
-        values
-            .get("BOX_AUTH_PORTAL_IMAGE")
-            .map(String::as_str)
-            .unwrap_or(""),
-        tag,
-    )?;
+    let value = values
+        .get("BOX_AUTH_PORTAL_IMAGE")
+        .map(String::as_str)
+        .unwrap_or("");
+    let mut custom = normalize_image(value, tag)?;
+    // A previous launcher may have persisted the global release tag as an
+    // explicit official image. When service images use mixed tags, recognize
+    // that legacy official value against BOX_IMAGE_TAG as well, then let the
+    // service-specific tag select the actual image.
+    if !custom.is_empty() {
+        if let Some(global_tag) = values.get("BOX_IMAGE_TAG") {
+            custom = normalize_image(value, global_tag)?;
+        }
+    }
     Ok(if custom.is_empty() {
         format!("box-local-engine-player-auth-portal:{tag}")
     } else {
@@ -189,6 +202,25 @@ mod tests {
             )
             .unwrap();
         }
+    }
+
+    #[test]
+    fn persisted_global_official_image_follows_a_mixed_service_tag() {
+        let values = BTreeMap::from([
+            ("BOX_IMAGE_TAG".into(), "v2026.1.5-linux-arm64".into()),
+            (
+                "BOX_AUTH_PORTAL_IMAGE".into(),
+                "box-local-engine-player-auth-portal:v2026.1.5-linux-arm64".into(),
+            ),
+            (
+                "BOX_AUTH_PORTAL_IMAGE_TAG".into(),
+                "v2026.1.4-linux-arm64".into(),
+            ),
+        ]);
+        assert_eq!(
+            image(&values, "v2026.1.4-linux-arm64").unwrap(),
+            "box-local-engine-player-auth-portal:v2026.1.4-linux-arm64"
+        );
     }
 
     #[test]
