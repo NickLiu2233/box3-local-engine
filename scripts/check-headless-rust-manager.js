@@ -165,6 +165,16 @@ assert.match(service, /BOX_LAN_IP/);
 assert.match(serverEnvExample, /^BOX_LAN_IP=/m);
 assert.match(serverInstall, /BOX_LAN_IP=\$lan_ip/);
 assert.match(compose, /BOX_LAN_IP: \$\{BOX_LAN_IP:-\}/);
+for (const key of [
+    'BOX_PLAYER_SERVICE_IMAGE_TAG',
+    'BOX_AUTH_PORTAL_IMAGE_TAG',
+    'BOX_SERVER_MANAGER_IMAGE_TAG',
+    'BOX_CREATOR_IMAGE_TAG',
+    'BOX_PLAY_IMAGE_TAG',
+    'BOX_VOXA_IMAGE_TAG',
+]) {
+    assert.match(compose, new RegExp(`${key}: \\$\\{${key}:-\\}`));
+}
 assert.match(serverInstall, /--remove-orphans --wait server-manager/);
 assert.match(serverEnvExample, /^BOX_DOCKER_SOCKET=\/var\/run\/docker\.sock$/m);
 assert.match(serverEnvExample, /^BOX_MANAGED_POSTGRES_MEMORY_LIMIT=512m$/m);

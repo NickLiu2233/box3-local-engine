@@ -91,7 +91,8 @@ assert.doesNotMatch(
     /box-local-engine-images-\$\{\{ env\.BOX_RELEASE_TAG \}\}-linux-\$\{\{ matrix\.architecture \}\}\.tar\.gz/,
 );
 assert.match(workflow, /REBUILD_SERVICES:/);
-assert.match(workflow, /REUSE_FROM_VERSION:/);
+assert.doesNotMatch(workflow, /REUSE_FROM_VERSION/);
+assert.match(workflow, /latest-server\.json/);
 assert.match(workflow, /Prepare per-service image cache/);
 assert.match(workflow, /merge-image-catalog\.js/);
 assert.match(workflow, /split-image-archive\.py image-updates\/source\.tar\.gz/);

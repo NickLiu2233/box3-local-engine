@@ -9,6 +9,7 @@ const yaml = require(
     require.resolve('js-yaml', { paths: [path.join(__dirname, '../tools/repo-tooling')] }),
 );
 const { mergeImageCatalog } = require('./merge-image-catalog');
+const { prepareCatalog, validateStagingCatalog } = require('./staging-build-context');
 
 const root = path.resolve(__dirname, '..');
 const workflowSource = fs.readFileSync(path.join(root, '.github/workflows/release.yml'), 'utf8');
@@ -19,7 +20,8 @@ test('release images are cached and published per service', () => {
     assert.equal(workflow.on.push.branches.includes('release/v*'), true);
     assert.equal(workflow.on.push.branches.includes('staging'), true);
     assert.match(workflowSource, /REBUILD_SERVICES:/);
-    assert.match(workflowSource, /REUSE_FROM_VERSION:/);
+    assert.doesNotMatch(workflowSource, /REUSE_FROM_VERSION/);
+    assert.match(workflowSource, /latest-server\.json/);
     assert.match(workflowSource, /Prepare per-service image cache/);
     assert.match(workflowSource, /Build and upload per-service image downloads/);
     assert.match(workflowSource, /docker compose build "\$service"/);
@@ -103,5 +105,51 @@ test('mixed service catalogs keep old entries and replace only rebuilt services'
         );
     } finally {
         fs.rmSync(directory, { recursive: true, force: true });
+    }
+});
+
+test('staging catalogs may pin unchanged services to production image tags', () => {
+    const previousSha = process.env.GITHUB_SHA;
+    process.env.GITHUB_SHA = 'c'.repeat(40);
+    try {
+        const catalog = {
+            formatVersion: 2,
+            platform: 'linux/amd64',
+            imageTag: 'v2026.1.5-staging-linux-amd64',
+            images: [
+                'creator',
+                'voxa',
+                'play',
+                'player-service',
+                'player-auth-portal',
+                'server-manager',
+            ].map((service, index) => ({
+                formatVersion: 1,
+                image: `box-local-engine-${service}`,
+                imageId: `sha256:${String(index + 1).repeat(64)}`,
+                imageIds: [`sha256:${String(index + 1).repeat(64)}`],
+                imageTag:
+                    service === 'voxa' ? 'v2026.1.5-staging-linux-amd64' : 'v2026.1.4-linux-amd64',
+                platform: 'linux/amd64',
+                sha256: String(index + 1).repeat(64),
+                size: 10,
+                archive: `box-local-engine-image-${service}-amd64-${String(index + 1).repeat(64)}.tar.gz`,
+                sourceRevision: service === 'voxa' ? process.env.GITHUB_SHA : 'old-release',
+            })),
+        };
+        const prepared = prepareCatalog(catalog, '2026.1.5', 'amd64');
+        assert.equal(prepared.channel, 'staging');
+        assert.ok(
+            prepared.images.every((image) =>
+                image.downloadBaseUrl?.includes('/local-engine-staging/'),
+            ),
+        );
+        assert.doesNotThrow(() => validateStagingCatalog(prepared, '2026.1.5', 'amd64'));
+    } finally {
+        if (previousSha === undefined) {
+            delete process.env.GITHUB_SHA;
+        } else {
+            process.env.GITHUB_SHA = previousSha;
+        }
     }
 });

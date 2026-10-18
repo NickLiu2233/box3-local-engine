@@ -18,7 +18,7 @@ export function about() {
                   (
                       service,
                   ) => `<details class="about-image-row" data-disclosure="about-image-${escapeHtml(service.name)}">
-            <summary><span class="about-image-summary"><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.platform)}</small></span><code class="about-component-version">${escapeHtml(service.tag)}</code><span class="about-disclosure-icon">${icon('chevron')}</span></summary>
+            <summary><span class="about-image-summary"><strong>${escapeHtml(service.name)}</strong><small>${escapeHtml(service.platform)}</small></span><code class="about-component-version">${escapeHtml(service.version || service.tag)}</code><span class="about-disclosure-icon">${icon('chevron')}</span></summary>
             <dl class="about-image-meta">
                 <div><dt>镜像名称</dt><dd>${escapeHtml(service.image)}</dd></div>
                 <div><dt>镜像标识</dt><dd>${escapeHtml(service.imageId)}</dd></div>
