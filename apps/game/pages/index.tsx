@@ -1095,10 +1095,6 @@ function HomePageContent({
           </div>
         )}
 
-        <footer className="playFooter">
-          <span>{t('playHome.engineDeveloper')} <strong>{t('playHome.engineDeveloperName')}</strong></span>
-          <span>{t('playHome.disclaimer')}</span>
-        </footer>
       </main>
 
       {loginOpen ? (
@@ -2715,27 +2711,6 @@ function HomePageContent({
         }
         .playWorkCenter .empty small { color: rgba(255, 255, 255, 0.5); }
         .playWorkCenter .empty .button { margin-top: 12px; }
-        .playWorkCenter .playFooter {
-          position: fixed;
-          z-index: 10;
-          bottom: 0;
-          left: 0;
-          display: flex;
-          justify-content: space-between;
-          width: 100%;
-          box-sizing: border-box;
-          gap: 18px;
-          margin: 0;
-          padding: 14px max(16px, calc((100% - 1150px) / 2));
-          border-top: 1px solid rgba(255, 255, 255, 0.1);
-          background: rgba(38, 38, 38, 0.96);
-          box-shadow: 0 -10px 28px rgba(0, 0, 0, 0.12);
-          backdrop-filter: blur(12px);
-          color: rgba(255, 255, 255, 0.4);
-          font-size: 11px;
-          line-height: 1.65;
-        }
-        .playWorkCenter .playFooter strong { color: rgba(255, 255, 255, 0.72); font-weight: 600; }
         .playWorkOverlay .dialog,
         .playWorkOverlay .progressDialog {
           border: 1px solid rgba(255, 255, 255, 0.13);
@@ -2881,12 +2856,6 @@ function HomePageContent({
           }
           .playWorkCenter .groups {
             grid-template-columns: 1fr;
-          }
-          .playWorkCenter .playFooter {
-            align-items: flex-start;
-            flex-direction: column;
-            gap: 5px;
-            padding: 10px 16px;
           }
           .mapGroup {
             padding: 14px;

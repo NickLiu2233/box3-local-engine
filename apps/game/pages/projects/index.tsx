@@ -467,12 +467,6 @@ export default function ProjectsPage({
         closeImport={() => setImportProgress(null)}
         closePublish={() => publisher.setPublishProgress(null)}
       />
-      <footer className={styles.creatorFooter}>
-        <span>
-          引擎开发：<strong>深圳奇梦岛科技有限公司</strong>
-        </span>
-        <span>本地部署服务由服主独立运营，服主应对地图内容、用户行为与数据管理负责。</span>
-      </footer>
     </main>
   );
 }
