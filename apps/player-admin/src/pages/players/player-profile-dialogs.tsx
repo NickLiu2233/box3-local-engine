@@ -27,7 +27,7 @@ export function PlayerProfileDrawer({
         <PlayerDetailDrawer
             controller={controller}
             width={620}
-            title={selected ? `管理 · ${selected.displayName || selected.username}` : '玩家详情'}
+            title={selected ? `管理 · ${selected.displayName || selected.username}` : '用户详情'}
             open={Boolean(selected)}
             onClose={close}
         >
@@ -89,7 +89,7 @@ type CreatePlayerProps = {
 
 export function CreatePlayerDialog({ form, open, close, submit }:CreatePlayerProps) {
     return (
-        <Modal title="新增玩家" open={open} onCancel={close} onOk={submit}>
+        <Modal title="新增用户" open={open} onCancel={close} onOk={submit}>
             <Form form={form} layout="vertical">
                 <Form.Item name="username" label="用户名" rules={[{ required: true }]}>
                     <Input />
@@ -109,11 +109,13 @@ type CreatorPickerProps = {
     form:FormInstance;
     open:boolean;
     candidates:Player[];
+    loading?:boolean;
+    search:(value:string) => void;
     close:() => void;
     submit:() => void;
 };
 
-export function CreatorPickerDialog({ form, open, candidates, close, submit }:CreatorPickerProps) {
+export function CreatorPickerDialog({ form, open, candidates, loading, search, close, submit }:CreatorPickerProps) {
     return (
         <Modal
             title="新增创作权限"
@@ -126,13 +128,15 @@ export function CreatorPickerDialog({ form, open, candidates, close, submit }:Cr
             <Form form={form} layout="vertical">
                 <Form.Item
                     name="subjectId"
-                    label="玩家"
-                    rules={[{ required: true, message: '请选择玩家' }]}
+                    label="用户"
+                    rules={[{ required: true, message: '请选择用户' }]}
                 >
                     <Select
                         showSearch
-                        optionFilterProp="label"
-                        placeholder="搜索并选择玩家"
+                        filterOption={false}
+                        onSearch={search}
+                        loading={loading}
+                        placeholder="搜索并选择用户"
                         options={candidates.map((player) => ({
                             value: player.subjectId,
                             label: `${player.displayName || player.username} (@${player.username})`,

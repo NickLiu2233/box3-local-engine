@@ -120,7 +120,7 @@ export function CreatorManagementPage({
                         : (player.activeCreatorTokenCount || 0) === 0,
               )
             : creatorPlayers;
-    const title = mode === 'creator-access' ? '玩家创作权限' : 'CLI Token';
+    const title = mode === 'creator-access' ? '用户创作权限' : 'CLI Token';
     return (
         <>
             <PageToolbar title={title}>
@@ -173,7 +173,7 @@ export function CreatorManagementPage({
                     })}
                     columns={[
                         {
-                            title: '玩家',
+                            title: '用户',
                             render: (_:unknown, player:Player) => (
                                 <PlayerIdentity player={player} />
                             ),
@@ -216,8 +216,8 @@ export function CreatorManagementPage({
                             <Empty
                                 description={
                                     mode === 'creator-tokens'
-                                        ? '暂无已开启创作端的玩家'
-                                        : '暂无玩家'
+                                        ? '暂无已开启创作端的用户'
+                                        : '暂无用户'
                                 }
                             />
                         ),

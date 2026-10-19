@@ -54,7 +54,7 @@ export function OverviewPage({
             <Card className="player-admin-panel player-admin-overview-card" title="快捷操作">
                 <Space>
                     <Button type="primary" onClick={() => navigate('players')}>
-                        管理玩家账号
+                        管理用户账号
                     </Button>
                     {canViewSecurity ? (
                         <Button onClick={() => navigate('security')}>查看安全记录</Button>

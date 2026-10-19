@@ -60,7 +60,7 @@ export function usePlayerDirectory(view:View, canExport:boolean) {
                 parseAs: 'blob',
             });
             if (!result.data) {
-                throw new Error(result.error?.message || '导出玩家数据失败');
+                throw new Error(result.error?.message || '导出用户数据失败');
             }
             const file = URL.createObjectURL(result.data);
             const anchor = document.createElement('a');
@@ -72,7 +72,7 @@ export function usePlayerDirectory(view:View, canExport:boolean) {
             URL.revokeObjectURL(file);
             const exported = result.response.headers.get('X-BOX-Exported-Rows') || '0';
             const totalRows = result.response.headers.get('X-BOX-Total-Rows') || exported;
-            message.success(`已导出 ${exported} / ${totalRows} 条玩家记录`);
+            message.success(`已导出 ${exported} / ${totalRows} 条用户记录`);
         });
     };
 
@@ -125,7 +125,7 @@ export function usePlayerDirectory(view:View, canExport:boolean) {
                     current ? { ...current, player: result.player } : current,
                 );
             }
-            message.success('玩家资料已保存');
+            message.success('用户资料已保存');
             await load();
         });
     };
@@ -226,7 +226,7 @@ export function usePlayerDirectory(view:View, canExport:boolean) {
             await api.deleteApiPlayAdminPlayersSubjectId({
                 params: { path: { subjectId: player.subjectId } },
             });
-            message.success('玩家身份已删除');
+            message.success('用户身份已删除');
             closeDetails();
             await load();
         });
@@ -258,7 +258,7 @@ export function usePlayerDirectory(view:View, canExport:boolean) {
     const createPlayer = async () => {
         return run(async () => {
             await api.postApiPlayAdminPlayers({ body: await createForm.validateFields() });
-            message.success('玩家账号已创建');
+            message.success('用户账号已创建');
             setCreateOpen(false);
             createForm.resetFields();
             await load();

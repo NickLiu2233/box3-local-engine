@@ -37,8 +37,8 @@ type Props = {
 };
 
 const copy = {
-    'players': { title: '玩家账号', panel: '玩家目录' },
-    'online-sessions': { title: '在线会话', panel: '当前在线玩家' },
+    'players': { title: '用户账号', panel: '用户目录' },
+    'online-sessions': { title: '在线会话', panel: '当前在线用户' },
     'account-bans': { title: '账号封禁', panel: '已封禁账号' },
 } as const;
 
@@ -74,7 +74,7 @@ export function PlayerDirectoryPage(props:Props) {
                     ) : null}
                     {props.mode === 'players' && props.canCreate ? (
                         <Button type="primary" icon={<PlusOutlined />} onClick={props.createPlayer}>
-                            新增玩家
+                            新增用户
                         </Button>
                     ) : null}
                 </Space>
@@ -124,7 +124,7 @@ export function PlayerDirectoryPage(props:Props) {
                     pagination={false}
                     locale={
                         props.mode === 'online-sessions'
-                            ? { emptyText: <Empty description="当前没有在线玩家" /> }
+                            ? { emptyText: <Empty description="当前没有在线用户" /> }
                             : undefined
                     }
                 />

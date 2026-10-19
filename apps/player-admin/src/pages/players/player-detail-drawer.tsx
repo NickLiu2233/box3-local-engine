@@ -64,7 +64,7 @@ export function PlayerDetailDrawer({
             label: '密码重置',
             children: (
                 <Card size="small">
-                    <p>重置后，该玩家所有设备会立即退出。</p>
+                    <p>重置后，该用户所有设备会立即退出。</p>
                     {c.can('passwords.reset') && !player.guest ? (
                         <Button
                             onClick={() =>
@@ -97,7 +97,7 @@ export function PlayerDetailDrawer({
                     dataSource={detail.relatedAccounts}
                     columns={[
                         {
-                            title: '玩家',
+                            title: '用户',
                             render: (_:unknown, row:Detail['relatedAccounts'][number]) =>
                                 row.displayName || row.username,
                         },

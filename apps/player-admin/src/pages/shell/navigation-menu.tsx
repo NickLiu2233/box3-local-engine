@@ -32,7 +32,7 @@ const groups:Record<MenuGroup, readonly PlayerAdminView[]> = {
 
 const labels:Record<PlayerAdminView, string> = {
     'overview': '管理概览',
-    'players': '玩家账号',
+    'players': '用户账号',
     'online-sessions': '在线会话',
     'account-bans': '账号封禁',
     'identity-bans': 'IP / 设备封禁',
@@ -50,7 +50,7 @@ const labels:Record<PlayerAdminView, string> = {
 };
 
 const groupLabels:Record<MenuGroup, string> = {
-    'player-center': '玩家管理',
+    'player-center': '用户管理',
     'security-center': '安全管理',
     'creator-center': '创作管理',
     'play-center': '游玩管理',

@@ -275,6 +275,7 @@ export function ScriptModerationPage() {
                 />
             </Card>
             <Modal
+                className="player-admin-authorization-modal"
                 title="创建地图授权"
                 centered
                 bodyStyle={{ maxHeight: 'calc(100vh - 180px)', overflowY: 'auto' }}
@@ -319,6 +320,7 @@ export function ScriptModerationPage() {
                 </Form>
             </Modal>
             <Modal
+                className="player-admin-authorization-modal"
                 title="编辑地图授权 / 续期"
                 width={680}
                 centered

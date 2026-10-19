@@ -36,7 +36,7 @@ export function activityTarget(row:Activity) {
         kind:
             (
                 {
-                    'player': '玩家 ID',
+                    'player': '用户 ID',
                     'map': '地图 ID',
                     'map-group': '地图 ID',
                     'punishment': '处罚 ID',
@@ -47,7 +47,7 @@ export function activityTarget(row:Activity) {
                     ? '地图 ID'
                     : '授权 ID'
                 : row.subjectId
-                  ? '玩家身份 ID'
+                  ? '用户身份 ID'
                   : '对象 ID'),
     };
 }

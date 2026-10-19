@@ -8,8 +8,8 @@ export type AuthorizationSettings = {
 };
 export const permissionOptions = [
     { label: '查询处罚记录与详情', value: 'moderation.view', apis: 'listBans / getBan' },
-    { label: '查询玩家状态', value: 'players.view', apis: 'getPlayerStatus' },
-    { label: '封禁玩家账号', value: 'players.ban', apis: 'banPlayer / revokeBan' },
+    { label: '查询用户状态', value: 'players.view', apis: 'getPlayerStatus' },
+    { label: '封禁用户账号', value: 'players.ban', apis: 'banPlayer / revokeBan' },
     {
         label: '封禁当前 IP / 设备',
         value: 'identity-bans.manage',

@@ -60,6 +60,7 @@ export function PlayerAdminPage() {
     const [issuedCliToken, setIssuedCliToken] = useState<{ token:string }>();
     const [creatorPickerOpen, setCreatorPickerOpen] = useState(false);
     const [creatorCandidates, setCreatorCandidates] = useState<Player[]>([]);
+    const [creatorPickerLoading, setCreatorPickerLoading] = useState(false);
     const [creatorPickerForm] = Form.useForm();
     const [selfPasswordForm] = Form.useForm();
     const [selfPasswordOpen, setSelfPasswordOpen] = useState(false);
@@ -186,13 +187,15 @@ export function PlayerAdminPage() {
             reportAdminError(error);
         }
     };
-    const openCreatorPicker = async () => {
+    const loadCreatorCandidates = async (search = '') => {
+        setCreatorPickerLoading(true);
         try {
             const result = await api.getApiPlayAdminPlayers({
                 params: {
                     query: {
                         page: '1',
                         pageSize: '100',
+                        search,
                         identity: 'all',
                         online: 'all',
                         sort: 'displayName',
@@ -200,11 +203,16 @@ export function PlayerAdminPage() {
                 },
             });
             setCreatorCandidates(result.players || []);
-            creatorPickerForm.resetFields();
-            setCreatorPickerOpen(true);
         } catch (error) {
             reportAdminError(error);
+        } finally {
+            setCreatorPickerLoading(false);
         }
+    };
+    const openCreatorPicker = async () => {
+        creatorPickerForm.resetFields();
+        setCreatorPickerOpen(true);
+        await loadCreatorCandidates();
     };
     const selectCreatorCandidate = async () => {
         try {
@@ -463,6 +471,8 @@ export function PlayerAdminPage() {
                 form={creatorPickerForm}
                 open={creatorPickerOpen}
                 candidates={creatorCandidates}
+                loading={creatorPickerLoading}
+                search={(value) => void loadCreatorCandidates(value)}
                 close={() => setCreatorPickerOpen(false)}
                 submit={() => void selectCreatorCandidate()}
             />

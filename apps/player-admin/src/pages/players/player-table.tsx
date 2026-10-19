@@ -47,13 +47,13 @@ export function PlayerTable({
             {ids.length ? (
                 <div className="player-admin-batchbar">
                     <span>
-                        已选择 <strong>{ids.length}</strong> 个玩家
+                        已选择 <strong>{ids.length}</strong> 个用户
                     </span>
                     <Space>
                         <Button
                             onClick={() =>
                                 confirmAdminAction({
-                                    title: `确定让 ${ids.length} 个玩家全部下线？`,
+                                    title: `确定让 ${ids.length} 个用户全部下线？`,
                                     okText: '确认下线',
                                     onOk: () => batchPlayers('revoke-sessions', ids),
                                 })
@@ -65,7 +65,7 @@ export function PlayerTable({
                             danger
                             onClick={() =>
                                 confirmAdminAction({
-                                    title: `确定封禁 ${ids.length} 个玩家？`,
+                                    title: `确定封禁 ${ids.length} 个用户？`,
                                     okText: '确认封禁',
                                     okButtonProps: { danger: true },
                                     onOk: () => batchPlayers('ban', ids),
@@ -77,7 +77,7 @@ export function PlayerTable({
                         <Button
                             onClick={() =>
                                 confirmAdminAction({
-                                    title: `确定解除 ${ids.length} 个玩家的封禁？`,
+                                    title: `确定解除 ${ids.length} 个用户的封禁？`,
                                     okText: '确认解除',
                                     onOk: () => batchPlayers('unban', ids),
                                 })

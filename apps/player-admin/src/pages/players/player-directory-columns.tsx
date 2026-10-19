@@ -18,7 +18,7 @@ type Options = {
 export function playerDirectoryColumns(options:Options):ColumnsType<Player> {
     return [
         {
-            title: '玩家',
+            title: '用户',
             render: (_, player) => <PlayerIdentity player={player} />,
         },
         {
@@ -82,7 +82,7 @@ export function playerDirectoryColumns(options:Options):ColumnsType<Player> {
                                               confirmAdminAction({
                                                   title: `删除身份 · ${player.displayName || player.username}`,
                                                   content:
-                                                      '将永久删除该玩家的资料、角色、处罚记录和全部会话，且无法恢复。',
+                                                      '将永久删除该用户的资料、角色、处罚记录和全部会话，且无法恢复。',
                                                   okText: '永久删除',
                                                   cancelText: '取消',
                                                   okButtonProps: { danger: true },

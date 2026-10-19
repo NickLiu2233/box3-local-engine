@@ -240,12 +240,17 @@
         display: flex;
         flex-wrap: wrap;
         align-items: baseline;
+        min-width: 0;
         gap: 4px 12px;
     }
     small {
         font-size: 12px;
         overflow-wrap: anywhere;
     }
+}
+
+.player-admin-authorization-modal .ant-modal-body {
+    overflow-x: hidden;
 }
 
 .player-admin-map-dropdown {

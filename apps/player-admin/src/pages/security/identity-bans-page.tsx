@@ -41,7 +41,7 @@ export function IdentityBansPage(props:Props) {
                         <Input
                             prefix={<SearchOutlined />}
                             allowClear
-                            placeholder="搜索 IP、设备标识、原因或玩家"
+                            placeholder="搜索 IP、设备标识、原因或用户"
                             value={props.search}
                             onChange={(event) => {
                                 props.setSearch(event.target.value);
@@ -83,7 +83,7 @@ export function IdentityBansPage(props:Props) {
                         { title: '对象', dataIndex: 'displayValue' },
                         { title: '原因', dataIndex: 'reason', render: (value) => value || '—' },
                         {
-                            title: '来源玩家',
+                            title: '来源用户',
                             render: (_, row) => (
                                 <>
                                     {row.sourceDisplayName}

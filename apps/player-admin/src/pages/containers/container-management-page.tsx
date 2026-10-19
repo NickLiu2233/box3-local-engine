@@ -72,10 +72,10 @@ export function ContainerManagementPage({ mode, canManage }:Props) {
                       : '销毁地图运行时',
             content:
                 action === 'restart'
-                    ? `地图“${map.name}”会先停止再重新启动，当前玩家会断开连接。`
+                    ? `地图“${map.name}”会先停止再重新启动，当前用户会断开连接。`
                     : roomId
-                      ? `房间“${roomId}”中的玩家会断开连接。`
-                      : `地图“${map.name}”当前的运行时会停止，玩家会断开连接。`,
+                      ? `房间“${roomId}”中的用户会断开连接。`
+                      : `地图“${map.name}”当前的运行时会停止，用户会断开连接。`,
             okText: action === 'restart' ? '确认重启' : '确认销毁',
             cancelText: '取消',
             okButtonProps: action === 'destroy' ? { danger: true } : undefined,
