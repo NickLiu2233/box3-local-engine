@@ -57,6 +57,20 @@ export function canAccessVoxaModels(
     && required.some((item) => permissions.includes(item));
 }
 
+function canAccessVoxaCli(
+  identity: RuntimeIdentity & { creatorCliPermissions?: unknown },
+  capability: VoxaCreatorCapability | readonly VoxaCreatorCapability[],
+) {
+  const required = Array.isArray(capability) ? capability : [capability];
+  const permissions = Array.isArray(identity.creatorCliPermissions)
+    ? identity.creatorCliPermissions.map(String)
+    : [];
+  const requiredCli = required.map((item) =>
+    item === 'projects.edit' ? 'voxa.project.edit' : 'voxa.project.export',
+  );
+  return Boolean(identity.creatorAccess) && requiredCli.some((item) => permissions.includes(item));
+}
+
 /**
  * Game runtimes use the shared deployment secret for the two internal model
  * creation paths. Browser writes must instead carry a real player session
@@ -86,6 +100,9 @@ export async function resolveVoxaModelAccess(
   }
 
   try {
+    const cliAuthorization = Array.isArray(req.headers.authorization)
+      ? req.headers.authorization[0]
+      : req.headers.authorization;
     const response = await fetch(`${serviceURL}/api/player-internal/runtime-identity`, {
       method: 'POST',
       headers: {
@@ -94,6 +111,9 @@ export async function resolveVoxaModelAccess(
         'X-Box-Player-IP': req.socket.remoteAddress || '',
         'X-Box-Player-Proto': requestProtocol(req),
         'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
+        ...(cliAuthorization?.startsWith('Bearer ')
+          ? { 'X-Box-Creator-Authorization': cliAuthorization }
+          : {}),
       },
       cache: 'no-store',
       signal: AbortSignal.timeout(10_000),
@@ -106,7 +126,11 @@ export async function resolveVoxaModelAccess(
     if (!response.ok) {
       return 'unavailable';
     }
-    return canAccessVoxaModels(data.identity || {}, capability) ? 'allowed' : 'denied';
+    const identity = (data.identity || {}) as RuntimeIdentity & { creatorCliPermissions?: unknown };
+    const isCli = Boolean(cliAuthorization?.startsWith('Bearer '));
+    return (isCli ? canAccessVoxaCli(identity, capability) : canAccessVoxaModels(identity, capability))
+      ? 'allowed'
+      : 'denied';
   } catch {
     return 'unavailable';
   }
