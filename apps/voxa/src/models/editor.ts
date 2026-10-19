@@ -78,6 +78,7 @@ import {
 import { VoxaProfiler } from './profiler';
 import { getMotionBoneIds } from './animator-app/motion-manager/util';
 import { LocateKeyframeType } from './motion-player/const';
+import { HitBoxMode } from '@box/voxa-project';
 
 export type VoxelEditorOptions = {
   regl: Regl;
@@ -413,6 +414,96 @@ export class VoxelEditor {
     this.history.saveAction({ action: setEditingVoxelId(undefined) });
     this.history.unsetGroup();
   };
+
+  public automationCreatePart(name?: string) {
+    const node = this.animatorApp.nodeManager.addSkinPart({ toRename: false, toSetActive: false });
+    const id = node.uuid;
+    if (name) this.animatorApp.renameNode(id, name.slice(0, 64));
+    const nodeData = store.getState().animator.hierarchyData[id];
+    return { nodeId: id, voxelId: (nodeData as { voxelId?: string } | undefined)?.voxelId || '' };
+  }
+
+  public automationTransform(nodeId: string, position?: [number, number, number], rotation?: [number, number, number], scale?: [number, number, number]) {
+    this.animatorApp.nodeManager.setActiveIds([nodeId], false);
+    this.animatorApp.toMode(AnimatorMode.Setup);
+    if (position) this.animatorApp.nodeManager.transform.updateSkinPartsPosition('local', position as any);
+    if (rotation) this.animatorApp.nodeManager.transform.updateSkinPartsRotation('local', rotation as any);
+    if (scale) this.animatorApp.nodeManager.transform.updateNodesScale(scale as any);
+    return { nodeId };
+  }
+
+  public automationFill(voxelId: string, min: [number, number, number], max: [number, number, number], value: number) {
+    return this.automationEditVoxel(voxelId, () => this.voxelApp.automationFillRegion(voxelId, min, max, value));
+  }
+
+  public automationMirror(voxelId: string, axis: 0 | 1 | 2) {
+    return this.automationEditVoxel(voxelId, () => this.voxelApp.automationMirror(voxelId, axis));
+  }
+
+  private automationEditVoxel<T>(voxelId: string, edit: () => T): T {
+    const state = store.getState();
+    const node = Object.values(state.animator.hierarchyData).find(item => item.type === ProjectNodeType.SkinPart && item.voxelId === voxelId);
+    if (!node) throw new Error(`体素部件不存在：${voxelId}`);
+    const previous = state.app.mode === AppMode.Voxel ? state.app.editingSkinPartId : undefined;
+    if (state.app.mode === AppMode.Voxel) this.switchToAnimator();
+    // Mesh baking and persistence use editingVoxelId. Enter the real editor
+    // path so writes update the requested part even from animation mode.
+    this.switchToVoxel(node.id);
+    try {
+      return edit();
+    } finally {
+      this.switchToAnimator();
+      if (previous) this.switchToVoxel(previous);
+    }
+  }
+
+  public automationCollision(mode: 'default' | 'custom', position?: [number, number, number], size?: [number, number, number]) {
+    this.animatorApp.toMode(AnimatorMode.HitBox);
+    this.animatorApp.hitBoxManager.setHitBoxMode(mode === 'custom' ? HitBoxMode.Custom : HitBoxMode.Default);
+    if (mode === 'custom') {
+      if (position) this.animatorApp.hitBoxManager.updatePosition(position as any);
+      if (size) this.animatorApp.hitBoxManager.updateSize(size as any);
+    }
+    return { mode, position, size };
+  }
+
+  public automationAnimation(motionId: string | undefined, nodeIds: string[], time = 0) {
+    const id = motionId || this.animatorApp.automationCreateAnimation();
+    if (!id) throw new Error('无法创建 VOXA 动画');
+    return this.animatorApp.automationAddKeyframe(id, nodeIds, time);
+  }
+
+  public automationPreview(motionId: string, time = 0, playing = false) {
+    const motion = store.getState().animator.motionData.motions[motionId];
+    if (!motion) throw new Error('动画不存在');
+    this.motionPlayer.pause();
+    this.animatorApp.setMode(AnimatorMode.Motion);
+    this.animatorApp.motionManager.selectMotion(motionId);
+    store.dispatch(setCurrentTime(time));
+    this.animatorApp.motionManager.poseAtTime(time);
+    this.animatorApp.nodeManager.setActiveIds([], false);
+    this.animatorApp.nodeManager.transform.setTransformControlsVisible(false);
+    const duration = this.motionPlayer.getMotionDuration(motionId);
+    if (playing) {
+      this.motionPlayer.setLoopSchedule([0, duration]);
+      this.motionPlayer.play();
+    }
+    return { motionId, time, duration, playing };
+  }
+
+  public automationView(position?: [number, number, number], target?: [number, number, number]) {
+    this.animatorApp.nodeManager.setActiveIds([], false);
+    this.animatorApp.toggleBoxes(false);
+    this.animatorApp.toggleSkeleton(false);
+    this.animatorApp.toggleGrid(false);
+    const camera = this.stage.getCamera();
+    if (position) camera.setPosition(position as any);
+    if (target) {
+      camera.lookAt(target as any);
+      target.forEach((value, axis) => { this.stage.orbitControls.target[axis] = value; });
+    }
+    this.stage.orbitControls.reset();
+  }
 
   /**
    * 中断操作，暂存编辑状态，以便获取正确的部件数据

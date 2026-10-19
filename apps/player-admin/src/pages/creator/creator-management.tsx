@@ -162,7 +162,12 @@ export function CreatorManagementPage({
                     rowKey="subjectId"
                     pagination={{
                         current: c?.page,
-                        total: mode === 'creator-tokens' ? rows.length : c?.total,
+                        // `players` is the directory page, while this view only
+                        // shows users with creator access. The directory total
+                        // counts every user and makes Ant Design render pages
+                        // that do not exist (for example 3 creators showing 9
+                        // pages). Use the filtered rows for this compact view.
+                        total: rows.length,
                         pageSize: c?.pageSize,
                         ...adminPaginationDefaults,
                         onChange: (next) => c?.setPage(next),

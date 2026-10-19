@@ -4068,6 +4068,582 @@
         ]
       }
     },
+    "/api/local/ai/session": {
+      "get": {
+        "operationId": "getApiLocalAiSession",
+        "summary": "查询当前会话",
+        "description": "此操作用于“查询当前会话”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "description": "Creator 工程 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询当前会话”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      },
+      "post": {
+        "operationId": "postApiLocalAiSession",
+        "summary": "创建当前会话",
+        "description": "此操作用于“创建当前会话”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "description": "Creator 工程 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“创建当前会话”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“创建当前会话”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteApiLocalAiSession",
+        "summary": "删除当前会话",
+        "description": "此操作用于“删除当前会话”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作会删除资源或停止对应运行实例，请先确认目标标识。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "query",
+            "required": false,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "description": "Creator 工程 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“删除当前会话”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“删除当前会话”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      }
+    },
+    "/api/local/ai/session/{id}": {
+      "delete": {
+        "operationId": "deleteApiLocalAiSessionId",
+        "summary": "删除接口数据",
+        "description": "此操作用于“删除接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作会删除资源或停止对应运行实例，请先确认目标标识。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“删除接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“删除接口数据”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      }
+    },
+    "/api/local/ai/session/{id}/commands": {
+      "get": {
+        "operationId": "getApiLocalAiSessionIdCommands",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "接口参数：cursor。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      },
+      "post": {
+        "operationId": "postApiLocalAiSessionIdCommands",
+        "summary": "执行接口数据操作",
+        "description": "此操作用于“执行接口数据操作”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "description": "接口参数：cursor。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“执行接口数据操作”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“执行接口数据操作”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      }
+    },
+    "/api/local/ai/session/{id}/commands/{requestId}": {
+      "get": {
+        "operationId": "getApiLocalAiSessionIdCommandsRequestId",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "description": "场景操作请求 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      },
+      "post": {
+        "operationId": "postApiLocalAiSessionIdCommandsRequestId",
+        "summary": "执行接口数据操作",
+        "description": "此操作用于“执行接口数据操作”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "requestId",
+            "in": "path",
+            "required": true,
+            "description": "场景操作请求 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“执行接口数据操作”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“执行接口数据操作”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      }
+    },
+    "/api/local/ai/socket": {
+      "post": {
+        "operationId": "postApiLocalAiSocket",
+        "summary": "创建接口数据",
+        "description": "此操作用于“创建接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "VOXA"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "voxa"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“创建接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“创建接口数据”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "voxa"
+        ]
+      }
+    },
     "/api/local/blob": {
       "post": {
         "operationId": "postApiLocalBlob",
@@ -15077,6 +15653,50 @@
       ],
       "service": "voxa",
       "source": "apps/voxa/pages/api/health-check.ts"
+    },
+    {
+      "path": "/api/local/ai/session/{id}/commands/{requestId}",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "service": "voxa",
+      "source": "apps/voxa/pages/api/local/ai/session/[id]/commands/[requestId].ts"
+    },
+    {
+      "path": "/api/local/ai/session/{id}/commands",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "service": "voxa",
+      "source": "apps/voxa/pages/api/local/ai/session/[id]/commands.ts"
+    },
+    {
+      "path": "/api/local/ai/session/{id}",
+      "methods": [
+        "DELETE"
+      ],
+      "service": "voxa",
+      "source": "apps/voxa/pages/api/local/ai/session/[id].ts"
+    },
+    {
+      "path": "/api/local/ai/session",
+      "methods": [
+        "GET",
+        "POST",
+        "DELETE"
+      ],
+      "service": "voxa",
+      "source": "apps/voxa/pages/api/local/ai/session.ts"
+    },
+    {
+      "path": "/api/local/ai/socket",
+      "methods": [
+        "POST"
+      ],
+      "service": "voxa",
+      "source": "apps/voxa/pages/api/local/ai/socket.ts"
     },
     {
       "path": "/api/local/blob",

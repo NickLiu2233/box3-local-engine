@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   if (!cors(req, res)) return res.status(403).end('仅允许本机访问');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method === 'GET') {
-    if (!await requireVoxaModelAccess(req, res, ['projects.edit', 'models.manage'])) return;
+    if (!await requireVoxaModelAccess(req, res, ['projects.read', 'projects.edit', 'models.manage'])) return;
     const modelType = req.query.modelType === undefined
       ? undefined
       : Number(Array.isArray(req.query.modelType) ? req.query.modelType[0] : req.query.modelType);

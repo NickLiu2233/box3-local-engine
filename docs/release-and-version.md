@@ -113,3 +113,23 @@ git push -u origin player-release/v2026.1.3
 | 正式 Linux 包补打    | [package-server.yml](../.github/workflows/package-server.yml)，复用正式应用镜像 |
 
 玩家签名与平台验收见[玩家发布说明](../apps/player-launcher/docs/release.md)，详细手动测试见[检查与测试](testing.md)。
+
+## VOXA Web 部署验收
+
+部署后使用实际浏览器入口检查页面资源，不能只依赖 `/api/health-check`：
+
+```sh
+node scripts/check-voxa-web-deployment.js https://example.com/voxa/
+```
+
+此检查会验证页面引用的 JS/CSS 使用正确的服务前缀、返回 200 且类型正确。若健康检查通过但编辑器白屏，核对运行的 standalone 入口是否已注入 `@box/deployment-routing/standalone`，以及 `.next/static` 和 `public` 是否位于该入口同级目录。仅复制 Next 的 standalone 输出不会包含这两项目录；Dockerfile 已包含完整的复制和注入步骤。
+
+由管理器生成的子路径部署还需使用对应的 `.runtime.env` 和 `.runtime-compose.yml`，否则容器可能使用空的 `BOX_APP_BASE_PATH`。更新 CLI 授权项时，同时构建并发布 player-admin 前端和 Player Service 后端，并在浏览器确认权限面板；后端接口更新不会替换旧的后台静态文件。部署修复应写入镜像，避免容器重建后丢失。
+
+VOXA 自动化使用 `/api/local/ai/socket`：编辑器和 CLI 各进行一次 POST 鉴权，再连接同路径的 WebSocket。反向代理需转发 Upgrade；健康连接通过 WebSocket 推送会话、命令和结果，不应持续出现 `session?projectId=…` 或命令结果的 HTTP GET。内部 WebSocket 服务仅监听容器回环地址，默认端口 9969，无需公开该端口。
+
+用专用测试工程执行填充、保存和导出后，可检查导出文件是否包含实际几何数据，捕获“命令成功但模型为空”的回归：
+
+```sh
+node scripts/check-voxa-project-geometry.js /path/to/filled-fixture.voxaproject
+```

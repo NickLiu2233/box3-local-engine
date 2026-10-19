@@ -34,6 +34,7 @@ import { isMobile } from './utils/devices';
 import { clientConfig } from './config/client';
 import { ProfilePanel } from './views/profile-panel';
 import { useFloatMenu } from './views/float-menu';
+import { useVoxaAiControl } from './automation/use-voxa-ai-control';
 
 // motion面板默认高度
 const MOTION_DEFAULT_HEIGHT = 197;
@@ -57,6 +58,7 @@ export default function VoxelBuilderContainer() {
   const { editParts } = useAppSelector((state) => state.permission);
 
   const intl = useIntl();
+  const { locked: aiLocked } = useVoxaAiControl(editor);
 
   const { setRetry } = useContext(RootContext);
 
@@ -305,6 +307,24 @@ export default function VoxelBuilderContainer() {
         onDrop={onDrop}
         ref={containerRef}
       >
+        {aiLocked && (
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'center',
+              paddingTop: 12,
+              color: '#fff',
+              background: 'rgba(10, 14, 24, 0.12)',
+              cursor: 'wait',
+            }}
+          >
+            CLI 正在操作模型，当前编辑已锁定
+          </div>
+        )}
         <div className={styles.canvasContainer}>
           <canvas ref={canvas} />
           {profilePanel}

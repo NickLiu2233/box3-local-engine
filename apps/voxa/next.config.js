@@ -21,6 +21,13 @@ const nextConfig = {
   // renderer's frame loop still holds it and produces `Vertex buffer is null`.
   // Keep the production safety check while avoiding the dev-only double mount.
   reactStrictMode: process.env.NODE_ENV === 'production',
+  async rewrites() {
+    return { beforeFiles: [{
+      source: '/api/local/ai/socket',
+      has: [{ type: 'header', key: 'upgrade', value: 'websocket' }],
+      destination: `http://127.0.0.1:${process.env.BOX_VOXA_SOCKET_PORT || 9969}/api/local/ai/socket`,
+    }] };
+  },
   headers() {
     return [
       {

@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import {
   canAccessVoxaModels,
+  canAccessVoxaCli,
   canManageVoxaModels,
   requireVoxaModelAccess,
   resolveVoxaModelManagement,
@@ -16,7 +17,7 @@ for (const [relativePath, guard] of [
   ['blobs/[hash].ts', 'requireVoxaModelAccess'],
   ['default-skin.ts', 'requireVoxaModelAccess'],
   ['models/[id]/snapshots.ts', 'requireVoxaModelManagement'],
-  ['models/[id]/export.ts', 'requireVoxaModelManagement'],
+  ['models/[id]/export.ts', 'requireVoxaModelAccess'],
 ] as const) {
   assert.match(
     fs.readFileSync(path.join(routeRoot, relativePath), 'utf8'),
@@ -43,7 +44,7 @@ assert.equal(
 assert.equal(
   canAccessVoxaModels(
     { creatorAccess: true, creatorPermissions: ['projects.edit'] },
-    ['projects.edit', 'models.manage'],
+    ['projects.read', 'projects.edit', 'models.manage'],
   ),
   true,
   'map editors may read model assets without receiving model-management rights',
@@ -55,6 +56,38 @@ assert.equal(
   ),
   false,
   'capability strings are invalid without current creator access',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.read'] },
+    'projects.read',
+  ),
+  true,
+  'the read scope must authorize VOXA model listing and details',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.read'] },
+    'projects.edit',
+  ),
+  false,
+  'the read scope must not authorize editor control',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.export'] },
+    'models.manage',
+  ),
+  true,
+  'the export scope must authorize server project exchange',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.scene.capture'] },
+    'scene.capture',
+  ),
+  true,
+  'the scene scope must authorize screenshot sessions',
 );
 
 async function main() {

@@ -153,6 +153,44 @@ export class VoxelManager {
     return newModel;
   }
 
+  /** Applies a bounded palette edit for automation and editor integrations. */
+  public fillRegion(voxelId: string, min: SerializedVec3, max: SerializedVec3, value: number) {
+    const model = this.map.get(voxelId) || this.loadModel(voxelId);
+    if (!model) throw new Error(`体素模型不存在：${voxelId}`);
+    // applyVoxels releases the previous destination; do not pass its own
+    // backing buffer back as the replacement.
+    const voxels = cloneVoxels(model.voxelView);
+    const shape = voxels.shape;
+    const start = min.map((item, axis) => Math.max(0, Math.floor(Math.min(item, max[axis])))) as SerializedVec3;
+    const end = max.map((item, axis) => Math.min(shape[axis] - 1, Math.floor(Math.max(item, min[axis])))) as SerializedVec3;
+    const color = Math.max(0, Math.floor(value));
+    for (let x = start[0]; x <= end[0]; x += 1) {
+      for (let y = start[1]; y <= end[1]; y += 1) {
+        for (let z = start[2]; z <= end[2]; z += 1) voxels.setVoxel(x, y, z, color);
+      }
+    }
+    this.applyVoxels([voxels], model.dimension);
+    return { voxelId, min: start, max: end, value: color };
+  }
+
+  public mirror(voxelId: string, axis: 0 | 1 | 2) {
+    const model = this.map.get(voxelId) || this.loadModel(voxelId);
+    const source = model.voxelView;
+    const voxels = cloneVoxels(source);
+    const shape = source.shape;
+    for (let x = 0; x < shape[0]; x += 1) {
+      for (let y = 0; y < shape[1]; y += 1) {
+        for (let z = 0; z < shape[2]; z += 1) {
+          const sourcePosition: [number, number, number] = [x, y, z];
+          sourcePosition[axis] = shape[axis] - 1 - sourcePosition[axis];
+          voxels.setVoxel(x, y, z, source.getVoxel(sourcePosition[0], sourcePosition[1], sourcePosition[2]));
+        }
+      }
+    }
+    this.applyVoxels([voxels], model.dimension);
+    return { voxelId, axis };
+  }
+
   private createModel(
     newId: string,
     voxelView: VoxelView,

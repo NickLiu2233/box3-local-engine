@@ -429,6 +429,20 @@ export class VoxelApp {
     this.pointer.update();
   };
 
+  public automationFillRegion(voxelId: string, min: SerializedVec3, max: SerializedVec3, value: number) {
+    const result = this.voxelManager.fillRegion(voxelId, min, max, value);
+    this.models.destination.bakeData();
+    this.voxelManager.updateEditingVoxel();
+    return result;
+  }
+
+  public automationMirror(voxelId: string, axis: 0 | 1 | 2) {
+    const result = this.voxelManager.mirror(voxelId, axis);
+    this.models.destination.bakeData();
+    this.voxelManager.updateEditingVoxel();
+    return result;
+  }
+
   /**
    * 销毁editor
    * - 解除内部对全局事件的监听

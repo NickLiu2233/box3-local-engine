@@ -23,6 +23,7 @@ import {
   setPivotMode,
 } from '../../redux/animator-slice';
 import { store } from '../../redux/store';
+import { setCurrentTime } from '../../redux/app-slice';
 
 import { Scene } from '../rendering/objects/scene';
 import { Box3 } from '../rendering/math/box3';
@@ -483,6 +484,18 @@ export class AnimatorApp {
     this.history.saveAction({
       action: renameHierarchyNode({ id, newName }),
     });
+  }
+
+  public automationCreateAnimation() {
+    return this.motionManager.addMotion()?.id;
+  }
+
+  public automationAddKeyframe(motionId: string, nodeIds: string[], time = 0) {
+    this.motionManager.selectMotion(motionId);
+    store.dispatch(setCurrentTime(time));
+    this.toMode(AnimatorMode.Motion);
+    this.motionManager.addKeyframe(nodeIds);
+    return { motionId, nodeIds, time };
   }
 
   /**

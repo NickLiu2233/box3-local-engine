@@ -4,7 +4,7 @@ import { getModelMetaData, migrateProject, projectSchemaToBytes } from '@box/vox
 import { saveModel, storeBlob } from '../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../server/local-cors';
 import { readModelProjectBundle } from '../../../../server/local-voxa-project-bundle';
-import { requireVoxaModelManagement } from '../../../../server/model-management-access';
+import { requireVoxaModelAccess } from '../../../../server/model-management-access';
 
 export const config = { api: { bodyParser: false, responseLimit: false } };
 
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).end();
-  if (!await requireVoxaModelManagement(req, res)) return;
+  if (!await requireVoxaModelAccess(req, res, ['projects.export', 'models.manage'])) return;
 
   try {
     const body = await readBody(req);

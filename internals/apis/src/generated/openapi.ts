@@ -1036,6 +1036,122 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/local/ai/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询当前会话
+         * @description 此操作用于“查询当前会话”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        get: operations["getApiLocalAiSession"];
+        put?: never;
+        /**
+         * 创建当前会话
+         * @description 此操作用于“创建当前会话”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiLocalAiSession"];
+        /**
+         * 删除当前会话
+         * @description 此操作用于“删除当前会话”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作会删除资源或停止对应运行实例，请先确认目标标识。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        delete: operations["deleteApiLocalAiSession"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/local/ai/session/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 删除接口数据
+         * @description 此操作用于“删除接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作会删除资源或停止对应运行实例，请先确认目标标识。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        delete: operations["deleteApiLocalAiSessionId"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/local/ai/session/{id}/commands": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询接口数据
+         * @description 此操作用于“查询接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        get: operations["getApiLocalAiSessionIdCommands"];
+        put?: never;
+        /**
+         * 执行接口数据操作
+         * @description 此操作用于“执行接口数据操作”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiLocalAiSessionIdCommands"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/local/ai/session/{id}/commands/{requestId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询接口数据
+         * @description 此操作用于“查询接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        get: operations["getApiLocalAiSessionIdCommandsRequestId"];
+        put?: never;
+        /**
+         * 执行接口数据操作
+         * @description 此操作用于“执行接口数据操作”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiLocalAiSessionIdCommandsRequestId"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/local/ai/socket": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 创建接口数据
+         * @description 此操作用于“创建接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiLocalAiSocket"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/local/blob": {
         parameters: {
             query?: never;
@@ -5662,6 +5778,367 @@ export interface operations {
         };
         responses: {
             /** @description 操作成功，返回“导入 Creator 工程”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getApiLocalAiSession: {
+        parameters: {
+            query?: {
+                /** @description 目标资源 ID。 */
+                id?: string;
+                /** @description Creator 工程 ID。 */
+                projectId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 操作成功，返回“查询当前会话”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiLocalAiSession: {
+        parameters: {
+            query?: {
+                /** @description 目标资源 ID。 */
+                id?: string;
+                /** @description Creator 工程 ID。 */
+                projectId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“创建当前会话”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“创建当前会话”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteApiLocalAiSession: {
+        parameters: {
+            query?: {
+                /** @description 目标资源 ID。 */
+                id?: string;
+                /** @description Creator 工程 ID。 */
+                projectId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“删除当前会话”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“删除当前会话”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteApiLocalAiSessionId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description 执行“删除接口数据”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“删除接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getApiLocalAiSessionIdCommands: {
+        parameters: {
+            query?: {
+                /** @description 接口参数：cursor。 */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 操作成功，返回“查询接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiLocalAiSessionIdCommands: {
+        parameters: {
+            query?: {
+                /** @description 接口参数：cursor。 */
+                cursor?: string;
+            };
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description 执行“执行接口数据操作”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“执行接口数据操作”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getApiLocalAiSessionIdCommandsRequestId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+                /** @description 场景操作请求 ID。 */
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 操作成功，返回“查询接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiLocalAiSessionIdCommandsRequestId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+                /** @description 场景操作请求 ID。 */
+                requestId: string;
+            };
+            cookie?: never;
+        };
+        /** @description 执行“执行接口数据操作”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“执行接口数据操作”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiLocalAiSocket: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“创建接口数据”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“创建接口数据”的处理结果。 */
             200: {
                 headers: {
                     [name: string]: unknown;

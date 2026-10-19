@@ -27,6 +27,14 @@ export const apiOperations = {
     "path": "/api/creator/v1/projects/{projectId}/storage/{scope}/{space}",
     "method": "DELETE"
   },
+  "deleteApiLocalAiSession": {
+    "path": "/api/local/ai/session",
+    "method": "DELETE"
+  },
+  "deleteApiLocalAiSessionId": {
+    "path": "/api/local/ai/session/{id}",
+    "method": "DELETE"
+  },
   "deleteApiLocalModelsId": {
     "path": "/api/local/models/{id}",
     "method": "DELETE"
@@ -169,6 +177,18 @@ export const apiOperations = {
   },
   "getApiHealthCheck": {
     "path": "/api/health-check",
+    "method": "GET"
+  },
+  "getApiLocalAiSession": {
+    "path": "/api/local/ai/session",
+    "method": "GET"
+  },
+  "getApiLocalAiSessionIdCommands": {
+    "path": "/api/local/ai/session/{id}/commands",
+    "method": "GET"
+  },
+  "getApiLocalAiSessionIdCommandsRequestId": {
+    "path": "/api/local/ai/session/{id}/commands/{requestId}",
     "method": "GET"
   },
   "getApiLocalBlobsHash": {
@@ -523,6 +543,22 @@ export const apiOperations = {
     "path": "/api/creator/v1/projects/{projectId}/scene/session",
     "method": "POST"
   },
+  "postApiLocalAiSession": {
+    "path": "/api/local/ai/session",
+    "method": "POST"
+  },
+  "postApiLocalAiSessionIdCommands": {
+    "path": "/api/local/ai/session/{id}/commands",
+    "method": "POST"
+  },
+  "postApiLocalAiSessionIdCommandsRequestId": {
+    "path": "/api/local/ai/session/{id}/commands/{requestId}",
+    "method": "POST"
+  },
+  "postApiLocalAiSocket": {
+    "path": "/api/local/ai/socket",
+    "method": "POST"
+  },
   "postApiLocalBlob": {
     "path": "/api/local/blob",
     "method": "POST"
@@ -869,6 +905,30 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/creator/v1/projects/{projectId}/storage/{scope}/{space}"]["DELETE"]>
   ) {
     return this.unwrap(this.deleteApiCreatorV1ProjectsProjectIdStorageScopeSpaceRaw(...init));
+  }
+
+  deleteApiLocalAiSessionRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session"]["DELETE"]>
+  ) {
+    return this.paths["/api/local/ai/session"].DELETE(...init);
+  }
+
+  deleteApiLocalAiSession(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session"]["DELETE"]>
+  ) {
+    return this.unwrap(this.deleteApiLocalAiSessionRaw(...init));
+  }
+
+  deleteApiLocalAiSessionIdRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}"]["DELETE"]>
+  ) {
+    return this.paths["/api/local/ai/session/{id}"].DELETE(...init);
+  }
+
+  deleteApiLocalAiSessionId(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}"]["DELETE"]>
+  ) {
+    return this.unwrap(this.deleteApiLocalAiSessionIdRaw(...init));
   }
 
   deleteApiLocalModelsIdRaw(
@@ -1301,6 +1361,42 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/health-check"]["GET"]>
   ) {
     return this.unwrap(this.getApiHealthCheckRaw(...init));
+  }
+
+  getApiLocalAiSessionRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session"]["GET"]>
+  ) {
+    return this.paths["/api/local/ai/session"].GET(...init);
+  }
+
+  getApiLocalAiSession(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiLocalAiSessionRaw(...init));
+  }
+
+  getApiLocalAiSessionIdCommandsRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands"]["GET"]>
+  ) {
+    return this.paths["/api/local/ai/session/{id}/commands"].GET(...init);
+  }
+
+  getApiLocalAiSessionIdCommands(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiLocalAiSessionIdCommandsRaw(...init));
+  }
+
+  getApiLocalAiSessionIdCommandsRequestIdRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands/{requestId}"]["GET"]>
+  ) {
+    return this.paths["/api/local/ai/session/{id}/commands/{requestId}"].GET(...init);
+  }
+
+  getApiLocalAiSessionIdCommandsRequestId(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands/{requestId}"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiLocalAiSessionIdCommandsRequestIdRaw(...init));
   }
 
   getApiLocalBlobsHashRaw(
@@ -2351,6 +2447,54 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/creator/v1/projects/{projectId}/scene/session"]["POST"]>
   ) {
     return this.unwrap(this.postApiCreatorV1ProjectsProjectIdSceneSessionRaw(...init));
+  }
+
+  postApiLocalAiSessionRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session"]["POST"]>
+  ) {
+    return this.paths["/api/local/ai/session"].POST(...init);
+  }
+
+  postApiLocalAiSession(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiLocalAiSessionRaw(...init));
+  }
+
+  postApiLocalAiSessionIdCommandsRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands"]["POST"]>
+  ) {
+    return this.paths["/api/local/ai/session/{id}/commands"].POST(...init);
+  }
+
+  postApiLocalAiSessionIdCommands(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiLocalAiSessionIdCommandsRaw(...init));
+  }
+
+  postApiLocalAiSessionIdCommandsRequestIdRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands/{requestId}"]["POST"]>
+  ) {
+    return this.paths["/api/local/ai/session/{id}/commands/{requestId}"].POST(...init);
+  }
+
+  postApiLocalAiSessionIdCommandsRequestId(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/session/{id}/commands/{requestId}"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiLocalAiSessionIdCommandsRequestIdRaw(...init));
+  }
+
+  postApiLocalAiSocketRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/socket"]["POST"]>
+  ) {
+    return this.paths["/api/local/ai/socket"].POST(...init);
+  }
+
+  postApiLocalAiSocket(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/ai/socket"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiLocalAiSocketRaw(...init));
   }
 
   postApiLocalBlobRaw(

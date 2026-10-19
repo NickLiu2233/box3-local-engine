@@ -3,11 +3,12 @@ import { timingSafeEqual } from 'node:crypto';
 import type { NextApiRequest, NextApiResponse } from 'next';
 
 type RuntimeIdentity = {
+  subjectId?: string;
   creatorAccess?: unknown;
   creatorPermissions?: unknown;
 };
 
-export type VoxaCreatorCapability = 'projects.edit' | 'models.manage';
+export type VoxaCreatorCapability = 'projects.read' | 'projects.edit' | 'projects.export' | 'scene.capture' | 'models.manage';
 
 type RuntimeIdentityResponse = {
   identity?: RuntimeIdentity;
@@ -57,7 +58,7 @@ export function canAccessVoxaModels(
     && required.some((item) => permissions.includes(item));
 }
 
-function canAccessVoxaCli(
+export function canAccessVoxaCli(
   identity: RuntimeIdentity & { creatorCliPermissions?: unknown },
   capability: VoxaCreatorCapability | readonly VoxaCreatorCapability[],
 ) {
@@ -65,9 +66,12 @@ function canAccessVoxaCli(
   const permissions = Array.isArray(identity.creatorCliPermissions)
     ? identity.creatorCliPermissions.map(String)
     : [];
-  const requiredCli = required.map((item) =>
-    item === 'projects.edit' ? 'voxa.project.edit' : 'voxa.project.export',
-  );
+  const requiredCli = required.map((item) => {
+    if (item === 'projects.read') return 'voxa.project.read';
+    if (item === 'projects.edit') return 'voxa.project.edit';
+    if (item === 'scene.capture') return 'voxa.scene.capture';
+    return 'voxa.project.export';
+  });
   return Boolean(identity.creatorAccess) && requiredCli.some((item) => permissions.includes(item));
 }
 
@@ -85,6 +89,38 @@ export function isTrustedVoxaInternalRequest(req: NextApiRequest) {
 }
 
 export type VoxaModelManagementAccess = 'allowed' | 'unauthenticated' | 'denied' | 'unavailable';
+
+export async function resolveVoxaRuntimeIdentity(
+  req: NextApiRequest,
+  res: NextApiResponse,
+) {
+  if (isTrustedVoxaInternalRequest(req)) return { subjectId: 'internal' } as RuntimeIdentity;
+  const serviceURL = playerServiceURL();
+  const secret = permissionSecret();
+  if (!serviceURL || !secret) return undefined;
+  const authorization = Array.isArray(req.headers.authorization) ? req.headers.authorization[0] : req.headers.authorization;
+  try {
+    const response = await fetch(`${serviceURL}/api/player-internal/runtime-identity`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${secret}`,
+        Cookie: String(req.headers.cookie || ''),
+        'X-Box-Creator-Authorization': authorization || '',
+        'X-Box-Player-IP': req.socket.remoteAddress || '',
+        'X-Box-Player-Proto': requestProtocol(req),
+        'X-Box-Player-User-Agent': String(req.headers['user-agent'] || '').slice(0, 512),
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    });
+    copySessionCookies(response, res);
+    if (!response.ok) return undefined;
+    const data = await response.json().catch(() => ({})) as RuntimeIdentityResponse;
+    return data.identity as RuntimeIdentity | undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export async function resolveVoxaModelAccess(
   req: NextApiRequest,
@@ -158,6 +194,38 @@ export async function requireVoxaModelAccess(
     res.status(503).json({ code: 'PLAYER_SERVICE_UNAVAILABLE', message: '无法验证 VOXA 资源访问权限' });
   }
   return false;
+}
+
+function hasVoxaCliAuthorization(req: NextApiRequest) {
+  const authorization = Array.isArray(req.headers.authorization)
+    ? req.headers.authorization[0]
+    : req.headers.authorization;
+  return Boolean(authorization?.startsWith('Bearer '));
+}
+
+/**
+ * Re-checks the permission required by an already-created automation session.
+ * A capture token must never be able to reuse an edit session belonging to the
+ * same subject, while a normal browser editor may use its model-management
+ * capability instead of a CLI scope.
+ */
+export async function requireVoxaAutomationAccess(
+  req: NextApiRequest,
+  res: NextApiResponse,
+  mode: 'edit' | 'capture',
+) {
+  if (hasVoxaCliAuthorization(req)) {
+    return requireVoxaModelAccess(
+      req,
+      res,
+      mode === 'edit' ? 'projects.edit' : ['projects.edit', 'scene.capture'],
+    );
+  }
+  return requireVoxaModelAccess(
+    req,
+    res,
+    mode === 'edit' ? ['projects.edit', 'models.manage'] : ['scene.capture', 'models.manage'],
+  );
 }
 
 export async function requireVoxaModelManagement(
