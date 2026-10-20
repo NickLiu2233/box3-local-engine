@@ -25,7 +25,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     !(await requireVoxaModelAccess(
       req,
       res,
-      req.method === 'GET' ? ['projects.read', 'projects.edit'] : ['projects.edit'],
+      req.method === 'GET'
+        ? 'projects.read'
+        : req.body?.id === undefined
+          ? 'projects.create'
+          : 'projects.edit',
     ))
   )
     return

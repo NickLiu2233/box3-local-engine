@@ -16,7 +16,7 @@ for (const [relativePath, guard] of [
   ['models/[id].ts', 'requireVoxaModelAccess'],
   ['blobs/[hash].ts', 'requireVoxaModelAccess'],
   ['default-skin.ts', 'requireVoxaModelAccess'],
-  ['models/[id]/snapshots.ts', 'requireVoxaModelManagement'],
+  ['models/[id]/snapshots.ts', 'requireVoxaModelAccess'],
   ['models/[id]/export.ts', 'requireVoxaModelAccess'],
 ] as const) {
   assert.match(
@@ -25,6 +25,27 @@ for (const [relativePath, guard] of [
     `${relativePath} must authenticate direct VOXA reads`,
   );
 }
+
+assert.match(
+  fs.readFileSync(path.join(routeRoot, 'models/index.ts'), 'utf8'),
+  /requireVoxaModelAccess\(req, res, 'projects\.create'\)/,
+  'creating a VOXA project must require voxa.project.create',
+);
+assert.match(
+  fs.readFileSync(path.join(routeRoot, 'models/[id].ts'), 'utf8'),
+  /requireVoxaModelAccess\(req, res, 'projects\.delete'\)/,
+  'deleting a VOXA project must require voxa.project.delete',
+);
+assert.match(
+  fs.readFileSync(path.join(routeRoot, 'models/import.ts'), 'utf8'),
+  /requireVoxaModelAccess\(req, res, 'projects\.create'\)/,
+  'importing a VOXA project must require voxa.project.create',
+);
+assert.match(
+  fs.readFileSync(path.join(routeRoot, 'models/[id]/export.ts'), 'utf8'),
+  /requireVoxaModelAccess\(req, res, 'projects\.export'\)/,
+  'exporting a VOXA project must require edit-equivalent access',
+);
 
 assert.equal(
   canManageVoxaModels({ creatorAccess: true, creatorPermissions: ['models.manage'] }),
@@ -59,11 +80,51 @@ assert.equal(
 );
 assert.equal(
   canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.create'] },
+    'projects.create',
+  ),
+  true,
+  'the create scope must authorize new VOXA projects',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.create'] },
+    'projects.edit',
+  ),
+  false,
+  'the create scope must not authorize edits',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.edit'] },
+    ['projects.read', 'projects.edit', 'projects.export', 'scene.capture'],
+  ),
+  true,
+  'the edit scope must include reading, editing, export, and capture',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.delete'] },
+    'projects.delete',
+  ),
+  true,
+  'the delete scope must authorize deletion',
+);
+assert.equal(
+  canAccessVoxaCli(
+    { creatorAccess: true, creatorCliPermissions: ['voxa.project.edit'] },
+    'projects.delete',
+  ),
+  false,
+  'the edit scope must not authorize deletion',
+);
+assert.equal(
+  canAccessVoxaCli(
     { creatorAccess: true, creatorCliPermissions: ['voxa.project.read'] },
     'projects.read',
   ),
   true,
-  'the read scope must authorize VOXA model listing and details',
+  'legacy read-only tokens must remain able to read',
 );
 assert.equal(
   canAccessVoxaCli(
@@ -71,15 +132,15 @@ assert.equal(
     'projects.edit',
   ),
   false,
-  'the read scope must not authorize editor control',
+  'legacy read-only tokens must not gain edit access',
 );
 assert.equal(
   canAccessVoxaCli(
     { creatorAccess: true, creatorCliPermissions: ['voxa.project.export'] },
-    'models.manage',
+    ['projects.export', 'projects.delete'],
   ),
   true,
-  'the export scope must authorize server project exchange',
+  'legacy exchange tokens must retain export and delete access',
 );
 assert.equal(
   canAccessVoxaCli(
@@ -87,7 +148,7 @@ assert.equal(
     'scene.capture',
   ),
   true,
-  'the scene scope must authorize screenshot sessions',
+  'legacy capture tokens must retain screenshot access',
 );
 
 async function main() {

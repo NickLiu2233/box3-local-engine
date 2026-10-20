@@ -27,7 +27,7 @@ import {
 } from '../shared/creator-policy';
 import {
   normalizeCreatorCliCapabilities,
-  type CreatorCliCapability,
+  type CreatorCliScope,
 } from '../shared/creator-cli-policy';
 import { requestClientAddress } from './client-address';
 import { hasTrustedPlayerAuthKey } from './player-auth-security';
@@ -1903,7 +1903,7 @@ export async function getManagedPlayerDetails(subjectId: string): Promise<Manage
 export type CreatorCliTokenView = {
   id: string;
   name: string;
-  scopes: CreatorCliCapability[];
+  scopes: CreatorCliScope[];
   createdAt: string;
   createdBy: string;
   lastUsedAt?: string;

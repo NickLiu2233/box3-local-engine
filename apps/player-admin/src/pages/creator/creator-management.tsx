@@ -1,5 +1,6 @@
 import { PlusOutlined, ReloadOutlined } from '@ant-design/icons';
 import {
+    Alert,
     Button,
     Card,
     Checkbox,
@@ -26,6 +27,8 @@ import {
 import {
     CREATOR_CLI_CAPABILITIES,
     CREATOR_CLI_CAPABILITY_META,
+    isCreatorCliCapability,
+    isLegacyCreatorCliCapability,
 } from '../../../../game/shared/creator-cli-policy';
 import { dateTime } from '../../player-admin-format';
 
@@ -349,12 +352,26 @@ function CliTokenPanel({
     controller:CreatorDialogController;
     detail:Detail;
 }) {
-    const [editor, setEditor] = useState<{ id?:string; name?:string; scopes?:string[] }>();
+    const [editor, setEditor] = useState<{
+        id?:string;
+        name?:string;
+        scopes?:string[];
+        legacyVoxaScopes?:string[];
+    }>();
     const [form] = Form.useForm();
     const editable = c.can('creator-tokens.manage') && detail.player.creatorAccess;
     const openEditor = (token?:Detail['cliTokens'][number]) => {
-        form.setFieldsValue({ name: token?.name || '', scopes: token?.scopes || [] });
-        setEditor(token || {});
+        const scopes = (token?.scopes || []).filter(isCreatorCliCapability);
+        form.setFieldsValue({ name: token?.name || '', scopes });
+        setEditor(
+            token
+                ? {
+                      ...token,
+                      scopes,
+                      legacyVoxaScopes: token.scopes.filter(isLegacyCreatorCliCapability),
+                  }
+                : {},
+        );
     };
     const submit = async () => {
         const values = await form.validateFields();
@@ -435,6 +452,13 @@ function CliTokenPanel({
                     <Form.Item name="scopes" label="权限">
                         <CliTokenScopes />
                     </Form.Item>
+                    {editor?.legacyVoxaScopes?.length ? (
+                        <Alert
+                            type="warning"
+                            showIcon
+                            message="旧 VOXA 权限将在保存后替换为新增工程、编辑工程、删除工程。请按需重新选择。"
+                        />
+                    ) : null}
                 </Form>
             </AntModal>
         </>

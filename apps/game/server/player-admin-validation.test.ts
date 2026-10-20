@@ -91,6 +91,36 @@ describe('player administration request validation', () => {
     }));
   });
 
+  test('issued VOXA scopes are limited to create, edit, and delete', () => {
+    expect(parsePlayerItemOperation('POST', subjectId, {
+      action: 'create-cli-token',
+      name: 'VOXA work',
+      scopes: [
+        'voxa.project.create',
+        'voxa.project.edit',
+        'voxa.project.delete',
+        'voxa.project.delete',
+      ],
+    })).toEqual({
+      kind: 'command',
+      subjectId,
+      command: {
+        action: 'create-cli-token',
+        name: 'VOXA work',
+        scopes: [
+          'voxa.project.create',
+          'voxa.project.edit',
+          'voxa.project.delete',
+        ],
+      },
+    });
+    expectRequestError(() => parsePlayerItemOperation('POST', subjectId, {
+      action: 'create-cli-token',
+      name: 'legacy VOXA scope',
+      scopes: ['voxa.project.read'],
+    }));
+  });
+
   test('never accepts legacy player role, admin permission, or avatar fields', () => {
     for (const body of [
       { role: 'admin' },

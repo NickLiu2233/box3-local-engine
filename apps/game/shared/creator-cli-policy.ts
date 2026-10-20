@@ -12,12 +12,25 @@ export const CREATOR_CLI_CAPABILITIES = [
   'runtime.view',
   'runtime.control',
   'scene.capture',
-  'voxa.project.read',
+  'voxa.project.create',
   'voxa.project.edit',
+  'voxa.project.delete',
+] as const;
+export type CreatorCliCapability = typeof CREATOR_CLI_CAPABILITIES[number];
+
+/**
+ * Scopes issued before VOXA token permissions were reduced to create/edit/
+ * delete remain valid for existing tokens. They are intentionally excluded
+ * from the capability list used to render new-token controls.
+ */
+export const LEGACY_CREATOR_CLI_CAPABILITIES = [
+  'voxa.project.read',
   'voxa.project.export',
   'voxa.scene.capture',
 ] as const;
-export type CreatorCliCapability = typeof CREATOR_CLI_CAPABILITIES[number];
+export type LegacyCreatorCliCapability =
+  typeof LEGACY_CREATOR_CLI_CAPABILITIES[number];
+export type CreatorCliScope = CreatorCliCapability | LegacyCreatorCliCapability;
 
 export type CreatorCliCapabilityMeta = Readonly<{
   label: string;
@@ -35,15 +48,29 @@ export const CREATOR_CLI_CAPABILITY_META: Readonly<Record<CreatorCliCapability, 
   'runtime.view': { label: '查看预览日志', description: '查看地图预览运行状态，并订阅客户端与服务端控制台', group: '预览运行' },
   'runtime.control': { label: '控制预览运行', description: '启动或停止地图预览运行', group: '预览运行' },
   'scene.capture': { label: '截取编辑场景', description: '请求当前已授权编辑会话返回场景截图', group: '编辑场景' },
-  'voxa.project.read': { label: '读取 VOXA 工程', description: '读取模型工程摘要、节点结构和校验信息', group: 'VOXA 模型' },
-  'voxa.project.edit': { label: '编辑 VOXA 工程', description: '控制已打开的 VOXA 编辑器，执行体素、多部件、旋转、动画、碰撞和保存操作', group: 'VOXA 模型' },
-  'voxa.project.export': { label: '交换 VOXA 工程', description: '导入、删除和导出服务器上的模型或皮肤工程文件', group: 'VOXA 模型' },
-  'voxa.scene.capture': { label: '截取 VOXA 模型', description: '获取 VOXA 当前模型的实时预览截图', group: 'VOXA 模型' },
+  'voxa.project.create': { label: '新增工程', description: '新建或导入模型、皮肤工程', group: 'VOXA 模型' },
+  'voxa.project.edit': { label: '编辑工程', description: '查看、修改、保存、预览、截图和导出模型工程', group: 'VOXA 模型' },
+  'voxa.project.delete': { label: '删除工程', description: '删除模型或皮肤工程', group: 'VOXA 模型' },
 });
 export const FULL_CREATOR_CLI_CAPABILITIES = [...CREATOR_CLI_CAPABILITIES] as CreatorCliCapability[];
 
-export function normalizeCreatorCliCapabilities(value: unknown): CreatorCliCapability[] {
+export function isCreatorCliCapability(value: unknown): value is CreatorCliCapability {
+  return typeof value === 'string' &&
+    (CREATOR_CLI_CAPABILITIES as readonly string[]).includes(value);
+}
+
+export function isLegacyCreatorCliCapability(
+  value: unknown,
+): value is LegacyCreatorCliCapability {
+  return typeof value === 'string' &&
+    (LEGACY_CREATOR_CLI_CAPABILITIES as readonly string[]).includes(value);
+}
+
+export function normalizeCreatorCliCapabilities(value: unknown): CreatorCliScope[] {
   if (!Array.isArray(value)) return [];
-  const allowed = new Set<string>(CREATOR_CLI_CAPABILITIES);
-  return [...new Set(value.map(String).filter((permission) => allowed.has(permission)))] as CreatorCliCapability[];
+  return [...new Set(value.map(String).filter(
+    (permission) =>
+      isCreatorCliCapability(permission) ||
+      isLegacyCreatorCliCapability(permission),
+  ))] as CreatorCliScope[];
 }

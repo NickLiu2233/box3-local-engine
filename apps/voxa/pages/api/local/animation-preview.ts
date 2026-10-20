@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'POST') return res.status(405).end();
-  if (!(await requireVoxaModelAccess(req, res, ['projects.edit', 'scene.capture', 'models.manage']))) return;
+  if (!(await requireVoxaModelAccess(req, res, ['projects.edit', 'scene.capture']))) return;
   try {
     const archive = await packageAnimationPreview(req.body);
     res.setHeader('Content-Type', 'application/zip');

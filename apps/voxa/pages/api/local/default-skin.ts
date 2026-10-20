@@ -13,7 +13,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   if (req.method === 'OPTIONS') return res.status(204).end();
   if (req.method !== 'GET' && req.method !== 'PUT') return res.status(405).end();
-  if (!await requireVoxaModelAccess(req, res, 'projects.edit')) return;
+  if (
+    !(await requireVoxaModelAccess(
+      req,
+      res,
+      req.method === 'GET' ? 'projects.read' : 'projects.edit',
+    ))
+  ) return;
 
   const queryProjectKey = Array.isArray(req.query.projectKey)
     ? req.query.projectKey[0]

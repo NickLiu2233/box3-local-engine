@@ -8,7 +8,14 @@ type RuntimeIdentity = {
   creatorPermissions?: unknown;
 };
 
-export type VoxaCreatorCapability = 'projects.read' | 'projects.edit' | 'projects.export' | 'scene.capture' | 'models.manage';
+export type VoxaCreatorCapability =
+  | 'projects.create'
+  | 'projects.read'
+  | 'projects.edit'
+  | 'projects.export'
+  | 'projects.delete'
+  | 'scene.capture'
+  | 'models.manage';
 
 type RuntimeIdentityResponse = {
   identity?: RuntimeIdentity;
@@ -53,9 +60,26 @@ export function canAccessVoxaModels(
 ) {
   const required = Array.isArray(capability) ? capability : [capability];
   const permissions = identity.creatorPermissions;
-  return identity.creatorAccess === true
-    && Array.isArray(permissions)
-    && required.some((item) => permissions.includes(item));
+  if (identity.creatorAccess !== true || !Array.isArray(permissions)) return false;
+  return required.some((item) => {
+    if (item === 'projects.create' || item === 'projects.edit') {
+      return permissions.includes('projects.edit') || permissions.includes('models.manage');
+    }
+    if (item === 'projects.read') {
+      return permissions.includes('projects.read')
+        || permissions.includes('projects.edit')
+        || permissions.includes('models.manage');
+    }
+    if (item === 'scene.capture') {
+      return permissions.includes('scene.capture')
+        || permissions.includes('projects.edit')
+        || permissions.includes('models.manage');
+    }
+    if (item === 'projects.export') {
+      return permissions.includes('projects.export') || permissions.includes('models.manage');
+    }
+    return permissions.includes('models.manage');
+  });
 }
 
 export function canAccessVoxaCli(
@@ -66,13 +90,32 @@ export function canAccessVoxaCli(
   const permissions = Array.isArray(identity.creatorCliPermissions)
     ? identity.creatorCliPermissions.map(String)
     : [];
-  const requiredCli = required.map((item) => {
-    if (item === 'projects.read') return 'voxa.project.read';
-    if (item === 'projects.edit') return 'voxa.project.edit';
-    if (item === 'scene.capture') return 'voxa.scene.capture';
-    return 'voxa.project.export';
+  if (identity.creatorAccess !== true) return false;
+  return required.some((item) => {
+    if (item === 'projects.create') return permissions.includes('voxa.project.create');
+    if (item === 'projects.read') {
+      return permissions.includes('voxa.project.edit')
+        || permissions.includes('voxa.project.read');
+    }
+    if (item === 'projects.edit') return permissions.includes('voxa.project.edit');
+    if (item === 'projects.export') {
+      return permissions.includes('voxa.project.edit')
+        || permissions.includes('voxa.project.export');
+    }
+    if (item === 'projects.delete') {
+      return permissions.includes('voxa.project.delete')
+        || permissions.includes('voxa.project.export');
+    }
+    if (item === 'scene.capture') {
+      return permissions.includes('voxa.project.edit')
+        || permissions.includes('voxa.scene.capture');
+    }
+    return permissions.some((permission) =>
+      permission === 'voxa.project.create'
+      || permission === 'voxa.project.edit'
+      || permission === 'voxa.project.delete',
+    );
   });
-  return Boolean(identity.creatorAccess) && requiredCli.some((item) => permissions.includes(item));
 }
 
 /**

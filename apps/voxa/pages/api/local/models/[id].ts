@@ -8,7 +8,6 @@ import {
 import { setLocalCors } from '../../../../server/local-cors';
 import {
   requireVoxaModelAccess,
-  requireVoxaModelManagement,
 } from '../../../../server/model-management-access';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -20,12 +19,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const id = Number(rawId);
   if (!Number.isSafeInteger(id) || id <= 0) return res.status(400).end();
   if (req.method === 'GET') {
-    if (!await requireVoxaModelAccess(req, res, ['projects.read', 'projects.edit', 'models.manage'])) return;
+    if (!await requireVoxaModelAccess(req, res, 'projects.read')) return;
     const model = getModel(id);
     return model ? res.status(200).json(model) : res.status(404).end();
   }
   if (req.method === 'PUT') {
-    if (!await requireVoxaModelManagement(req, res)) return;
+    if (!await requireVoxaModelAccess(req, res, 'projects.edit')) return;
     const updated = await updateModelInfo(id, {
       modelName: String(req.body?.modelName || ''),
       modelDescription: String(req.body?.modelDescription || ''),
@@ -33,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(updated ? 200 : 404).json(updated);
   }
   if (req.method === 'DELETE') {
-    if (!await requireVoxaModelManagement(req, res)) return;
+    if (!await requireVoxaModelAccess(req, res, 'projects.delete')) return;
     const deleted = await deleteModel(id);
     return res.status(deleted ? 200 : 404).json(deleted);
   }

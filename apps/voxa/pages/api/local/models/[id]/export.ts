@@ -23,7 +23,7 @@ function projectFileName(name: string) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (!setLocalCors(req, res)) return res.status(403).end('仅允许本机访问');
   if (req.method !== 'GET') return res.status(405).end();
-  if (!await requireVoxaModelAccess(req, res, ['projects.export', 'models.manage'])) return;
+  if (!await requireVoxaModelAccess(req, res, 'projects.export')) return;
 
   const rawId = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
   const id = Number(rawId);
