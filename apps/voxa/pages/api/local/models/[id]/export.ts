@@ -1,11 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getModelMetaData } from '@box/voxa-project';
+import { getModelMetaData, getSkinMetaData } from '@box/voxa-project';
 
 import { getBlob, getModel } from '../../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../../server/local-cors';
 import { requireVoxaModelAccess } from '../../../../../server/model-management-access';
 import {
   buildModelProjectBundle,
+  SKIN_PART_NAMES,
   type ModelProjectBundleResource,
 } from '../../../../../server/local-voxa-project-bundle';
 
@@ -38,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const resources: ModelProjectBundleResource[] = [];
   const modelMetadata = model.modelFileHash ? getBlob(model.modelFileHash) : null;
-  const modelMetaData = modelMetadata
+  const modelMetaData = model.creativeMode !== 2 && modelMetadata
     ? getModelMetaData(model.modelFileHash, new Uint8Array(modelMetadata.data))
     : undefined;
   const modelData = modelMetaData ? getBlob(modelMetaData.dataHash) : null;
@@ -59,6 +60,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         contentType: modelData.contentType,
       },
     );
+  }
+  if (model.creativeMode === 2 && modelMetadata) {
+    const skin = getSkinMetaData(modelMetadata.data);
+    if (skin?.version === 3) {
+      resources.push({ name: 'skin-meta.bin', hash: model.modelFileHash, data: modelMetadata.data, contentType: 'application/json' });
+      for (const name of SKIN_PART_NAMES) {
+        const hash = skin[name as keyof typeof skin];
+        if (typeof hash !== 'string' || !hash) continue;
+        const part = getBlob(hash);
+        if (!part) return res.status(409).json({ message: `皮肤部件资源缺失：${name}` });
+        resources.push({ name: `skin-parts/${name}.bin`, hash, data: part.data, contentType: part.contentType });
+      }
+    }
   }
   const preview = model.modelPreviewHash ? getBlob(model.modelPreviewHash) : null;
   if (preview) {

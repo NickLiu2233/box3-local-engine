@@ -491,9 +491,12 @@ export class AnimatorApp {
   }
 
   public automationAddKeyframe(motionId: string, nodeIds: string[], time = 0) {
+    this.setMode(AnimatorMode.Motion);
+    if (store.getState().animator.mode !== AnimatorMode.Motion) {
+      throw new Error('当前工程没有动画编辑权限');
+    }
     this.motionManager.selectMotion(motionId);
     store.dispatch(setCurrentTime(time));
-    this.toMode(AnimatorMode.Motion);
     this.motionManager.addKeyframe(nodeIds);
     return { motionId, nodeIds, time };
   }

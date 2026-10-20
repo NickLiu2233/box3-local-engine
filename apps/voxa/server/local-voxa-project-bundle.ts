@@ -1,4 +1,6 @@
 import JSZip from 'jszip';
+import { BodyPart } from '@box/schema/player/player-schema';
+export const SKIN_PART_NAMES = Object.keys(BodyPart).filter(name => !/^\d+$/.test(name));
 
 const BUNDLE_FORMAT = 'box-voxa-project';
 const BUNDLE_VERSION = 1;
@@ -6,10 +8,12 @@ const RESOURCE_NAMES = new Set([
   'model-meta.bin',
   'model-data.bin',
   'preview.bin',
+  'skin-meta.bin',
+  ...SKIN_PART_NAMES.map(name => `skin-parts/${name}.bin`),
 ]);
 
 export type ModelProjectBundleResource = {
-  name: 'model-meta.bin' | 'model-data.bin' | 'preview.bin';
+  name: 'model-meta.bin' | 'model-data.bin' | 'preview.bin' | 'skin-meta.bin' | `skin-parts/${string}.bin`;
   hash: string;
   data: Uint8Array;
   contentType?: string;

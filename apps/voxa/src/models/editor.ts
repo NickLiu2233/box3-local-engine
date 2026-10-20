@@ -78,7 +78,8 @@ import {
 import { VoxaProfiler } from './profiler';
 import { getMotionBoneIds } from './animator-app/motion-manager/util';
 import { LocateKeyframeType } from './motion-player/const';
-import { HitBoxMode } from '@box/voxa-project';
+import { HitBoxMode, ProjectInterpolationType } from '@box/voxa-project';
+import { addAutomationKeyframe } from '../automation/animation';
 
 export type VoxelEditorOptions = {
   regl: Regl;
@@ -467,10 +468,13 @@ export class VoxelEditor {
     return { mode, position, size };
   }
 
-  public automationAnimation(motionId: string | undefined, nodeIds: string[], time = 0) {
-    const id = motionId || this.animatorApp.automationCreateAnimation();
-    if (!id) throw new Error('无法创建 VOXA 动画');
-    return this.animatorApp.automationAddKeyframe(id, nodeIds, time);
+  public automationAnimation(
+    motionId: string | undefined,
+    nodeIds: string[],
+    time = 0,
+    interpolation?: `${ProjectInterpolationType}`,
+  ) {
+    return addAutomationKeyframe(this, motionId, nodeIds, time, interpolation);
   }
 
   public automationPreview(motionId: string, time = 0, playing = false) {

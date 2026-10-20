@@ -178,13 +178,15 @@ export function getBlob(hash: string) {
   };
 }
 
-export async function saveModel(input: Record<string, any>) {
+export async function saveModel(input: Record<string, any>, options?: { expectedProjectFileHash?: string; requireExisting?: boolean }) {
   return mutate((index) => {
     const now = new Date().toISOString();
     const requestedId = Number(input.modelId || 0);
     let model = requestedId
       ? index.models.find((item) => item.modelId === requestedId)
       : undefined;
+    if (options?.requireExisting && !model) throw new Error('VOXA_MODEL_NOT_FOUND');
+    if (options?.expectedProjectFileHash !== undefined && model?.projectFileHash !== options.expectedProjectFileHash) throw new Error('VOXA_PROJECT_CONFLICT');
     if (!model) {
       model = {
         animated: false,

@@ -21,6 +21,7 @@ export type VoxaAutomationCommand = {
   motionId?: string;
   nodeIds?: string[];
   time?: number;
+  interpolation?: 'STEP' | 'LINEAR' | 'EASE_IN_SINE' | 'EASE_OUT_SINE' | 'EASE_IN_OUT_SINE';
   projectFileHash?: string;
   playing?: boolean;
   target?: [number, number, number];

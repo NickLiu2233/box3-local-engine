@@ -20,6 +20,7 @@ type CommandPayload = {
   motionId?: string;
   nodeIds?: string[];
   time?: number;
+  interpolation?: 'STEP' | 'LINEAR' | 'EASE_IN_SINE' | 'EASE_OUT_SINE' | 'EASE_IN_OUT_SINE';
   projectFileHash?: string;
   playing?: boolean;
   target?: [number, number, number];
@@ -88,6 +89,19 @@ export function useVoxaAiControl(editor: VoxelEditor | undefined) {
         }
         if (command.type === 'project.inspect') {
           const data = await editor.projectManager.getData();
+          const nodes = Object.values(data.nodes || {}).map((node) => ({
+            id: node.id,
+            type: node.type,
+            name: node.name,
+            parentId: node.parentId,
+            boneId: node.boneId,
+            voxelId: node.voxelId,
+          }));
+          const animations = (data.animations || []).map((animation) => ({
+            id: animation.id,
+            name: animation.name,
+            nodeIds: Object.values(animation.nodes || {}).map((node) => node.nodeId),
+          }));
           await postResult(active, command.requestId, {
             ok: true,
             data: {
@@ -96,6 +110,8 @@ export function useVoxaAiControl(editor: VoxelEditor | undefined) {
               voxelCount: Object.keys(data.voxels || {}).length,
               animationCount: data.animations?.length || 0,
               hitBoxMode: data.hitBox?.mode,
+              nodes,
+              animations,
             },
           });
           return;
@@ -140,7 +156,7 @@ export function useVoxaAiControl(editor: VoxelEditor | undefined) {
           return;
         }
         if (command.type === 'animation.keyframe') {
-          const data = editor.automationAnimation(command.motionId, command.nodeIds || [], command.time || 0);
+          const data = editor.automationAnimation(command.motionId, command.nodeIds ?? [], command.time ?? 0, command.interpolation);
           await postResult(active, command.requestId, { ok: true, data });
           return;
         }

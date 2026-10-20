@@ -1,9 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getModelMetaData, migrateProject, projectSchemaToBytes } from '@box/voxa-project';
+import { BodyPart } from '@box/schema/player/player-schema';
+import { getModelMetaData, getSkinMetaData, bodyPartBytesToSchema, migrateProject, projectSchemaToBytes } from '@box/voxa-project';
 
 import { saveModel, storeBlob } from '../../../../server/local-voxa-store';
 import { setLocalCors } from '../../../../server/local-cors';
-import { readModelProjectBundle } from '../../../../server/local-voxa-project-bundle';
+import { readModelProjectBundle, SKIN_PART_NAMES } from '../../../../server/local-voxa-project-bundle';
 import { requireVoxaModelAccess } from '../../../../server/model-management-access';
 
 export const config = { api: { bodyParser: false, responseLimit: false } };
@@ -55,10 +56,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } else if (modelMetadata || modelData) {
       throw new Error('VOXA_BUNDLE_RESOURCE_INVALID');
     }
+    const skinMetadata = storedResources.get('skin-meta.bin');
+    if (skinMetadata) {
+      if (bundle.editType !== 1 || modelMetadata || modelData) throw new Error('VOXA_BUNDLE_RESOURCE_INVALID');
+      const skin = getSkinMetaData(skinMetadata.data);
+      if (!skin || skin.version !== 3 || Object.keys(skin).some(key => key !== 'version' && !SKIN_PART_NAMES.includes(key))) throw new Error('VOXA_BUNDLE_RESOURCE_INVALID');
+      for (const name of SKIN_PART_NAMES) {
+        const hash = skin[name as keyof typeof skin];
+        if (!hash) continue;
+        const part = storedResources.get(`skin-parts/${name}.bin`);
+        if (!part || part.hash !== hash || bodyPartBytesToSchema(part.data)?.schema.partId !== BodyPart[name as keyof typeof BodyPart]) throw new Error('VOXA_BUNDLE_RESOURCE_INVALID');
+      }
+      modelFileHash = skinMetadata.hash;
+    } else if ([...storedResources.keys()].some(name => name.startsWith('skin-parts/'))) throw new Error('VOXA_BUNDLE_RESOURCE_INVALID');
     const created = await saveModel({
       modelName: bundle.projectName,
       modelDescription: '',
       modelType: 0,
+      animated: project.animations.length > 0,
       creativeMode: bundle.editType === 1 ? 2 : 1,
       modelFileHash,
       modelProjectFileHash: projectFileHash,

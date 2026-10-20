@@ -203,6 +203,10 @@ export const apiOperations = {
     "path": "/api/local/models",
     "method": "GET"
   },
+  "getApiLocalModelsAuthoring": {
+    "path": "/api/local/models/authoring",
+    "method": "GET"
+  },
   "getApiLocalModelsId": {
     "path": "/api/local/models/{id}",
     "method": "GET"
@@ -565,6 +569,10 @@ export const apiOperations = {
   },
   "postApiLocalModels": {
     "path": "/api/local/models",
+    "method": "POST"
+  },
+  "postApiLocalModelsAuthoring": {
+    "path": "/api/local/models/authoring",
     "method": "POST"
   },
   "postApiLocalModelsImport": {
@@ -1433,6 +1441,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/local/models"]["GET"]>
   ) {
     return this.unwrap(this.getApiLocalModelsRaw(...init));
+  }
+
+  getApiLocalModelsAuthoringRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/models/authoring"]["GET"]>
+  ) {
+    return this.paths["/api/local/models/authoring"].GET(...init);
+  }
+
+  getApiLocalModelsAuthoring(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/models/authoring"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiLocalModelsAuthoringRaw(...init));
   }
 
   getApiLocalModelsIdRaw(
@@ -2519,6 +2539,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/local/models"]["POST"]>
   ) {
     return this.unwrap(this.postApiLocalModelsRaw(...init));
+  }
+
+  postApiLocalModelsAuthoringRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/models/authoring"]["POST"]>
+  ) {
+    return this.paths["/api/local/models/authoring"].POST(...init);
+  }
+
+  postApiLocalModelsAuthoring(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/models/authoring"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiLocalModelsAuthoringRaw(...init));
   }
 
   postApiLocalModelsImportRaw(
