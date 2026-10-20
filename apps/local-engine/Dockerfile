@@ -175,6 +175,7 @@ RUN node apps/local-engine/src/prune-player-build.js --player-service \
 FROM source-base AS voxa-build
 
 RUN --mount=type=cache,id=box-local-engine-pnpm,target=/pnpm/store \
+    npm_config_registry=https://registry.npmmirror.com \
     node common/scripts/install-run-rush.js install --to @box/voxa
 RUN cd apps/voxa && node ../../common/scripts/install-run-rushx.js build
 
