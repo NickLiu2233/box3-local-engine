@@ -495,18 +495,48 @@ export class VoxelEditor {
     return { motionId, time, duration, playing };
   }
 
-  public automationView(position?: [number, number, number], target?: [number, number, number]) {
+  public automationView(
+    position?: [number, number, number],
+    target?: [number, number, number],
+    projection?: 'perspective' | 'orthographic',
+    fov?: number,
+    zoom?: number,
+  ) {
     this.animatorApp.nodeManager.setActiveIds([], false);
     this.animatorApp.toggleBoxes(false);
     this.animatorApp.toggleSkeleton(false);
     this.animatorApp.toggleGrid(false);
+    if (projection) this.stage.switchCameraMode(projection === 'perspective');
     const camera = this.stage.getCamera();
+    if (fov !== undefined) {
+      if (!Number.isFinite(fov) || fov < 10 || fov > 120) {
+        throw new Error('透视相机 fov 必须是 10 到 120 度');
+      }
+      if (!camera.isPerspectiveCamera()) {
+        throw new Error('fov 只适用于透视相机');
+      }
+      camera.fov = (fov * Math.PI) / 180;
+    }
+    if (zoom !== undefined) {
+      if (!Number.isFinite(zoom) || zoom <= 0 || zoom > 100) {
+        throw new Error('相机 zoom 必须大于 0 且不超过 100');
+      }
+      camera.zoom = zoom;
+    }
     if (position) camera.setPosition(position as any);
     if (target) {
       camera.lookAt(target as any);
       target.forEach((value, axis) => { this.stage.orbitControls.target[axis] = value; });
     }
+    camera.updateProjectionMatrix();
     this.stage.orbitControls.reset();
+    return {
+      projection: camera.isPerspectiveCamera() ? 'perspective' : 'orthographic',
+      position: Array.from(camera.position),
+      target: Array.from(camera.target),
+      fov: camera.isPerspectiveCamera() ? (camera.fov * 180) / Math.PI : undefined,
+      zoom: camera.zoom,
+    };
   }
 
   /**

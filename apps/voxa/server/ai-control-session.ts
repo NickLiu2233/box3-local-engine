@@ -26,6 +26,9 @@ export type VoxaAutomationCommand = {
   playing?: boolean;
   target?: [number, number, number];
   preserveView?: boolean;
+  projection?: 'perspective' | 'orthographic';
+  fov?: number;
+  zoom?: number;
 };
 export type VoxaAutomationSessionMode = 'edit' | 'capture';
 

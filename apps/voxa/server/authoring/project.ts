@@ -230,6 +230,83 @@ export function applyOperations(input: Project, operations: unknown): Project {
       }
       for (const key of ['position', 'rotation', 'scale', 'pivot'])
         if (op[key] !== undefined) transform(n, { [key]: op[key] })
+    } else if (op.op === 'node.clone') {
+      const source = node(op.node)
+      check(!ROOTS.has(source.id), '系统根节点不能复制')
+      const rootId = identifier(op.id)
+      check(!project.nodes[rootId], `节点 ID 已存在：${rootId}`)
+      const mirrorAxis = op.mirrorAxis === undefined ? undefined : Number(op.mirrorAxis)
+      check(mirrorAxis === undefined || [0, 1, 2].includes(mirrorAxis), 'mirrorAxis 需要 0、1 或 2')
+      const explicitMap = op.idMap && typeof op.idMap === 'object' && !Array.isArray(op.idMap)
+        ? op.idMap as Record<string, unknown>
+        : {}
+      const sourceIds = new Set<string>()
+      const pending = [source.id]
+      while (pending.length) {
+        const current = pending.pop()!
+        if (sourceIds.has(current)) continue
+        sourceIds.add(current)
+        for (const candidate of Object.values(project.nodes)) {
+          if (candidate.parentId === current || candidate.boneId === current) pending.push(candidate.id)
+        }
+      }
+      const idMap = new Map<string, string>([[source.id, rootId]])
+      for (const oldId of sourceIds) {
+        if (oldId === source.id) continue
+        const requested = explicitMap[oldId]
+        const nextId = requested === undefined ? `${rootId}_${oldId}` : identifier(requested)
+        check(!idMap.has(oldId), `复制 ID 重复：${oldId}`)
+        check(!project.nodes[nextId] && ![...idMap.values()].includes(nextId), `复制目标 ID 已存在：${nextId}`)
+        idMap.set(oldId, nextId)
+      }
+      const parentId = op.parent === undefined
+        ? source.parentId
+        : identifier(op.parent)
+      const owner = node(parentId)
+      check(owner.type === T.Bone || owner.type === T.Group || owner.type === T.Root, '复制目标父节点无效')
+      const cloned = new Map<string, Node>()
+      for (const oldId of sourceIds) {
+        const original = project.nodes[oldId]
+        const copy = P.NodeSchema.clone(original)
+        const newId = idMap.get(oldId)!
+        copy.id = newId
+        copy.name = oldId === source.id ? String(op.name ?? original.name).slice(0, 64) : original.name
+        copy.parentId = oldId === source.id ? parentId : idMap.get(original.parentId) || original.parentId
+        copy.childrenIds = original.childrenIds.filter(child => idMap.has(child)).map(child => idMap.get(child)!)
+        copy.boneId = original.boneId ? idMap.get(original.boneId) || original.boneId : ''
+        copy.skinId = original.skinId ? idMap.get(original.skinId) || original.skinId : ''
+        if (original.voxelId) {
+          const voxel = project.voxels[original.voxelId]
+          check(voxel, `体素不存在：${original.voxelId}`)
+          const voxelId = `${newId}_voxels`
+          const view = readVoxels(voxel.encodedView)
+          if (mirrorAxis !== undefined) {
+            const sourceData = view.data.slice()
+            for (let z = 0; z < view.shape[2]; z++)
+              for (let y = 0; y < view.shape[1]; y++)
+                for (let x = 0; x < view.shape[0]; x++) {
+                  const mirrored = [x, y, z]
+                  mirrored[mirrorAxis] = view.shape[mirrorAxis] - 1 - mirrored[mirrorAxis]
+                  view.setVoxel(x, y, z, sourceData[view.index(mirrored[0], mirrored[1], mirrored[2])])
+                }
+            copy.flip[mirrorAxis] = copy.flip[mirrorAxis] ? 0 : 1
+          }
+          copy.voxelId = voxelId
+          project.voxels[voxelId] = { id: voxelId, dimension: voxel.dimension, encodedView: encode(view) }
+        }
+        if (mirrorAxis !== undefined) {
+          const position = Array.from(copy.position)
+          position[mirrorAxis] = -position[mirrorAxis]
+          copy.position.set(position)
+          const euler = Array.from(copy.euler)
+          for (const axis of [0, 1, 2]) if (axis !== mirrorAxis) euler[axis] = -euler[axis]
+          copy.euler.set(euler)
+          copy.quaternion.set(rotation(euler))
+        }
+        cloned.set(oldId, copy)
+      }
+      for (const copy of cloned.values()) project.nodes[copy.id] = copy
+      owner.childrenIds.push(rootId)
     } else if (op.op === 'node.transform') {
       const n = node(op.node)
       check(!ROOTS.has(n.id), '系统根节点不能变换')

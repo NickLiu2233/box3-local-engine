@@ -25,6 +25,9 @@ type CommandPayload = {
   playing?: boolean;
   target?: [number, number, number];
   preserveView?: boolean;
+  projection?: 'perspective' | 'orthographic';
+  fov?: number;
+  zoom?: number;
 };
 type Command = { index: number; command: CommandPayload };
 
@@ -81,10 +84,10 @@ export function useVoxaAiControl(editor: VoxelEditor | undefined) {
           return;
         }
         if (command.type === 'scene.view') {
-          editor.automationView(command.position, command.target);
+          const data = editor.automationView(command.position, command.target, command.projection, command.fov, command.zoom);
           await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
           editor.render();
-          await postResult(active, command.requestId, { ok: true, data: { configured: true } });
+          await postResult(active, command.requestId, { ok: true, data });
           return;
         }
         if (command.type === 'project.inspect') {
@@ -161,9 +164,16 @@ export function useVoxaAiControl(editor: VoxelEditor | undefined) {
           return;
         }
         if (command.type === 'scene.capture') {
+          const data = command.projection || command.position || command.target || command.fov !== undefined || command.zoom !== undefined
+            ? editor.automationView(command.position, command.target, command.projection, command.fov, command.zoom)
+            : undefined;
+          if (data) {
+            await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+            editor.render();
+          }
           const blob = await new Promise<Blob | null>((resolve) => editor.stage.renderer.domElement.toBlob(resolve, 'image/png'));
           if (!blob) throw new Error('当前 VOXA 画布无法截图');
-          await postResult(active, command.requestId, { ok: true, data: { contentBase64: await blobBase64(blob), contentType: 'image/png' } });
+          await postResult(active, command.requestId, { ok: true, data: { ...data, contentBase64: await blobBase64(blob), contentType: 'image/png' } });
           return;
         }
         throw new Error(`不支持的 VOXA 命令：${command.type}`);

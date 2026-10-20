@@ -76,6 +76,21 @@ test('failed batches do not leave partial edits or change their input', () => {
   expect(p.nodes.armor.name).toBe(before)
 })
 
+test('node.clone copies a bone subtree, bound voxels and mirrored geometry', () => {
+  const p = applyOperations(fixture(), [
+    { op: 'node.clone', node: 'body', id: 'body_R', mirrorAxis: 0 },
+  ])
+  const clonedBone = p.nodes.body_R
+  expect(clonedBone).toBeTruthy()
+  expect(clonedBone.parentId).toBe('ROOT_BONE')
+  expect(clonedBone.skinId).toBe('body_R_body_skin')
+  const clonedPart = p.nodes.body_R_armor
+  expect(clonedPart.parentId).toBe(clonedBone.skinId)
+  expect(clonedPart.voxelId).toBe('body_R_armor_voxels')
+  expect(p.voxels[clonedPart.voxelId]).toBeTruthy()
+  expect(p.nodes.ROOT_BONE.childrenIds).toContain('body_R')
+})
+
 test.each([
   { op: 'node.create', id: 'constructor', kind: 'part' },
   { op: 'node.create', id: 'huge', kind: 'part', size: [256, 256, 256] },
