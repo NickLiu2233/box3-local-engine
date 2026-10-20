@@ -91,6 +91,15 @@ test('node.clone copies a bone subtree, bound voxels and mirrored geometry', () 
   expect(p.nodes.ROOT_BONE.childrenIds).toContain('body_R')
 })
 
+test('normalizes legacy zero root transforms before CPU preview', async () => {
+  const p = fixture()
+  p.nodes.ROOT.scale.set([0, 0, 0])
+  p.nodes.ROOT_SKIN.scale.set([0, 0, 0])
+  p.nodes.ROOT_SKIN.parentScaleMat3.fill(0)
+  const repaired = applyOperations(p, [])
+  await expect(renderProject(repaired)).resolves.toBeInstanceOf(Buffer)
+})
+
 test.each([
   { op: 'node.create', id: 'constructor', kind: 'part' },
   { op: 'node.create', id: 'huge', kind: 'part', size: [256, 256, 256] },

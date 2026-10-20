@@ -108,6 +108,15 @@ export function applyOperations(input: Project, operations: unknown): Project {
   check(Array.isArray(operations) && operations.length <= 8192, 'operations 需要数组，最多 8192 步')
   // Work on an independent copy; any invalid step leaves the stored project untouched.
   const project = P.ProjectDataV10Schema.clone(input)
+  // Older empty projects may contain zeroed root scales. They compile into a
+  // singular world matrix and fail during CPU preview normal calculation.
+  // Normalize legacy transform fields before applying new authoring steps.
+  for (const current of Object.values(project.nodes)) {
+    if (!current.scale || !Array.from(current.scale).every((value) => Number.isFinite(value) && value > 0))
+      current.scale = Vec3Schema.fromJSON([1, 1, 1])
+    if (!current.parentScaleMat3 || Math.abs(mat3.determinant(current.parentScaleMat3)) < 1e-8)
+      current.parentScaleMat3 = mat3.create() as typeof current.parentScaleMat3
+  }
   const views = new Map<string, VoxelView>()
   const node = (id: unknown) => {
     const n = project.nodes[identifier(id)]
@@ -130,7 +139,18 @@ export function applyOperations(input: Project, operations: unknown): Project {
   for (const raw of operations) {
     check(raw && typeof raw === 'object' && !Array.isArray(raw), '每一步需要操作对象')
     const op = raw as Operation
-    if (op.op === 'palette.set') {
+    if (op.op === 'project.reset') {
+      check(op.kind === 'model' || op.kind === 'skin', 'project.reset 的 kind 需要 model 或 skin')
+      const fresh = createProject(op.kind)
+      project.nodes = fresh.nodes
+      project.voxels = fresh.voxels
+      project.palette = fresh.palette
+      project.animations = fresh.animations
+      project.hitBox = fresh.hitBox
+      project.modelPivot = fresh.modelPivot
+      views.clear()
+      volume = 0
+    } else if (op.op === 'palette.set') {
       check(
         Array.isArray(op.colors) && op.colors.length > 0 && op.colors.length <= 255,
         'colors 需要 1–255 个颜色',

@@ -79,6 +79,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       'VOXA_PROJECT_CONFLICT',
     )
     const project = applyOperations(original, input.operations ?? [])
+    if (input.validateOnly === true) {
+      const compiled = await compileProject(project, kind, async () => 'dry-run')
+      await renderProject(project)
+      return res.status(200).json({
+        modelId: model?.modelId,
+        modelName: model?.modelName,
+        kind,
+        validationOnly: true,
+        project: describeProject(project),
+        compiled,
+      })
+    }
     const compiled = await compileProject(project, kind, storeBlob)
     const projectFileHash = await storeBlob(
       Buffer.from(projectSchemaToBytes(project)),

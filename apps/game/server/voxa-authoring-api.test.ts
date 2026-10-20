@@ -133,3 +133,28 @@ test('denied access does not create or edit models', async () => {
   await handler({ method: 'POST', body: { name: 'denied' } }, res)
   expect(listModels()).toHaveLength(before)
 })
+
+test('dry-run validates and compiles without changing the stored model', async () => {
+  const created = response()
+  await handler({ method: 'POST', body: { name: 'dry-run model' } }, created)
+  const before = getModel(created.value.modelId).projectFileHash
+  const checked = response()
+  await handler(
+    {
+      method: 'POST',
+      body: {
+        id: created.value.modelId,
+        validateOnly: true,
+        operations: [
+          { op: 'node.create', id: 'body', kind: 'part', size: [2, 2, 2] },
+          { op: 'voxel.fill', node: 'body', min: [0, 0, 0], max: [1, 1, 1], color: 1 },
+        ],
+      },
+    },
+    checked,
+  )
+  expect(checked.statusCode).toBe(200)
+  expect(checked.value.validationOnly).toBe(true)
+  expect(checked.value.compiled.solidVoxels).toBe(8)
+  expect(getModel(created.value.modelId).projectFileHash).toBe(before)
+})
