@@ -499,6 +499,37 @@ export class MotionManager {
     this.nodeManager.transform.updateParamPanelData();
   }
 
+  /** Sample using the editor evaluator, without filling missing tracks or writing history. */
+  public async withMotionPreview<T>(motionId: string, capture: (pose: (time: number) => void) => Promise<T>): Promise<T> {
+    const { animator, app } = store.getState();
+    if (!animator.motionData.motions[motionId]) throw new Error('动画不存在');
+    const inMotionMode = animator.mode === AnimatorMode.Motion;
+    try {
+      if (!inMotionMode) {
+        this.nodeManager.boneManager.updateSetupData();
+        this.profiler.updateSkinAlphaCache(
+          this.nodeManager.getAllSkinNodes().map(node => node.uuid), animator.hierarchyData,
+        );
+      }
+      this.clearCaches();
+      store.dispatch(setActiveMotionId(motionId));
+      return await capture(time => {
+        store.dispatch(setCurrentTime(time));
+        this.poseAtTime(time);
+      });
+    } finally {
+      this.clearCaches();
+      store.dispatch(setActiveMotionId(animator.activeMotionId));
+      store.dispatch(setCurrentTime(app.motionPanel.currentTime));
+      if (inMotionMode) this.poseAtTime(app.motionPanel.currentTime);
+      else {
+        this.pose();
+        this.nodeManager.boneManager.clearSetupData();
+        this.profiler.clearSkinAlphaCache();
+      }
+    }
+  }
+
   /**
    * 新增动作，并且选中新增动作。
    * 如果动作数量已达限制，则不会添加

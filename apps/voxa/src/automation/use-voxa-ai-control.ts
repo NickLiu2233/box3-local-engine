@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
+import JSZip from 'jszip';
 import type { VoxelEditor } from '../models/editor';
+import { exportAnimationPreview } from './animation-preview';
 
 type Session = { id: string; projectId: string; expiresAt: string; locked: boolean };
 type CommandPayload = {
@@ -28,6 +30,11 @@ type CommandPayload = {
   projection?: 'perspective' | 'orthographic';
   fov?: number;
   zoom?: number;
+  fps?: number;
+  start?: number;
+  end?: number;
+  sizePixels?: number;
+  format?: 'zip' | 'gif';
 };
 type Command = { index: number; command: CommandPayload };
 
@@ -81,6 +88,29 @@ export function useVoxaAiControl(editor: VoxelEditor | undefined) {
         if (command.type === 'animation.preview') {
           const data = editor.automationPreview(command.motionId || '', command.time || 0, Boolean(command.playing));
           await postResult(active, command.requestId, { ok: true, data });
+          return;
+        }
+        if (command.type === 'animation.export') {
+          const { archive, plan } = await exportAnimationPreview(editor, {
+            motionId: command.motionId || '', fps: command.fps,
+            start: command.start, end: command.end, size: command.sizePixels,
+          }, () => disposed || !activeSessions.has(active.id));
+          let contentBase64 = await blobBase64(archive);
+          let contentType = 'application/zip';
+          const files = ['animation.gif', 'storyboard.png', 'manifest.json', 'frames/', 'index.html'];
+          if (command.format === 'gif') {
+            const zip = await JSZip.loadAsync(archive);
+            const entry = zip.file('animation.gif');
+            if (!entry) throw new Error('预览包缺少 animation.gif');
+            contentBase64 = await blobBase64(await entry.async('blob'));
+            contentType = 'image/gif';
+          }
+          await postResult(active, command.requestId, { ok: true, data: {
+            contentBase64, contentType,
+            motionId: plan.motionId, frameCount: plan.frames.length, fps: plan.fps,
+            start: plan.start, end: plan.end,
+            ...(command.format === 'gif' ? {} : { files }),
+          } });
           return;
         }
         if (command.type === 'scene.view') {

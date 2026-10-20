@@ -571,6 +571,10 @@
     "defaultMessage": "Pick the color from a voxel",
     "description": "toolColorPickerDescription"
   },
+  "gI1j/s": {
+    "defaultMessage": "Export animation preview (GIF + storyboard + PNG)",
+    "description": "Export GIF, timestamped storyboard and PNG frames"
+  },
   "gRVyKB": {
     "defaultMessage": "History",
     "description": "File Menu History"

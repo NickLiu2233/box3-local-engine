@@ -571,6 +571,10 @@
     "defaultMessage": "定位到体素点使用的颜色值",
     "description": "toolColorPickerDescription"
   },
+  "gI1j/s": {
+    "defaultMessage": "导出动画预览（GIF + 分镜图 + PNG）",
+    "description": "Export GIF, timestamped storyboard and PNG frames"
+  },
   "gRVyKB": {
     "defaultMessage": "历史",
     "description": "File Menu History"

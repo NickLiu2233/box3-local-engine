@@ -42,5 +42,9 @@ describe('VOXA AI control session', () => {
       type: 'scene.capture',
       requestId: `request-${Date.now()}`,
     })).not.toThrow();
+    expect(() => enqueueVoxaAiCommand(session.id, 'voxa-owner', {
+      type: 'animation.export', motionId: 'idle',
+      requestId: `animation-${Date.now()}`,
+    })).not.toThrow();
   });
 });

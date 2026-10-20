@@ -4,7 +4,7 @@ const TTL_MS = 15 * 60_000;
 const MAX_QUEUE = 200;
 
 export type VoxaAutomationCommand = {
-  type: 'project.inspect' | 'project.save' | 'project.load' | 'scene.capture' | 'scene.view' | 'node.createPart' | 'node.transform' | 'voxel.fill' | 'voxel.paint' | 'voxel.erase' | 'voxel.mirror' | 'collision.set' | 'animation.keyframe' | 'animation.preview';
+  type: 'project.inspect' | 'project.save' | 'project.load' | 'scene.capture' | 'scene.view' | 'node.createPart' | 'node.transform' | 'voxel.fill' | 'voxel.paint' | 'voxel.erase' | 'voxel.mirror' | 'collision.set' | 'animation.keyframe' | 'animation.preview' | 'animation.export';
   requestId: string;
   name?: string;
   nodeId?: string;
@@ -29,6 +29,11 @@ export type VoxaAutomationCommand = {
   projection?: 'perspective' | 'orthographic';
   fov?: number;
   zoom?: number;
+  fps?: number;
+  start?: number;
+  end?: number;
+  sizePixels?: number;
+  format?: 'zip' | 'gif';
 };
 export type VoxaAutomationSessionMode = 'edit' | 'capture';
 
@@ -126,8 +131,8 @@ export function getVoxaAiSession(id: string, ownerSubjectId: string) {
 export function enqueueVoxaAiCommand(id: string, ownerSubjectId: string, command: VoxaAutomationCommand) {
   const session = getVoxaAiSession(id, ownerSubjectId);
   if (!session) throw new Error('VOXA 自动化会话不存在或已过期');
-  if (session.mode === 'capture' && command.type !== 'scene.capture') {
-    throw new Error('VOXA 截图会话只允许 scene.capture 命令');
+  if (session.mode === 'capture' && command.type !== 'scene.capture' && command.type !== 'animation.export') {
+    throw new Error('VOXA 截图会话只允许 scene.capture 或 animation.export 命令');
   }
   if (session.commands.some((item) => item.command.requestId === command.requestId)) {
     return session.commands.find((item) => item.command.requestId === command.requestId)!;

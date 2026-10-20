@@ -54,6 +54,8 @@ apps/game/html-report/
 # Local .NET launcher outputs are reproducible build artifacts.
 /tools/windows-launcher/bin/
 /tools/windows-launcher/obj/
+# Local model previews and validation outputs are not source files.
+/artifacts/
 
 
 # Keep the complete blob store in source checkouts for offline builds.

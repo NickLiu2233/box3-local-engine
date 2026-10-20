@@ -1,10 +1,11 @@
-import { useCallback, useContext, useMemo } from 'react';
+import { useCallback, useContext, useMemo, useState } from 'react';
 import { useIntl } from 'react-intl';
 import {
   Button,
   TooltipTrigger,
   SharedTipsContext,
   TriggerOptions,
+  Toast,
 } from '@box/box-design';
 import { VoxelEditorContext } from '../../../internals';
 import { LocateKeyframeType } from '../../../models/motion-player/const';
@@ -12,6 +13,8 @@ import { useAppSelector } from '../../../redux/store';
 import { MotionsContext } from '../context';
 import { timeToFrame } from '../../../models/animator-app/util';
 import styles from './style.module.scss';
+import { exportAnimationPreview } from '../../../automation/animation-preview';
+import { downloadFile } from '../../../utils/file';
 
 export function MotionControls() {
   const { currentTime, playing, activeMotionId } = useAppSelector(
@@ -29,6 +32,20 @@ export function MotionControls() {
   const { boneIds } = useContext(MotionsContext);
 
   const editor = useContext(VoxelEditorContext);
+  const [exporting, setExporting] = useState(false);
+
+  const exportPreview = async () => {
+    if (!editor || exporting) return;
+    setExporting(true);
+    try {
+      const { archive } = await exportAnimationPreview(editor, { motionId: activeMotionId });
+      downloadFile(archive, 'animation-preview.zip');
+    } catch (error) {
+      Toast.default({ content: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const displayTime = useMemo(() => {
     const sec = Math.trunc(currentTime);
@@ -234,6 +251,14 @@ export function MotionControls() {
       {/* <Button type="icon" size="custom" icon="#icon-loop" disabled />
       <Divider /> */}
       <div className={styles.time}>{displayTime}</div>
+      <Divider />
+      <TooltipTrigger {...triggerOptions} text={intl.formatMessage({
+        description: 'Export GIF, timestamped storyboard and PNG frames',
+        defaultMessage: 'Export animation preview (GIF + storyboard + PNG)',
+      })}>
+        <Button type="icon" size="custom" icon="#icon-animations-export"
+          disabled={!activeMotionId || exporting} onClick={exportPreview} />
+      </TooltipTrigger>
     </div>
   );
 }
