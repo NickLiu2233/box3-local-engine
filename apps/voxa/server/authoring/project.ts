@@ -43,6 +43,20 @@ export function identifier(value: unknown): string {
   )
   return value
 }
+/**
+ * Existing skin templates can contain IDs beginning with a digit. New IDs are
+ * still constrained by identifier(), while references must accept every ID
+ * that can legally exist in an imported project.
+ */
+export function referenceIdentifier(value: unknown): string {
+  check(
+    typeof value === 'string' &&
+      /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/.test(value) &&
+      !['constructor', 'prototype', '__proto__'].includes(value),
+    '节点引用 ID 无效',
+  )
+  return value
+}
 export function rotation(value: unknown) {
   const e = vector(value, 'rotation')
   return quat.fromEuler(quat.create(), e[0], e[1], e[2])
@@ -119,7 +133,7 @@ export function applyOperations(input: Project, operations: unknown): Project {
   }
   const views = new Map<string, VoxelView>()
   const node = (id: unknown) => {
-    const n = project.nodes[identifier(id)]
+    const n = project.nodes[referenceIdentifier(id)]
     check(n, `节点不存在：${id}`)
     return n
   }
@@ -281,7 +295,7 @@ export function applyOperations(input: Project, operations: unknown): Project {
       }
       const parentId = op.parent === undefined
         ? source.parentId
-        : identifier(op.parent)
+        : referenceIdentifier(op.parent)
       const owner = node(parentId)
       check(owner.type === T.Bone || owner.type === T.Group || owner.type === T.Root, '复制目标父节点无效')
       const cloned = new Map<string, Node>()

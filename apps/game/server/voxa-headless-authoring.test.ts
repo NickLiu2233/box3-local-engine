@@ -11,6 +11,7 @@ import {
 import { compileProject, poseOffsets, worldMatrices } from '../../voxa/server/authoring/compile'
 import { renderProject } from '../../voxa/server/authoring/render'
 import { modelBytesToSchema, bodyPartBytesToSchema } from '@box/voxa-project'
+import sharp from 'sharp'
 
 function fixture() {
   return applyOperations(createProject('model'), [
@@ -153,6 +154,19 @@ test('CPU rendering produces PNGs that change when the animated pose changes', a
   expect(base.equals(animated)).toBe(false)
 })
 
+test('CPU rendering accepts a smaller preview size', async () => {
+  const png = await renderProject(fixture(), {}, { width: 800, height: 667 })
+  const metadata = await sharp(png).metadata()
+  expect(metadata.width).toBe(800)
+  expect(metadata.height).toBe(667)
+  expect(png.length).toBeLessThan((await renderProject(fixture())).length)
+  const tiny = await sharp(
+    await renderProject(fixture(), {}, { width: 128, height: 107 }),
+  ).metadata()
+  expect(tiny.width).toBe(128)
+  expect(tiny.height).toBe(107)
+})
+
 test('skin editing preserves canonical skeleton and emits actual per-body-part skin resources', async () => {
   const p = createProject('skin')
   const head = p.nodes[p.nodes.head.skinId]
@@ -172,6 +186,16 @@ test('skin editing preserves canonical skeleton and emits actual per-body-part s
   expect(part.schema.partId).toBe(3)
   expect(part.schema.meshes.length).toBeGreaterThan(0)
   expect(edited.nodes.head.position).toEqual(p.nodes.head.position)
+})
+
+test('skin recipes can reference existing node IDs that begin with a digit', () => {
+  const p = createProject('skin')
+  const numericId = Object.keys(p.nodes).find((id) => /^\d/.test(id))
+  expect(numericId).toBeTruthy()
+  const edited = applyOperations(p, [
+    { op: 'node.transform', node: numericId, name: 'numeric template node' },
+  ])
+  expect(edited.nodes[numericId!].name).toBe('numeric template node')
 })
 
 test('surface merging preserves colored face coverage while reducing flat surfaces', () => {

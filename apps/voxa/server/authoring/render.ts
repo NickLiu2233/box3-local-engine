@@ -9,8 +9,28 @@ import { forEachSurface } from './surfaces'
 sharp.cache(false)
 sharp.concurrency(1)
 
+export type RenderOptions = {
+  width?: number
+  height?: number
+}
+
 // A CPU preview from the actual editable voxels. No browser or WebGL process.
-export async function renderProject(project: Project, pose: Pose = {}) {
+export async function renderProject(
+  project: Project,
+  pose: Pose = {},
+  options: RenderOptions = {},
+) {
+  const width = options.width ?? 1200,
+    height = options.height ?? 1000
+  check(
+    Number.isInteger(width) &&
+      Number.isInteger(height) &&
+      width >= 128 &&
+      width <= 1200 &&
+      height >= 64 &&
+      height <= 1200,
+    '预览尺寸需要 128–1200 的整数像素',
+  )
   const { worlds, offsets } = worldMatrices(project, pose),
     cache = new Map<string, VoxelView>()
   const palette = new Map(project.palette.items.map((p) => [p.id, p]))
@@ -166,12 +186,10 @@ export async function renderProject(project: Project, pose: Pose = {}) {
     maxX = 1
     maxY = 1
   }
-  const width = 1200,
-    height = 1000,
-    scale = Math.min(
-      (width - 100) / Math.max(1, maxX - minX),
-      (height - 100) / Math.max(1, maxY - minY),
-    )
+  const scale = Math.min(
+    (width - 100) / Math.max(1, maxX - minX),
+    (height - 100) / Math.max(1, maxY - minY),
+  )
   const ox = width / 2 - ((minX + maxX) / 2) * scale,
     oy = height / 2 - ((minY + maxY) / 2) * scale
   const polygons = faces
