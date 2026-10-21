@@ -59,13 +59,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (input.render === '1') {
         const size =
           input.size === undefined ? undefined : Number(input.size)
+        const view = typeof input.view === 'string' ? input.view : undefined
         check(size === undefined || (Number.isInteger(size) && size >= 128 && size <= 1200), '预览尺寸需要 128–1200 的整数像素')
         const png = await renderProject(original, {
           motion: typeof input.motion === 'string' ? input.motion : undefined,
           time: input.time === undefined ? 0 : Number(input.time),
-        }, size === undefined ? undefined : {
-          width: size,
-          height: Math.round(size * 5 / 6),
+        }, {
+          ...(size === undefined ? {} : {
+            width: size,
+            height: Math.round(size * 5 / 6),
+          }),
+          view,
         })
         res.setHeader('Content-Type', 'image/png')
         res.setHeader('Cache-Control', 'no-store')

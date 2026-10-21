@@ -9,7 +9,10 @@ import {
   readVoxels,
 } from '../../voxa/server/authoring/project'
 import { compileProject, poseOffsets, worldMatrices } from '../../voxa/server/authoring/compile'
-import { renderProject } from '../../voxa/server/authoring/render'
+import {
+  renderProject,
+  renderProjectSheet,
+} from '../../voxa/server/authoring/render'
 import { modelBytesToSchema, bodyPartBytesToSchema } from '@box/voxa-project'
 import sharp from 'sharp'
 
@@ -165,6 +168,32 @@ test('CPU rendering accepts a smaller preview size', async () => {
   ).metadata()
   expect(tiny.width).toBe(128)
   expect(tiny.height).toBe(107)
+})
+
+test('CPU rendering can batch multiple poses and fixed framing views', async () => {
+  const result = await renderProjectSheet(
+    fixture(),
+    [
+      { motion: 'roar', time: 0 },
+      { motion: 'roar', time: 0.7 },
+    ],
+    { width: 300, height: 250, views: ['front', 'left'] },
+  )
+  expect(result.frames).toHaveLength(4)
+  expect(result.views).toEqual(['front', 'left'])
+  expect(
+    result.frames.every(
+      (frame) =>
+        frame.buffer.subarray(1, 4).toString() === 'PNG',
+    ),
+  ).toBe(true)
+  const front = result.frames.find(
+    (frame) => frame.view === 'front' && frame.index === 0,
+  )!
+  const left = result.frames.find(
+    (frame) => frame.view === 'left' && frame.index === 0,
+  )!
+  expect(front.buffer.equals(left.buffer)).toBe(false)
 })
 
 test('skin editing preserves canonical skeleton and emits actual per-body-part skin resources', async () => {
