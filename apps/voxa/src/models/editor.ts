@@ -424,6 +424,55 @@ export class VoxelEditor {
     return { nodeId: id, voxelId: (nodeData as { voxelId?: string } | undefined)?.voxelId || '' };
   }
 
+  public automationCreateGroup(
+    name?: string,
+    childrenIds?: string[],
+    boneId?: string,
+  ) {
+    const state = store.getState().animator;
+    const ids =
+      childrenIds?.length
+        ? [...childrenIds]
+        : state.activeIds.filter((id) => {
+            const node = state.hierarchyData[id];
+            return (
+              node?.type === ProjectNodeType.SkinPart ||
+              node?.type === ProjectNodeType.Group
+            );
+          });
+    if (boneId) {
+      const bone = state.hierarchyData[boneId];
+      if (!bone || bone.type !== ProjectNodeType.Bone) {
+        throw new Error(`可绑定骨骼不存在：${boneId}`);
+      }
+      const binding = bone.skinId
+        ? state.hierarchyData[bone.skinId]
+        : undefined;
+      if (binding?.type === ProjectNodeType.Group && binding.childrenIds?.length) {
+        for (const childId of binding.childrenIds) {
+          if (!ids.includes(childId)) ids.push(childId);
+        }
+      } else if (binding && !ids.includes(binding.id)) {
+        ids.push(binding.id);
+      }
+    }
+    if (!ids.length) throw new Error('编组需要至少一个部件或组');
+    const group = this.animatorApp.nodeManager.addGroup(ids);
+    if (name) this.animatorApp.renameNode(group.uuid, name.slice(0, 64));
+    if (boneId) {
+      this.animatorApp.nodeManager.setActiveIds([group.uuid], false);
+      this.animatorApp.nodeManager.moveActiveSkinNodes(boneId, 'box');
+    }
+    const nodeData = store.getState().animator.hierarchyData[group.uuid];
+    return {
+      nodeId: group.uuid,
+      name: nodeData?.name || name || '',
+      parentId: nodeData?.parentId || '',
+      boneId: nodeData?.boneId || '',
+      nodeIds: ids,
+    };
+  }
+
   public automationTransform(nodeId: string, position?: [number, number, number], rotation?: [number, number, number], scale?: [number, number, number]) {
     this.animatorApp.nodeManager.setActiveIds([nodeId], false);
     this.animatorApp.toMode(AnimatorMode.Setup);

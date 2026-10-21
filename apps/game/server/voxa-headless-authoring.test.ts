@@ -95,6 +95,85 @@ test('node.clone copies a bone subtree, bound voxels and mirrored geometry', () 
   expect(p.nodes.ROOT_BONE.childrenIds).toContain('body_R')
 })
 
+test('node.group moves related parts under one group bound to a bone', () => {
+  const p = applyOperations(fixture(), [
+    {
+      op: 'node.create',
+      id: 'lantern',
+      kind: 'part',
+      bone: 'body',
+      size: [2, 2, 2],
+    },
+    {
+      op: 'node.create',
+      id: 'pack',
+      kind: 'part',
+      bone: 'body',
+      size: [3, 4, 2],
+    },
+    {
+      op: 'node.group',
+      id: 'wear',
+      nodes: ['armor', 'lantern', 'pack'],
+      bone: 'body',
+      name: 'Wear',
+    },
+  ])
+  expect(
+    describeProject(p).nodes.find((node) => node.id === 'wear')?.type,
+  ).toBe('group')
+  expect(p.nodes.wear.parentId).toBe('')
+  expect(p.nodes.wear.boneId).toBe('body')
+  expect(p.nodes.body.skinId).toBe('wear')
+  expect(p.nodes.wear.childrenIds).toEqual(['armor', 'lantern', 'pack'])
+  expect(p.nodes.armor.parentId).toBe('wear')
+  expect(p.nodes.lantern.parentId).toBe('wear')
+  expect(p.nodes.pack.parentId).toBe('wear')
+  expect(p.nodes.body_skin.childrenIds).toEqual([])
+})
+
+test('skin grouping keeps the existing bound part and world transforms', () => {
+  const base = createProject('skin')
+  const headPartId = base.nodes.head.skinId
+  const before = worldMatrices(base).worlds.get(headPartId)!
+  const beforeOrigin = vec3.transformMat4(
+    vec3.create(),
+    [0, 0, 0],
+    before,
+  )
+  const edited = applyOperations(base, [
+    {
+      op: 'node.create',
+      id: 'hat',
+      kind: 'part',
+      parent: 'ROOT_SKIN',
+      position: [12, 4, 0],
+      size: [6, 3, 6],
+    },
+    {
+      op: 'node.group',
+      id: 'head_wear',
+      nodes: [headPartId, 'hat'],
+      bone: 'head',
+    },
+  ])
+  const group = edited.nodes.head_wear
+  expect(group.boneId).toBe('head')
+  expect(group.parentId).toBe('')
+  expect(edited.nodes.head.skinId).toBe('head_wear')
+  expect(edited.nodes[headPartId].parentId).toBe('head_wear')
+  expect(edited.nodes[headPartId].boneId).toBe('')
+  expect(edited.nodes.hat.parentId).toBe('head_wear')
+  const after = worldMatrices(edited).worlds.get(headPartId)!
+  const afterOrigin = vec3.transformMat4(
+    vec3.create(),
+    [0, 0, 0],
+    after,
+  )
+  for (let index = 0; index < 3; index++)
+    expect(afterOrigin[index]).toBeCloseTo(beforeOrigin[index], 4)
+})
+
 test('normalizes legacy zero root transforms before CPU preview', async () => {
   const p = fixture()
   p.nodes.ROOT.scale.set([0, 0, 0])

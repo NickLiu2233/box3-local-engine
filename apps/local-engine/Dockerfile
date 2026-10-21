@@ -11,8 +11,13 @@ ENV CI=true \
     RUSH_PNPM_STORE_PATH=/pnpm/store \
     NODE_OPTIONS=--max-old-space-size=8192
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
+RUN node -e "const fs=require('node:fs');fs.mkdirSync('/etc/ssl/certs',{recursive:true});fs.writeFileSync('/etc/ssl/certs/ca-certificates.crt',require('node:tls').rootCertificates.join('\\n'))" \
+    && sed -i \
+      -e 's|http://deb.debian.org|https://mirrors.cloud.tencent.com|g' \
+      -e 's|https://deb.debian.org|https://mirrors.cloud.tencent.com|g' \
+      /etc/apt/sources.list.d/debian.sources \
+    && apt-get -o Acquire::Retries=5 -o Acquire::https::Timeout=30 update \
+    && apt-get -o Acquire::Retries=5 -o Acquire::https::Timeout=30 install -y --no-install-recommends python3 make g++ ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

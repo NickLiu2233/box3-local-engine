@@ -4,10 +4,11 @@ const TTL_MS = 15 * 60_000;
 const MAX_QUEUE = 200;
 
 export type VoxaAutomationCommand = {
-  type: 'project.inspect' | 'project.save' | 'project.load' | 'scene.capture' | 'scene.view' | 'node.createPart' | 'node.transform' | 'voxel.fill' | 'voxel.paint' | 'voxel.erase' | 'voxel.mirror' | 'collision.set' | 'animation.keyframe' | 'animation.preview' | 'animation.export';
+  type: 'project.inspect' | 'project.save' | 'project.load' | 'scene.capture' | 'scene.view' | 'node.createPart' | 'node.createGroup' | 'node.transform' | 'voxel.fill' | 'voxel.paint' | 'voxel.erase' | 'voxel.mirror' | 'collision.set' | 'animation.keyframe' | 'animation.preview' | 'animation.export';
   requestId: string;
   name?: string;
   nodeId?: string;
+  boneId?: string;
   voxelId?: string;
   position?: [number, number, number];
   rotation?: [number, number, number];

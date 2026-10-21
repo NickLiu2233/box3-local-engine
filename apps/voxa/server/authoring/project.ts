@@ -1,4 +1,4 @@
-import { mat3, quat } from 'gl-matrix'
+import { mat3, mat4, quat, vec3 } from 'gl-matrix'
 import { MuReadStream, MuWriteStream } from '@box/mudb/stream'
 import { allocEmptyVoxels } from '@box/utils/helper'
 import { restoreVoxels, storeVoxels, VoxelView } from '@box/utils/voxel'
@@ -341,6 +341,171 @@ export function applyOperations(input: Project, operations: unknown): Project {
       }
       for (const copy of cloned.values()) project.nodes[copy.id] = copy
       owner.childrenIds.push(rootId)
+    } else if (op.op === 'node.group') {
+      const id = identifier(op.id)
+      check(!project.nodes[id], `节点 ID 已存在：${id}`)
+      check(
+        !(op.bone !== undefined && op.parent !== undefined),
+        'node.group 不能同时指定 bone 和 parent',
+      )
+      const requested = Array.isArray(op.nodes)
+        ? op.nodes.map(referenceIdentifier)
+        : []
+      check(
+        requested.length <= 128,
+        'node.group 最多编组 128 个节点',
+      )
+      check(
+        new Set(requested).size === requested.length,
+        'node.group 的 nodes 不能重复',
+      )
+      const bone =
+        op.bone === undefined ? undefined : node(op.bone)
+      if (bone) {
+        check(
+          bone.type === T.Bone && bone.id !== 'ROOT_BONE' && bone.skinId,
+          'node.group 的 bone 需要可绑定骨骼',
+        )
+        const binding = bone.skinId ? project.nodes[bone.skinId] : undefined
+        if (binding?.type === T.Group && binding.childrenIds.length) {
+          for (const childId of binding.childrenIds) {
+            if (!requested.includes(childId)) requested.push(childId)
+          }
+        } else if (binding && !requested.includes(binding.id)) {
+          requested.push(binding.id)
+        }
+      }
+      check(
+        requested.length > 0,
+        'node.group 的 nodes 需要至少一个部件或组',
+      )
+      const children = [...new Set(requested)]
+      const childNodes = children.map(node)
+      check(
+        childNodes.every(
+          (child) => child.type === T.SkinPart || child.type === T.Group,
+        ),
+        'node.group 只能编组部件或组',
+      )
+      const parent =
+        !bone && op.parent !== undefined
+          ? node(referenceIdentifier(op.parent))
+          : undefined
+      if (parent) check(parent.type === T.Group, 'node.group 的父节点必须是组')
+      if (!bone && !parent) {
+        const commonParent = childNodes[0].parentId
+        check(
+          commonParent &&
+            childNodes.every((child) => child.parentId === commonParent),
+          'node.group 未指定 bone/parent 时，子节点必须属于同一父节点',
+        )
+      }
+      const local = (current: Node) => {
+        if (ROOTS.has(current.id)) return mat4.create()
+        const pivot = vec3.multiply(vec3.create(), current.pivot, current.scale)
+        vec3.transformQuat(pivot, pivot, current.quaternion)
+        vec3.add(pivot, pivot, current.position)
+        return mat4.fromRotationTranslationScale(
+          mat4.create(),
+          current.quaternion,
+          pivot,
+          current.scale,
+        )
+      }
+      const worlds = new Map<string, mat4>()
+      const visiting = new Set<string>()
+      const world = (current: Node): mat4 => {
+        const cached = worlds.get(current.id)
+        if (cached) return cached
+        check(!visiting.has(current.id), '节点层级存在循环')
+        visiting.add(current.id)
+        const matrix = local(current)
+        const ownerId = current.parentId || current.boneId
+        if (ownerId) {
+          check(project.nodes[ownerId], `父节点不存在：${ownerId}`)
+          mat4.multiply(matrix, world(project.nodes[ownerId]), matrix)
+        }
+        worlds.set(current.id, matrix)
+        visiting.delete(current.id)
+        return matrix
+      }
+      const previousWorlds = new Map(
+        childNodes.map((child) => [child.id, mat4.clone(world(child))]),
+      )
+      const group = makeNode(id, T.Group, parent?.id || '')
+      group.name = String(op.name ?? id).slice(0, 64)
+      group.childrenIds = children
+      project.nodes[id] = group
+      if (bone) {
+        group.boneId = bone.id
+        bone.skinId = id
+      } else if (parent) {
+        parent.childrenIds.push(id)
+      } else {
+        const owner = node(childNodes[0].parentId)
+        group.parentId = owner.id
+        owner.childrenIds.push(id)
+      }
+      for (const current of Object.values(project.nodes)) {
+        if (current.id !== id) {
+          current.childrenIds = current.childrenIds.filter(
+            (childId) => !children.includes(childId),
+          )
+        }
+      }
+      const groupWorld = world(group)
+      const inverseGroup = mat4.invert(mat4.create(), groupWorld)
+      check(inverseGroup, '编组父级矩阵无效')
+      for (const child of childNodes) {
+        const target = mat4.multiply(
+          mat4.create(),
+          inverseGroup,
+          previousWorlds.get(child.id)!,
+        )
+        const scale = mat4.getScaling(vec3.create(), target)
+        const quaternion = mat4.getRotation(quat.create(), target)
+        const translation = mat4.getTranslation(vec3.create(), target)
+        const pivot = vec3.multiply(vec3.create(), child.pivot, scale)
+        vec3.transformQuat(pivot, pivot, quaternion)
+        vec3.subtract(translation, translation, pivot)
+        child.position.set(translation)
+        child.quaternion.set(quaternion)
+        const rotationMatrix = mat3.fromQuat(mat3.create(), quaternion)
+        const r31 = rotationMatrix[2]
+        let theta: number
+        let psi: number
+        let phi: number
+        if (r31 !== 1 && r31 !== -1) {
+          theta = -Math.asin(r31)
+          const cosTheta = Math.cos(theta)
+          psi = Math.atan2(
+            rotationMatrix[5] / cosTheta,
+            rotationMatrix[8] / cosTheta,
+          )
+          phi = Math.atan2(
+            rotationMatrix[1] / cosTheta,
+            rotationMatrix[0] / cosTheta,
+          )
+        } else {
+          phi = 0
+          if (r31 === -1) {
+            theta = Math.PI / 2
+            psi = phi + Math.atan2(rotationMatrix[0], rotationMatrix[6])
+          } else {
+            theta = -Math.PI / 2
+            psi = -phi + Math.atan2(-rotationMatrix[0], -rotationMatrix[6])
+          }
+        }
+        child.euler.set([
+          (psi * 180) / Math.PI,
+          (theta * 180) / Math.PI,
+          (phi * 180) / Math.PI,
+        ])
+        child.scale.set(scale)
+        child.parentScaleMat3 = mat3.create() as typeof child.parentScaleMat3
+        child.parentId = id
+        child.boneId = ''
+      }
     } else if (op.op === 'node.transform') {
       const n = node(op.node)
       check(!ROOTS.has(n.id), '系统根节点不能变换')

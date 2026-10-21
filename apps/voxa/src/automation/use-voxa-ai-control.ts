@@ -9,6 +9,7 @@ type CommandPayload = {
   type: string;
   name?: string;
   nodeId?: string;
+  boneId?: string;
   voxelId?: string;
   position?: [number, number, number];
   rotation?: [number, number, number];
@@ -160,6 +161,15 @@ export function useVoxaAiControl(editor: VoxelEditor | undefined) {
         }
         if (command.type === 'node.createPart') {
           const data = editor.automationCreatePart(command.name);
+          await postResult(active, command.requestId, { ok: true, data });
+          return;
+        }
+        if (command.type === 'node.createGroup') {
+          const data = editor.automationCreateGroup(
+            command.name,
+            command.nodeIds,
+            command.boneId,
+          );
           await postResult(active, command.requestId, { ok: true, data });
           return;
         }
