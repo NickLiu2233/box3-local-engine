@@ -563,6 +563,10 @@ export const apiOperations = {
     "path": "/api/local/ai/socket",
     "method": "POST"
   },
+  "postApiLocalAnimationPreview": {
+    "path": "/api/local/animation-preview",
+    "method": "POST"
+  },
   "postApiLocalBlob": {
     "path": "/api/local/blob",
     "method": "POST"
@@ -577,6 +581,10 @@ export const apiOperations = {
   },
   "postApiLocalModelsImport": {
     "path": "/api/local/models/import",
+    "method": "POST"
+  },
+  "postApiLocalModelsRenderSheet": {
+    "path": "/api/local/models/render-sheet",
     "method": "POST"
   },
   "postApiLocalProjects": {
@@ -2517,6 +2525,18 @@ export class ApiClient {
     return this.unwrap(this.postApiLocalAiSocketRaw(...init));
   }
 
+  postApiLocalAnimationPreviewRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/animation-preview"]["POST"]>
+  ) {
+    return this.paths["/api/local/animation-preview"].POST(...init);
+  }
+
+  postApiLocalAnimationPreview(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/animation-preview"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiLocalAnimationPreviewRaw(...init));
+  }
+
   postApiLocalBlobRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/local/blob"]["POST"]>
   ) {
@@ -2563,6 +2583,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/local/models/import"]["POST"]>
   ) {
     return this.unwrap(this.postApiLocalModelsImportRaw(...init));
+  }
+
+  postApiLocalModelsRenderSheetRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/models/render-sheet"]["POST"]>
+  ) {
+    return this.paths["/api/local/models/render-sheet"].POST(...init);
+  }
+
+  postApiLocalModelsRenderSheet(
+    ...init: Parameters<PathBasedClient<paths>["/api/local/models/render-sheet"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiLocalModelsRenderSheetRaw(...init));
   }
 
   postApiLocalProjectsRaw(

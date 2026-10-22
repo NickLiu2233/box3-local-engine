@@ -1,5 +1,5 @@
 ARG DOCKER_CLI_IMAGE=docker.m.daocloud.io/library/docker:27.5.1-cli
-ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
+ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.23.4-bookworm-slim
 ARG RUST_IMAGE=docker.m.daocloud.io/library/rust:1.93-bookworm
 
 FROM ${DOCKER_CLI_IMAGE} AS docker-cli

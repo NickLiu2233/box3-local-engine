@@ -115,7 +115,15 @@ type CreatorPickerProps = {
     submit:() => void;
 };
 
-export function CreatorPickerDialog({ form, open, candidates, loading, search, close, submit }:CreatorPickerProps) {
+export function CreatorPickerDialog({
+    form,
+    open,
+    candidates,
+    loading,
+    search,
+    close,
+    submit,
+}:CreatorPickerProps) {
     return (
         <Modal
             title="新增创作权限"

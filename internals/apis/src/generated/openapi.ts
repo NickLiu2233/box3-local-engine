@@ -1152,6 +1152,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/local/animation-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 创建接口数据
+         * @description 此操作用于“创建接口数据”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiLocalAnimationPreview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/local/blob": {
         parameters: {
             query?: never;
@@ -1346,6 +1366,26 @@ export interface paths {
          * @description 此操作用于“导入 VOXA 模型”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
          */
         post: operations["postApiLocalModelsImport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/local/models/render-sheet": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 创建 VOXA 模型
+         * @description 此操作用于“创建 VOXA 模型”。该接口用于管理 VOXA 模型工程、资源块和默认角色皮肤。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        post: operations["postApiLocalModelsRenderSheet"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6184,6 +6224,44 @@ export interface operations {
             };
         };
     };
+    postApiLocalAnimationPreview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“创建接口数据”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“创建接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postApiLocalBlob: {
         parameters: {
             query?: never;
@@ -6695,6 +6773,44 @@ export interface operations {
         };
         responses: {
             /** @description 操作成功，返回“导入 VOXA 模型”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiLocalModelsRenderSheet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“创建 VOXA 模型”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“创建 VOXA 模型”的处理结果。 */
             200: {
                 headers: {
                     [name: string]: unknown;

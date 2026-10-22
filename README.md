@@ -7,7 +7,7 @@
 **在自己的电脑或服务器上创作、发布和运行网页多人 3D 游戏。**
 
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE.md)
-[![Node.js](https://img.shields.io/badge/Node.js-22.17-339933.svg)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-22.23.4-339933.svg)](https://nodejs.org/)
 [![Rust](https://img.shields.io/badge/Rust-1.93.0-000000.svg)](https://www.rust-lang.org/)
 [![Docker](https://img.shields.io/badge/Docker-Compose_v2-2496ED.svg)](https://www.docker.com/)
 
@@ -83,7 +83,7 @@ Play 展示已导入的发布地图，Creator 中正在编辑的工程不会自�
 
 ## 源码开发
 
-使用 Node.js `22.17.x`，并提前启动 Docker。工作区由 Rush 管理，仓库脚本会准备锁定版本的 Rush 和 pnpm。原生管理器开发与 Rust 专项测试还需要 Rust stable 及平台工具链，详见[开发入门](docs/developer-guide.md)。
+使用 Node.js `22.23.4`，并提前启动 Docker。工作区由 Rush 管理，仓库脚本会准备锁定版本的 Rush 和 pnpm。原生管理器开发与 Rust 专项测试还需要 Rust stable 及平台工具链，详见[开发入门](docs/developer-guide.md)。
 
 在终端执行：
 

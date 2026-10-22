@@ -1,6 +1,6 @@
 # 检查与测试
 
-所有命令从仓库根目录执行，先使用 Node.js `22.17.x` 安装依赖：`npm run install:all`。
+所有命令从仓库根目录执行，先使用 Node.js `22.23.4` 安装依赖：`npm run install:all`。
 
 ## 默认 Verify 只做基础检查
 

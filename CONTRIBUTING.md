@@ -18,7 +18,7 @@ git switch -c dev/<short-description> upstream/dev
 
 ## 安装与检查
 
-使用 Node.js `22.17.x`，启动 Docker 后在根目录执行：
+使用 Node.js `22.23.4`，启动 Docker 后在根目录执行：
 
 ```sh
 npm run install:all

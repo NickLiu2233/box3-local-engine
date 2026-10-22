@@ -1,4 +1,4 @@
-ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.17.0-bookworm-slim
+ARG NODE_IMAGE=docker.m.daocloud.io/library/node:22.23.4-bookworm-slim
 
 FROM ${NODE_IMAGE} AS build
 WORKDIR /build

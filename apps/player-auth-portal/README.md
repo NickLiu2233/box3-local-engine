@@ -18,7 +18,7 @@ sequenceDiagram
 | 场景             | 安装与启动                                                                      |
 | ---------------- | ------------------------------------------------------------------------------- |
 | 引擎工作区       | 根 `npm run install:all`，再执行 `npm --prefix apps/player-auth-portal run dev` |
-| 已导出的独立模板 | Node.js 22.17 或更新版本，模板根运行 `npm ci`、`npm run dev`                    |
+| 已导出的独立模板 | Node.js 22.23.4 或更新版本，模板根运行 `npm ci`、`npm run dev`                  |
 | 真实服务联调     | 模块根配置 `.env`，运行 `npm run dev:live`                                      |
 
 模拟预览默认 `http://127.0.0.1:4325`，账号 `demo` / `demo-password-123`，数据只在内存中。普通预览不连接真实账号服务，也不验证真实设备、封禁、限流或数据库行为。
