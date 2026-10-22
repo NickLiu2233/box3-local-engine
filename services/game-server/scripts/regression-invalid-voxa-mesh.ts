@@ -63,7 +63,12 @@ async function main() {
   assert.equal(replacementMetadata.version, 7);
   assert.deepEqual(replacementMetadata.bounds, metadata.bounds);
   assert.equal(replacementModel?.version, 7);
-  assert.deepEqual(replacementModel?.schema.nodes, []);
+  if (replacementModel?.version !== 7) {
+    throw new Error('invalid VOXA mesh replacement did not migrate to version 7');
+  }
+  const nodes = (replacementModel.schema as { nodes?: unknown }).nodes;
+  assert.ok(Array.isArray(nodes));
+  assert.equal(nodes.length, 0);
   assert.equal(warnings.length, 1);
   console.log('invalid VOXA mesh falls back to an empty model');
 }
