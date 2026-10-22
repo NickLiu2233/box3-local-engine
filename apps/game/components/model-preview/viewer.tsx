@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Minus, Play, Pause, Check, ChevronDown, Grid3X3, RotateCcw } from 'lucide-react'
-import * as Select from '@radix-ui/react-select'
+import { Plus, Minus, Play, Pause, Check, ChevronDown, Grid3X3 } from 'lucide-react'
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
+import { IconSecondaryLocation, IconLight } from '@box/icons'
 import { VOXA_PLAY_MAX_BYTES, type VoxaPlayBundle } from '@box/voxa-project'
 import { ModelPreviewRenderer } from './renderer'
 import { apiClient } from '../../src/apis/client'
@@ -22,7 +23,8 @@ export default function ModelPreviewViewer({
   const [error, setError] = useState(''),
     [animation, setAnimation] = useState(-1),
     [playing, setPlaying] = useState(true),
-    [gridVisible, setGridVisible] = useState(false)
+    [gridVisible, setGridVisible] = useState(false),
+    [emissiveEnabled, setEmissiveEnabled] = useState(true)
   useEffect(() => {
     const abort = new AbortController()
     let instance: ModelPreviewRenderer | undefined
@@ -30,6 +32,7 @@ export default function ModelPreviewViewer({
     setError('')
     setAnimation(-1)
     setGridVisible(false)
+    setEmissiveEnabled(true)
     void (async () => {
       const data = await loadModelPreview({
         id,
@@ -80,6 +83,9 @@ export default function ModelPreviewViewer({
   useEffect(() => {
     renderer.current?.setGridVisible(gridVisible)
   }, [gridVisible])
+  useEffect(() => {
+    renderer.current?.setEmissiveEnabled(emissiveEnabled)
+  }, [emissiveEnabled])
   return (
     <section className={styles.viewer} aria-label="三维模型预览">
       <div className={styles.canvasArea}>
@@ -124,7 +130,7 @@ export default function ModelPreviewViewer({
           disabled={!bundle}
           onClick={() => renderer.current?.reset()}
         >
-          <RotateCcw size={17} />
+          <IconSecondaryLocation className={styles.voxaIcon} aria-hidden="true" />
         </button>
         <button
           className={gridVisible ? styles.activeTool : undefined}
@@ -136,57 +142,71 @@ export default function ModelPreviewViewer({
         >
           <Grid3X3 size={17} />
         </button>
+        <button
+          className={emissiveEnabled ? styles.activeTool : undefined}
+          aria-label="发光"
+          title="发光"
+          aria-pressed={emissiveEnabled}
+          disabled={!bundle}
+          onClick={() => setEmissiveEnabled((value) => !value)}
+        >
+          <IconLight className={styles.voxaIcon} aria-hidden="true" />
+        </button>
         {bundle?.model.animations.length ? (
           <>
             <span className={styles.divider} />
             <span className={styles.animationLabel} aria-hidden="true">
               动画
             </span>
-            <Select.Root
-              value={String(animation)}
-              onValueChange={(value) => {
-                setAnimation(Number(value))
-                setPlaying(true)
-              }}
-            >
-              <Select.Trigger className={styles.animationTrigger} aria-label="动画">
-                <Select.Value />
-                <Select.Icon asChild>
-                  <ChevronDown size={13} aria-hidden="true" />
-                </Select.Icon>
-              </Select.Trigger>
-              <Select.Portal>
-                <Select.Content
+            <DropdownMenu.Root modal={false}>
+              <DropdownMenu.Trigger className={styles.animationTrigger} aria-label="动画">
+                <span>
+                  {animation < 0
+                    ? '静态'
+                    : bundle.model.animations[animation]?.name || `动画 ${animation + 1}`}
+                </span>
+                <ChevronDown size={13} aria-hidden="true" />
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
                   className={styles.animationMenu}
-                  position="popper"
                   side="top"
                   align="end"
                   sideOffset={10}
                   collisionPadding={12}
                 >
-                  <Select.Viewport className={styles.animationOptions}>
-                    {[
-                      { value: -1, name: '静态' },
-                      ...bundle.model.animations.map((item, index) => ({
-                        value: index,
-                        name: item.name || `动画 ${index + 1}`,
-                      })),
-                    ].map((item) => (
-                      <Select.Item
-                        className={styles.animationOption}
-                        key={item.value}
-                        value={String(item.value)}
-                      >
-                        <Select.ItemText>{item.name}</Select.ItemText>
-                        <Select.ItemIndicator className={styles.selectedAnimation}>
-                          <Check size={13} aria-hidden="true" />
-                        </Select.ItemIndicator>
-                      </Select.Item>
-                    ))}
-                  </Select.Viewport>
-                </Select.Content>
-              </Select.Portal>
-            </Select.Root>
+                  <div className={styles.animationOptions}>
+                    <DropdownMenu.RadioGroup
+                      value={String(animation)}
+                      onValueChange={(value) => {
+                        setAnimation(Number(value))
+                        setPlaying(true)
+                      }}
+                    >
+                      {[
+                        { value: -1, name: '静态' },
+                        ...bundle.model.animations.map((item, index) => ({
+                          value: index,
+                          name: item.name || `动画 ${index + 1}`,
+                        })),
+                      ].map((item) => (
+                        <DropdownMenu.RadioItem
+                          className={styles.animationOption}
+                          key={item.value}
+                          value={String(item.value)}
+                          onSelect={(event) => event.preventDefault()}
+                        >
+                          {item.name}
+                          <DropdownMenu.ItemIndicator className={styles.selectedAnimation}>
+                            <Check size={13} aria-hidden="true" />
+                          </DropdownMenu.ItemIndicator>
+                        </DropdownMenu.RadioItem>
+                      ))}
+                    </DropdownMenu.RadioGroup>
+                  </div>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
             {animation >= 0 ? (
               <button
                 aria-label={playing ? '暂停动画' : '播放动画'}

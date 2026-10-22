@@ -132,6 +132,23 @@ export default function PlayModelPage({
             {model.description || '暂无简介'}
           </p>
         </section>
+        <section className={styles.instructions} aria-label="操作说明">
+          <h2>操作说明</h2>
+          <dl>
+            <div>
+              <dt>左键 / 右键拖动</dt>
+              <dd>旋转模型</dd>
+            </div>
+            <div>
+              <dt>中键拖动</dt>
+              <dd>平移画布</dd>
+            </div>
+            <div>
+              <dt>滚动滚轮</dt>
+              <dd>缩放模型</dd>
+            </div>
+          </dl>
+        </section>
       </aside>
     </main>
   )

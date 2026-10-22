@@ -1,5 +1,7 @@
 import { mat3, mat4, vec3 } from 'gl-matrix'
 import { unpackMeshData, unpackTextureData } from '@box/mesher'
+import { PreviewBloom } from './bloom'
+import { directionIndicatorVertices } from './direction-indicator'
 import { animationDuration, previewPose, type PreviewModel } from './pose'
 
 const vertex = `attribute vec3 position; attribute vec3 normal; attribute vec2 uv;
@@ -7,8 +9,18 @@ uniform mat4 world; uniform mat4 viewProjection; uniform mat3 normalMatrix;
 varying vec2 texcoord; varying vec3 surfaceNormal;
 void main(){texcoord=uv;surfaceNormal=normalize(normalMatrix*normal);gl_Position=viewProjection*world*vec4(position,1.0);}`
 const fragment = `precision mediump float; uniform sampler2D palette; uniform float alpha;
+uniform bool emissiveEnabled, emissionPass;
 varying vec2 texcoord; varying vec3 surfaceNormal;
-void main(){vec4 c=texture2D(palette,texcoord);float light=.55+.45*max(dot(normalize(surfaceNormal),normalize(vec3(.5,1.,.7))),0.);gl_FragColor=vec4(c.rgb*mix(light,1.,c.a),alpha);}`
+void main(){
+ vec4 c=texture2D(palette,texcoord);
+ float light=.55+.45*max(dot(normalize(surfaceNormal),normalize(vec3(.5,1.,.7))),0.);
+ float energy=4.*(c.a*255.*.01);
+ vec3 color=emissionPass?c.rgb*min(energy,1.):c.rgb*(light+(emissiveEnabled?energy:0.));
+ gl_FragColor=vec4(color,alpha);
+}`
+const arrowVertex = `attribute vec3 position; uniform mat4 viewProjection;
+void main(){gl_Position=viewProjection*vec4(position,1.);}`
+const arrowFragment = `precision mediump float;void main(){gl_FragColor=vec4(.7,.7,.7,1.);}`
 
 // Same 320 × 320 plane, 4-unit cells, line opacity and X/Z colors as VOXA's models/grid.
 const gridVertex = `attribute vec3 position; uniform mat4 viewProjection; varying vec3 pos;
@@ -38,6 +50,14 @@ export class ModelPreviewRenderer {
   private program: WebGLProgram
   private gridProgram: WebGLProgram
   private gridBuffer: WebGLBuffer
+  private arrowProgram: WebGLProgram
+  private arrowBuffer: WebGLBuffer
+  private arrowCount = 0
+  private meshBounds: { min: vec3; max: vec3 }[] = []
+  private emissiveEnabled = true
+  private hasEmissive: boolean
+  private bloom?: PreviewBloom
+  private createBloom: () => PreviewBloom
   private gridVisible = false
   private buffers: { buffer: WebGLBuffer; count: number }[] = []
   private texture: WebGLTexture
@@ -91,6 +111,16 @@ export class ModelPreviewRenderer {
       return program
     }
     this.program = link(vertex, fragment)
+    this.hasEmissive = model.texture.palette.some((color) => (color & 255) > 0)
+    this.createBloom = () => new PreviewBloom(gl, link)
+    this.arrowProgram = link(arrowVertex, arrowFragment)
+    const arrowBuffer = gl.createBuffer()
+    if (!arrowBuffer) throw new Error('无法创建方向箭头')
+    this.arrowBuffer = arrowBuffer
+    const arrowVertices = directionIndicatorVertices()
+    this.arrowCount = arrowVertices.length / 3
+    gl.bindBuffer(gl.ARRAY_BUFFER, arrowBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, arrowVertices, gl.STATIC_DRAW)
     const derivatives = Boolean(gl.getExtension('OES_standard_derivatives'))
     this.gridProgram = link(
       gridVertex,
@@ -119,7 +149,6 @@ export class ModelPreviewRenderer {
       [0, 0, -1],
       [0, 0, 1],
     ]
-    const boxes: { min: vec3; max: vec3 }[] = []
     const height = model.texture.data.length / model.texture.width
     for (const mesh of model.meshes) {
       const unpacked = unpackMeshData(mesh, Uint16Array, Uint16Array)
@@ -139,7 +168,7 @@ export class ModelPreviewRenderer {
       gl.bindBuffer(gl.ARRAY_BUFFER, buffer)
       gl.bufferData(gl.ARRAY_BUFFER, values, gl.STATIC_DRAW)
       this.buffers.push({ buffer, count: unpacked.count })
-      boxes.push({
+      this.meshBounds.push({
         min: vec3.fromValues(unpacked.lox, unpacked.loy, unpacked.loz),
         max: vec3.fromValues(unpacked.hix, unpacked.hiy, unpacked.hiz),
       })
@@ -164,24 +193,6 @@ export class ModelPreviewRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
     this.pose = previewPose(model)
-    const min = vec3.fromValues(Infinity, Infinity, Infinity),
-      max = vec3.fromValues(-Infinity, -Infinity, -Infinity)
-    model.nodes.forEach((node, index) => {
-      if (node.mesh < 0 || !this.buffers[node.mesh].count) return
-      const box = boxes[node.mesh]
-      for (let corner = 0; corner < 8; corner++) {
-        const v = vec3.fromValues(
-          corner & 1 ? box.max[0] : box.min[0],
-          corner & 2 ? box.max[1] : box.min[1],
-          corner & 4 ? box.max[2] : box.min[2],
-        )
-        vec3.transformMat4(v, v, this.pose.matrices[index])
-        vec3.min(min, min, v)
-        vec3.max(max, max, v)
-      }
-    })
-    vec3.scale(this.center, vec3.add(this.center, min, max), 0.5)
-    this.radius = Math.max(0.01, vec3.distance(min, max) / 2)
     this.reset()
     canvas.addEventListener('pointerdown', this.pointerDown)
     canvas.addEventListener('pointermove', this.pointerMove)
@@ -203,10 +214,32 @@ export class ModelPreviewRenderer {
   setPlaying(value: boolean) {
     this.playing = value
   }
+  setEmissiveEnabled(value: boolean) {
+    this.emissiveEnabled = value
+  }
   reset() {
-    this.yaw = Math.PI / 5
-    this.pitch = Math.PI / 7
-    this.distance = this.radius * 3.5
+    const min = vec3.fromValues(Infinity, Infinity, Infinity),
+      max = vec3.fromValues(-Infinity, -Infinity, -Infinity)
+    this.model.nodes.forEach((node, index) => {
+      if (node.mesh < 0 || !this.buffers[node.mesh].count) return
+      const box = this.meshBounds[node.mesh]
+      for (let corner = 0; corner < 8; corner++) {
+        const v = vec3.fromValues(
+          corner & 1 ? box.max[0] : box.min[0],
+          corner & 2 ? box.max[1] : box.min[1],
+          corner & 4 ? box.max[2] : box.min[2],
+        )
+        vec3.transformMat4(v, v, this.pose.matrices[index])
+        vec3.min(min, min, v)
+        vec3.max(max, max, v)
+      }
+    })
+    vec3.scale(this.center, vec3.add(this.center, min, max), 0.5)
+    this.radius = Math.max(0.01, vec3.distance(min, max) / 2)
+    // VOXA Stage.resetCamera fits the current model and restores yaw 30° / pitch 45°.
+    this.yaw = Math.PI / 6
+    this.pitch = Math.PI / 4
+    this.distance = this.radius / Math.sin(Math.PI / 8) + 26
     vec3.set(this.panOffset, 0, 0, 0)
   }
   zoom(factor: number) {
@@ -305,7 +338,51 @@ export class ModelPreviewRenderer {
     gl.enable(gl.DEPTH_TEST)
     gl.enable(gl.BLEND)
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+    this.drawModel(projection, false)
+    if (this.gridVisible) {
+      gl.useProgram(this.gridProgram)
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffer)
+      const position = gl.getAttribLocation(this.gridProgram, 'position')
+      gl.enableVertexAttribArray(position)
+      gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 0, 0)
+      gl.uniformMatrix4fv(
+        gl.getUniformLocation(this.gridProgram, 'viewProjection'),
+        false,
+        projection,
+      )
+      gl.uniform1f(gl.getUniformLocation(this.gridProgram, 'size'), 320)
+      gl.uniform1f(gl.getUniformLocation(this.gridProgram, 'gridSize'), 4)
+      gl.depthMask(false)
+      gl.drawArrays(gl.TRIANGLES, 0, 6)
+      gl.depthMask(true)
+      gl.useProgram(this.arrowProgram)
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.arrowBuffer)
+      const arrowPosition = gl.getAttribLocation(this.arrowProgram, 'position')
+      gl.enableVertexAttribArray(arrowPosition)
+      gl.vertexAttribPointer(arrowPosition, 3, gl.FLOAT, false, 0, 0)
+      gl.uniformMatrix4fv(
+        gl.getUniformLocation(this.arrowProgram, 'viewProjection'),
+        false,
+        projection,
+      )
+      gl.drawArrays(gl.TRIANGLES, 0, this.arrowCount)
+    }
+    if (this.emissiveEnabled && this.hasEmissive) {
+      const bloom = this.bloom || (this.bloom = this.createBloom())
+      bloom.begin(width, height)
+      this.drawModel(projection, true)
+      bloom.finish(width, height)
+    }
+    this.frame = requestAnimationFrame(this.render)
+  }
+  private drawModel(projection: mat4, emissionPass: boolean) {
+    const gl = this.gl
     gl.useProgram(this.program)
+    gl.uniform1i(
+      gl.getUniformLocation(this.program, 'emissiveEnabled'),
+      this.emissiveEnabled ? 1 : 0,
+    )
+    gl.uniform1i(gl.getUniformLocation(this.program, 'emissionPass'), emissionPass ? 1 : 0)
     gl.uniformMatrix4fv(gl.getUniformLocation(this.program, 'viewProjection'), false, projection)
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.uniform1i(gl.getUniformLocation(this.program, 'palette'), 0)
@@ -335,24 +412,6 @@ export class ModelPreviewRenderer {
       gl.uniform1f(gl.getUniformLocation(this.program, 'alpha'), this.pose.alphas[index])
       gl.drawArrays(gl.TRIANGLES, 0, mesh.count)
     })
-    if (this.gridVisible) {
-      gl.useProgram(this.gridProgram)
-      gl.bindBuffer(gl.ARRAY_BUFFER, this.gridBuffer)
-      const position = gl.getAttribLocation(this.gridProgram, 'position')
-      gl.enableVertexAttribArray(position)
-      gl.vertexAttribPointer(position, 3, gl.FLOAT, false, 0, 0)
-      gl.uniformMatrix4fv(
-        gl.getUniformLocation(this.gridProgram, 'viewProjection'),
-        false,
-        projection,
-      )
-      gl.uniform1f(gl.getUniformLocation(this.gridProgram, 'size'), 320)
-      gl.uniform1f(gl.getUniformLocation(this.gridProgram, 'gridSize'), 4)
-      gl.depthMask(false)
-      gl.drawArrays(gl.TRIANGLES, 0, 6)
-      gl.depthMask(true)
-    }
-    this.frame = requestAnimationFrame(this.render)
   }
   destroy() {
     this.disposed = true
@@ -369,5 +428,8 @@ export class ModelPreviewRenderer {
     this.gl.deleteProgram(this.program)
     this.gl.deleteProgram(this.gridProgram)
     this.gl.deleteBuffer(this.gridBuffer)
+    this.gl.deleteBuffer(this.arrowBuffer)
+    this.gl.deleteProgram(this.arrowProgram)
+    this.bloom?.destroy()
   }
 }
