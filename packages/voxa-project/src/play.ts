@@ -247,6 +247,18 @@ export function encodeVoxaPlay(
   previewImage?: string,
   metadata: Partial<VoxaPlayMetadata> & Partial<Pick<VoxaPlayBundle, 'placement'>> = {},
 ): Uint8Array {
+  const previewModel = ModelDataV7Schema.toJSON(model)
+  // Editor animation offsets are additive and can push opacity past its visible range.
+  // Normalize the portable copy while preserving the editable model and strict import checks.
+  for (const animation of previewModel.animations) {
+    for (const sampler of animation.samplers) {
+      if (sampler.output.type !== 'alpha') continue
+      sampler.output.data = sampler.output.data.map((value: number) => {
+        if (!Number.isFinite(value)) invalid()
+        return Math.max(0, Math.min(1, value))
+      })
+    }
+  }
   const bytes = new TextEncoder().encode(
     JSON.stringify({
       format: 'box-voxa-play',
@@ -259,7 +271,7 @@ export function encodeVoxaPlay(
       version: metadata.version ?? 'v1.0.0',
       defaultAnimationId: metadata.defaultAnimationId ?? null,
       ...(previewImage ? { previewImage } : {}),
-      model: ModelDataV7Schema.toJSON(model),
+      model: previewModel,
     }),
   )
   decodeVoxaPlay(bytes)

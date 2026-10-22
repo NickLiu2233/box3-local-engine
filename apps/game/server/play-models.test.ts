@@ -99,6 +99,29 @@ describe('preview-only VOXA packages and persistent Play model library', () => {
     expect(animationDuration(bundle.model.animations[0])).toBe(2)
     expect(previewPose(bundle.model, 0, 1).matrices[0][12]).toBeCloseTo(5)
   })
+  test('exports additive opacity keyframes within the portable range without changing the project model', () => {
+    const model = fixture()
+    const values = [1 + Math.fround(0.05), 0.95, -Math.fround(0.05)]
+    model.animations[0].channels[0].target.path = 'alpha' as never
+    model.animations[0].samplers = [{
+      interpolation: ProjectInterpolationType.Linear,
+      input: [0, 1, 2],
+      output: { type: 'alpha', data: values },
+    }]
+    const bundle = decodeVoxaPlay(encodeVoxaPlay('透明度动画', model))
+    expect(bundle.model.animations[0].samplers[0].output.data).toEqual([1, 0.95, 0])
+    expect(model.animations[0].samplers[0].output.data).toEqual(values)
+
+    // Imported files still have to obey the portable format's strict bounds.
+    const envelope = JSON.parse(new TextDecoder().decode(encodeVoxaPlay('透明度动画', model)))
+    envelope.model.animations[0].samplers[0].output.data[0] = 1.05
+    expect(() => decodeVoxaPlay(new TextEncoder().encode(JSON.stringify(envelope))))
+      .toThrow('模型预览包数据无效')
+    for (const value of [NaN, Infinity, -Infinity]) {
+      values[0] = value
+      expect(() => encodeVoxaPlay('透明度动画', model)).toThrow('模型预览包数据无效')
+    }
+  })
   test('higher versions replace the same project while keeping its preview link', () => {
     const projectId = '7a6cd28a-c922-4418-bacd-c36b62d13fff'
     const upload = (version: string, name = '机器人') =>

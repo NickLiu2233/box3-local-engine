@@ -14518,6 +14518,16 @@ function decodeVoxaPlay(bytes) {
 }
 function encodeVoxaPlay(name, model, previewImage, metadata = {}) {
   var _a, _b, _c, _d, _e;
+  const previewModel = ModelDataV7Schema.toJSON(model);
+  for (const animation of previewModel.animations) {
+    for (const sampler of animation.samplers) {
+      if (sampler.output.type !== 'alpha') continue;
+      sampler.output.data = sampler.output.data.map(value => {
+        if (!Number.isFinite(value)) invalid();
+        return Math.max(0, Math.min(1, value));
+      });
+    }
+  }
   const bytes = new TextEncoder().encode(JSON.stringify(Object.assign(Object.assign(Object.assign(Object.assign({
     format: 'box-voxa-play',
     formatVersion: 2,
@@ -14535,7 +14545,7 @@ function encodeVoxaPlay(name, model, previewImage, metadata = {}) {
   }), previewImage ? {
     previewImage
   } : {}), {
-    model: ModelDataV7Schema.toJSON(model)
+    model: previewModel
   })));
   decodeVoxaPlay(bytes);
   return bytes;
