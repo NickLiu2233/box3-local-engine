@@ -80,7 +80,8 @@ const migrateS3Model = (bs, hash) => __awaiter(void 0, void 0, void 0, function*
 const storeBytesToLatestVersion = (bs, hash, bytes, metaData) => __awaiter(void 0, void 0, void 0, function* () {
     const modelData = yield (0, voxa_project_1.migrateModel)(bytes);
     if (!modelData) {
-        throw new Error(`error when migrate voxa file ${hash}`);
+        bs.logger.warn({ hash, dataHash: metaData.dataHash }, 'Invalid voxa model data; replacing it with an empty model so the map can load');
+        return yield storeEmptyModelToLatestVersion(bs, metaData);
     }
     const latestVersion = (0, voxa_project_1.modelSchemaToBytes)(modelData);
     const dataHash = yield bs.storeContentToS3(latestVersion);
@@ -89,4 +90,15 @@ const storeBytesToLatestVersion = (bs, hash, bytes, metaData) => __awaiter(void 
     const metaBytes = new Uint8Array(Buffer.from(JSON.stringify(newMetaData), 'utf8'));
     return yield bs.storeContentToS3(metaBytes);
 });
+function storeEmptyModelToLatestVersion(bs, metaData) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const emptyModel = voxa_project_1.modelV7.ModelDataV7Schema.clone(voxa_project_1.modelV7.ModelDataV7Schema.identity);
+        const latestVersion = (0, voxa_project_1.modelSchemaToBytes)(emptyModel);
+        const dataHash = yield bs.storeContentToS3(latestVersion);
+        const { version: oldVersion, dataHash: oldHash } = metaData, remain = __rest(metaData, ["version", "dataHash"]);
+        const newMetaData = Object.assign(Object.assign({}, remain), { version: voxa_project_1.VOXA_MODEL_VERSION, dataHash });
+        const metaBytes = new Uint8Array(Buffer.from(JSON.stringify(newMetaData), 'utf8'));
+        return yield bs.storeContentToS3(metaBytes);
+    });
+}
 //# sourceMappingURL=migrate-voxel.js.map

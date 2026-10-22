@@ -5,6 +5,7 @@ import {
   modelSchemaToBytes,
   getModelMetaData,
   ModelMetaData,
+  modelV7,
   VOXA_MODEL_VERSION,
 } from '@box/voxa-project';
 import { BuildSystem } from '../type';
@@ -76,7 +77,11 @@ const storeBytesToLatestVersion = async (
 ) => {
   const modelData = await migrateModel(bytes);
   if (!modelData) {
-    throw new Error(`error when migrate voxa file ${hash}`);
+    bs.logger.warn(
+      { hash, dataHash: metaData.dataHash },
+      'Invalid voxa model data; replacing it with an empty model so the map can load',
+    );
+    return await storeEmptyModelToLatestVersion(bs, metaData);
   }
   const latestVersion = modelSchemaToBytes(modelData);
   const dataHash = await bs.storeContentToS3(latestVersion);
@@ -94,3 +99,24 @@ const storeBytesToLatestVersion = async (
   );
   return await bs.storeContentToS3(metaBytes);
 };
+
+async function storeEmptyModelToLatestVersion(
+  bs: BuildSystem,
+  metaData: ModelMetaData,
+) {
+  const emptyModel = modelV7.ModelDataV7Schema.clone(
+    modelV7.ModelDataV7Schema.identity,
+  );
+  const latestVersion = modelSchemaToBytes(emptyModel);
+  const dataHash = await bs.storeContentToS3(latestVersion);
+  const { version: oldVersion, dataHash: oldHash, ...remain } = metaData;
+  const newMetaData: ModelMetaData = {
+    ...remain,
+    version: VOXA_MODEL_VERSION,
+    dataHash,
+  };
+  const metaBytes = new Uint8Array(
+    Buffer.from(JSON.stringify(newMetaData), 'utf8'),
+  );
+  return await bs.storeContentToS3(metaBytes);
+}
