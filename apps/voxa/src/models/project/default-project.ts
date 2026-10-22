@@ -107,7 +107,7 @@ function generateDefaultNodes(): ProjectNodes {
   };
 }
 
-export const DEFAULT_PROJECT = ProjectDataSchema.alloc();
+export const DEFAULT_PROJECT = ProjectDataSchema.clone(ProjectDataSchema.identity);
 DEFAULT_PROJECT.nodes = generateDefaultNodes();
 DEFAULT_PROJECT.voxels = {};
 DEFAULT_PROJECT.palette = generateDefaultPalette(RGB_LIST);

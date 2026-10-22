@@ -5,6 +5,8 @@ import {
   migrateProject,
   modelSchemaToBytes,
   encodeVoxaPlay,
+  compareVoxaPlayVersions,
+  nextVoxaPlayVersion,
   type VoxaPlayMetadata,
   projectSchemaToBytes,
   VOXA_SKIN_VERSION,
@@ -19,6 +21,7 @@ import {
   PaletteGroupsSchema,
   PaletteItemSchema,
   ProjectDataSchema,
+  PreviewExportSchema,
   SAVE_TIMEOUT,
   SaveErrorType,
   Uint16Vec3Schema,
@@ -138,6 +141,8 @@ export class ProjectManager {
 
   public readonly diffTool: ProjectDiffTool;
 
+  private previewExport: ProjectData['previewExport'];
+
   constructor({
     voxelApp,
     animatorApp,
@@ -193,6 +198,10 @@ export class ProjectManager {
 
     projectData.modelPivot = this.animatorApp.exporter.getProjectModelPivot();
 
+    projectData.previewExport = this.previewExport
+      ? PreviewExportSchema.clone(this.previewExport)
+      : undefined;
+
     this.restoreEditingState();
 
     return projectData;
@@ -229,6 +238,10 @@ export class ProjectManager {
       projectData;
 
     this.beforeLoadingData();
+
+    this.previewExport = projectData.previewExport
+      ? PreviewExportSchema.clone(projectData.previewExport)
+      : undefined;
 
     // 先加载色板，后续voxels要查
     this.loadPalette(palette);
@@ -1028,8 +1041,30 @@ export class ProjectManager {
     }
   }
 
-  /** Export renderer data without uploading or changing the editable project. */
+  public getPreviewExportSettings(): VoxaPlayMetadata | undefined {
+    if (!this.previewExport) return undefined;
+    const { projectId, author, description, version, defaultAnimationId } = this.previewExport;
+    return { projectId, author, description, version, defaultAnimationId: defaultAnimationId ?? null };
+  }
+
+  public setPreviewExportSettings(settings: VoxaPlayMetadata) {
+    this.previewExport = {
+      projectId: this.previewExport?.projectId || crypto.randomUUID(),
+      author: settings.author,
+      description: settings.description,
+      version: settings.version,
+      defaultAnimationId: settings.defaultAnimationId ?? undefined,
+      lastExportedVersion: this.previewExport?.lastExportedVersion || '',
+    };
+  }
+
+  /** Export renderer data and remember publishing settings in the local project. */
   public async exportPreviewBundle(settings: VoxaPlayMetadata) {
+    const nextVersion = nextVoxaPlayVersion(settings.version);
+    if (this.previewExport?.lastExportedVersion &&
+      compareVoxaPlayVersions(settings.version, this.previewExport.lastExportedVersion) <= 0) {
+      throw new Error(`导出版本必须高于上次版本 ${this.previewExport.lastExportedVersion}`);
+    }
     const basic = await this.getBasicModelData()
     if (!basic.meshCount) throw new Error('当前模型为空，无法导出预览包')
     const model = ModelDataSchema.clone(ModelDataSchema.identity)
@@ -1040,7 +1075,7 @@ export class ProjectManager {
     model.texture.palette = model.texture.palette.map((value) => value >>> 0)
     const snapshot = await this.getScreenshot(model, basic.bounds)
     const previewImage =
-      snapshot && snapshot.size < 1024 * 1024
+      snapshot
         ? await new Promise<string>((resolve, reject) => {
             const reader = new FileReader()
             reader.onload = () => resolve(String(reader.result))
@@ -1048,7 +1083,27 @@ export class ProjectManager {
             reader.readAsDataURL(snapshot)
           })
         : undefined
-    const bytes = encodeVoxaPlay(store.getState().app.projectName, model, previewImage, settings)
+    this.setPreviewExportSettings(settings);
+    const bytes = encodeVoxaPlay(store.getState().app.projectName, model, previewImage, {
+      ...settings,
+      projectId: this.previewExport!.projectId,
+      placement: {
+        pivot: [...store.getState().animator.modelPivot],
+        // Baked nodes use the model's lower corner as their origin. Restore editor space.
+        origin: basic.bounds.map((size, axis) =>
+          store.getState().animator.modelPivot[axis] + basic.renderBoxOffset[axis] - size / 2,
+        ) as [number, number, number],
+      },
+    })
+    const previous = PreviewExportSchema.clone(this.previewExport!);
+    this.previewExport!.version = nextVersion;
+    this.previewExport!.lastExportedVersion = settings.version.trim();
+    try {
+      await this.saveLocalProject();
+    } catch (error) {
+      this.previewExport = previous;
+      throw error;
+    }
     return new Blob([bytes], { type: 'application/vnd.box.voxaplay+json' })
   }
 

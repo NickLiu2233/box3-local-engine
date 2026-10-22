@@ -1,6 +1,6 @@
 import type {
   modelV7,
-  projectV10 as currentProject,
+  projectV11 as currentProject,
   Vec3Schema,
   Vec4Schema,
   ModelMetaData,
@@ -18,7 +18,7 @@ export type { VoxelDimension as VoxelDimensionType } from '@box/voxa-project';
 export type ModelData = modelV7.ModelDataV7;
 export { ModelMetaData, MotionMetaData };
 
-export type ProjectData = currentProject.ProjectDataV10;
+export type ProjectData = currentProject.ProjectDataV11;
 
 export type ProjectNodes = typeof currentProject.NodesSchema.identity;
 export type ProjectNode = typeof currentProject.NodeSchema.identity;
@@ -31,7 +31,7 @@ export type ProjectPaletteItems =
 export type ProjectPaletteItem =
   typeof currentProject.PaletteItemSchema.identity;
 export type ProjectAnimations =
-  typeof currentProject.ProjectDataV10Schema.identity.animations;
+  typeof currentProject.ProjectDataV11Schema.identity.animations;
 export type ProjectAnimation =
   typeof currentProject.ProjectAnimationSchema.identity;
 export type ProjectMotionNode =

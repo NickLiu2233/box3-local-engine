@@ -1,11 +1,10 @@
 import { Readable } from 'node:stream'
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { VOXA_PLAY_MAX_BYTES } from '@box/voxa-project'
 import { playerAdminRoute } from './player-admin-route'
 import { allowPlayLibraryAdmin } from './play-admin-security'
 import { deletePlayModel, importPlayModel, listPlayModels, updatePlayModel } from './play-models'
 
-export async function readModelRequest(req: AsyncIterable<Buffer | string>, limit: number) {
+export async function readModelRequest(req: AsyncIterable<Buffer | string>, limit = Infinity) {
   let total = 0
   const chunks: Buffer[] = []
   for await (const input of req) {
@@ -76,7 +75,7 @@ export default async function playModelAdminRoute(req: NextApiRequest, res: Next
     if (req.method === 'POST' && !id)
       return res
         .status(201)
-        .json({ model: importPlayModel(await readModelRequest(req, VOXA_PLAY_MAX_BYTES)) })
+        .json({ model: importPlayModel(await readModelRequest(req)) })
     if (req.method === 'PATCH' && id)
       return res.status(200).json({
         model: updatePlayModel(

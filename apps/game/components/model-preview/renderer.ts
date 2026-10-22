@@ -1,5 +1,6 @@
 import { mat3, mat4, vec3 } from 'gl-matrix'
 import { unpackMeshData, unpackTextureData } from '@box/mesher'
+import type { VoxaPlayPlacement } from '@box/voxa-project'
 import { PreviewBloom } from './bloom'
 import { directionIndicatorVertices } from './direction-indicator'
 import { animationDuration, previewPose, type PreviewModel } from './pose'
@@ -79,6 +80,7 @@ export class ModelPreviewRenderer {
   constructor(
     private canvas: HTMLCanvasElement,
     private model: PreviewModel,
+    private placement: VoxaPlayPlacement,
   ) {
     const gl = canvas.getContext('webgl', { alpha: false, antialias: true })
     if (!gl) throw new Error('当前浏览器无法开启 WebGL，请开启硬件加速后重试')
@@ -192,7 +194,7 @@ export class ModelPreviewRenderer {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    this.pose = previewPose(model)
+    this.pose = previewPose(model, -1, 0, this.placement.origin)
     this.reset()
     canvas.addEventListener('pointerdown', this.pointerDown)
     canvas.addEventListener('pointermove', this.pointerMove)
@@ -206,7 +208,7 @@ export class ModelPreviewRenderer {
   setAnimation(index: number) {
     this.animation = index
     this.elapsed = 0
-    this.pose = previewPose(this.model, index, 0)
+    this.pose = previewPose(this.model, index, 0, this.placement.origin)
   }
   setGridVisible(value: boolean) {
     this.gridVisible = value
@@ -234,8 +236,16 @@ export class ModelPreviewRenderer {
         vec3.max(max, max, v)
       }
     })
-    vec3.scale(this.center, vec3.add(this.center, min, max), 0.5)
-    this.radius = Math.max(0.01, vec3.distance(min, max) / 2)
+    vec3.copy(this.center, this.placement.pivot)
+    this.radius = 0.01
+    for (let corner = 0; corner < 8; corner++) {
+      const point = vec3.fromValues(
+        corner & 1 ? max[0] : min[0],
+        corner & 2 ? max[1] : min[1],
+        corner & 4 ? max[2] : min[2],
+      )
+      this.radius = Math.max(this.radius, vec3.distance(point, this.center))
+    }
     // VOXA Stage.resetCamera fits the current model and restores yaw 30° / pitch 45°.
     this.yaw = Math.PI / 6
     this.pitch = Math.PI / 4
@@ -315,7 +325,7 @@ export class ModelPreviewRenderer {
     if (this.playing && this.animation >= 0) {
       this.elapsed += delta
       const duration = animationDuration(this.model.animations[this.animation])
-      this.pose = previewPose(this.model, this.animation, duration ? this.elapsed % duration : 0)
+      this.pose = previewPose(this.model, this.animation, duration ? this.elapsed % duration : 0, this.placement.origin)
     }
     const cameraDistance = this.distance * Math.max(1, height / width)
     const target = vec3.add(vec3.create(), this.center, this.panOffset)

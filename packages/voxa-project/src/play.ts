@@ -1,23 +1,28 @@
 import { ModelDataV7Schema, type ModelDataV7 } from './model/schema-v7'
 import { ProjectInterpolationType } from './util'
 
-export const VOXA_PLAY_MAX_BYTES = 32 * 1024 * 1024
 export type VoxaPlayMetadata = {
+  projectId?: string
   author: string
   description: string
   version: string
   defaultAnimationId: string | null
 }
+export type VoxaPlayPlacement = {
+  origin: [number, number, number]
+  pivot: [number, number, number]
+}
 export type VoxaPlayBundle = VoxaPlayMetadata & {
   format: 'box-voxa-play'
-  formatVersion: 1
+  formatVersion: 2
   name: string
   previewImage?: string
+  placement: VoxaPlayPlacement
   model: ModelDataV7
 }
 
 function invalid(): never {
-  throw new Error('模型预览包无效或超出支持的大小，请从 VOXA 重新导出 .voxaplay')
+  throw new Error('模型预览包数据无效')
 }
 function record(value: unknown): Record<string, any> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) invalid()
@@ -47,26 +52,39 @@ function vector(value: unknown, length: number) {
 
 /** The portable preview contains only renderer data, with no scripts or external resources. */
 export function decodeVoxaPlay(bytes: Uint8Array): VoxaPlayBundle {
-  if (!bytes.byteLength || bytes.byteLength > VOXA_PLAY_MAX_BYTES) invalid()
+  if (!bytes.byteLength) throw new Error('模型预览包为空')
   let value: Record<string, any>
   try {
     value = record(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)))
   } catch {
     return invalid()
   }
+  if (value.format !== 'box-voxa-play' || value.formatVersion !== 2)
+    throw new Error('预览包格式不支持')
   if (
-    value.format !== 'box-voxa-play' ||
-    value.formatVersion !== 1 ||
     typeof value.name !== 'string' ||
     !value.name.trim() ||
     value.name.length > 100
   )
     invalid()
-  const author = value.author === undefined ? '' : value.author
-  const description = value.description === undefined ? '' : value.description
-  const version = value.version === undefined ? 'v1.0.0' : value.version
-  const defaultAnimationId =
-    value.defaultAnimationId === undefined ? null : value.defaultAnimationId
+  if (
+    value.projectId !== undefined &&
+    (typeof value.projectId !== 'string' ||
+      !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.projectId))
+  )
+    invalid()
+  if (!value.placement) throw new Error('预览包缺少定位和锚点信息')
+  const input = record(value.placement)
+  vector(input.origin, 3)
+  vector(input.pivot, 3)
+  const placement: VoxaPlayPlacement = {
+    origin: [input.origin[0], input.origin[1], input.origin[2]],
+    pivot: [input.pivot[0], input.pivot[1], input.pivot[2]],
+  }
+  const author = value.author
+  const description = value.description
+  const version = value.version
+  const defaultAnimationId = value.defaultAnimationId
   if (
     typeof author !== 'string' ||
     author.length > 100 ||
@@ -82,7 +100,6 @@ export function decodeVoxaPlay(bytes: Uint8Array): VoxaPlayBundle {
   if (
     value.previewImage !== undefined &&
     (typeof value.previewImage !== 'string' ||
-      value.previewImage.length > 1500000 ||
       !/^data:image\/(?:jpeg;base64,\/9j\/|png;base64,iVBORw0KGgo)[A-Za-z0-9+/]*={0,2}$/.test(
         value.previewImage,
       ))
@@ -214,8 +231,10 @@ export function decodeVoxaPlay(bytes: Uint8Array): VoxaPlayBundle {
     invalid()
   return {
     format: 'box-voxa-play',
-    formatVersion: 1,
+    formatVersion: 2,
     name: value.name.trim(),
+    ...(value.projectId ? { projectId: value.projectId } : {}),
+    placement,
     author: author.trim(),
     description: description.trim(),
     version: version.trim(),
@@ -229,19 +248,19 @@ export function encodeVoxaPlay(
   name: string,
   model: ModelDataV7,
   previewImage?: string,
-  metadata: Partial<VoxaPlayMetadata> = {},
+  metadata: Partial<VoxaPlayMetadata> & Partial<Pick<VoxaPlayBundle, 'placement'>> = {},
 ): Uint8Array {
   const bytes = new TextEncoder().encode(
     JSON.stringify({
       format: 'box-voxa-play',
-      formatVersion: 1,
+      formatVersion: 2,
       name: name.trim().slice(0, 100) || '未命名模型',
-      ...(metadata.author !== undefined ? { author: metadata.author } : {}),
-      ...(metadata.description !== undefined ? { description: metadata.description } : {}),
-      ...(metadata.version !== undefined ? { version: metadata.version } : {}),
-      ...(metadata.defaultAnimationId !== undefined
-        ? { defaultAnimationId: metadata.defaultAnimationId }
-        : {}),
+      ...(metadata.projectId !== undefined ? { projectId: metadata.projectId } : {}),
+      placement: metadata.placement ?? { origin: [0, 0, 0], pivot: [0, 0, 0] },
+      author: metadata.author ?? '',
+      description: metadata.description ?? '',
+      version: metadata.version ?? 'v1.0.0',
+      defaultAnimationId: metadata.defaultAnimationId ?? null,
       ...(previewImage ? { previewImage } : {}),
       model: ModelDataV7Schema.toJSON(model),
     }),

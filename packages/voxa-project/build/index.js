@@ -13815,7 +13815,46 @@ VoxelSchema: VoxelSchema,
 VoxelsSchema: VoxelsSchema
 });
 
-const VOXA_PROJECT_VERSION = 10;
+const PreviewExportSchema = new schemaExports.MuStruct({
+  projectId: new schemaExports.MuASCII(),
+  author: new schemaExports.MuUTF8(),
+  description: new schemaExports.MuUTF8(),
+  version: new schemaExports.MuUTF8('v1.0.0'),
+  defaultAnimationId: new schemaExports.MuOption(new schemaExports.MuASCII(), undefined, true),
+  lastExportedVersion: new schemaExports.MuUTF8()
+});
+const ProjectDataV11Schema = new schemaExports.MuStruct(Object.assign(Object.assign({}, ProjectDataV10Schema.muData), {
+  version: new schemaExports.MuVarint(11),
+  previewExport: new schemaExports.MuOption(PreviewExportSchema, undefined, true)
+}));
+
+var schemaV11 = /*#__PURE__*/Object.freeze({
+__proto__: null,
+HitBoxDataSchema: HitBoxDataSchema,
+HitBoxSchema: HitBoxSchema,
+KeyframeListSchema: KeyframeListSchema,
+KeyframeOffsetSchema: KeyframeOffsetSchema,
+KeyframeSchema: KeyframeSchema,
+ModelPivotSchema: ModelPivotSchema,
+MotionNodeSchema: MotionNodeSchema,
+MotionNodesSchema: MotionNodesSchema,
+NodeSchema: NodeSchema,
+NodesSchema: NodesSchema,
+PaletteDataSchema: PaletteDataSchema,
+PaletteGroupSchema: PaletteGroupSchema,
+PaletteGroupsSchema: PaletteGroupsSchema,
+PaletteItemSchema: PaletteItemSchema,
+PaletteItemsSchema: PaletteItemsSchema,
+PreviewExportSchema: PreviewExportSchema,
+ProjectAnimationSchema: ProjectAnimationSchema,
+ProjectDataV10Schema: ProjectDataV10Schema,
+ProjectDataV11Schema: ProjectDataV11Schema,
+get ProjectInterpolationType () { return exports.ProjectInterpolationType; },
+VoxelSchema: VoxelSchema,
+VoxelsSchema: VoxelsSchema
+});
+
+const VOXA_PROJECT_VERSION = 11;
 const PROJECT_SCHEMA = {
   1: ProjectDataV1Schema,
   2: ProjectDataV2Schema,
@@ -13826,7 +13865,8 @@ const PROJECT_SCHEMA = {
   7: ProjectDataV7Schema,
   8: ProjectDataV8Schema,
   9: ProjectDataV9Schema,
-  10: ProjectDataV10Schema
+  10: ProjectDataV10Schema,
+  11: ProjectDataV11Schema
 };
 
 const ROOT_ID$1 = 'ROOT';
@@ -14107,6 +14147,16 @@ const migrateV9 = data => {
   return v10;
 };
 
+const migrateV10 = data => {
+  const project = ProjectDataV11Schema.clone(ProjectDataV11Schema.identity);
+  const {
+      version
+    } = data,
+    fields = __rest(data, ["version"]);
+  Object.assign(project, fields);
+  return project;
+};
+
 function migrate$1(bytes) {
   const data = projectBytesToSchema(bytes);
   if (!data) {
@@ -14130,7 +14180,8 @@ function migrate$1(bytes) {
     6: migrateV6,
     7: migrateV7,
     8: migrateV8,
-    9: migrateV9
+    9: migrateV9,
+    10: migrateV10
   };
   while (projectData.version < VOXA_PROJECT_VERSION) {
     try {
@@ -14331,9 +14382,8 @@ function getSkinMetaData(bytes) {
   } catch (e) {}
 }
 
-const VOXA_PLAY_MAX_BYTES = 32 * 1024 * 1024;
 function invalid() {
-  throw new Error('模型预览包无效或超出支持的大小，请从 VOXA 重新导出 .voxaplay');
+  throw new Error('模型预览包数据无效');
 }
 function record(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) invalid();
@@ -14352,7 +14402,7 @@ function vector(value, length) {
   if (numbers(value, length).length !== length) invalid();
 }
 function decodeVoxaPlay(bytes) {
-  if (!bytes.byteLength || bytes.byteLength > VOXA_PLAY_MAX_BYTES) invalid();
+  if (!bytes.byteLength) throw new Error('模型预览包为空');
   let value;
   try {
     value = record(JSON.parse(new TextDecoder('utf-8', {
@@ -14361,13 +14411,23 @@ function decodeVoxaPlay(bytes) {
   } catch (_a) {
     return invalid();
   }
-  if (value.format !== 'box-voxa-play' || value.formatVersion !== 1 || typeof value.name !== 'string' || !value.name.trim() || value.name.length > 100) invalid();
-  const author = value.author === undefined ? '' : value.author;
-  const description = value.description === undefined ? '' : value.description;
-  const version = value.version === undefined ? 'v1.0.0' : value.version;
-  const defaultAnimationId = value.defaultAnimationId === undefined ? null : value.defaultAnimationId;
+  if (value.format !== 'box-voxa-play' || value.formatVersion !== 2) throw new Error('预览包格式不支持');
+  if (typeof value.name !== 'string' || !value.name.trim() || value.name.length > 100) invalid();
+  if (value.projectId !== undefined && (typeof value.projectId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.projectId))) invalid();
+  if (!value.placement) throw new Error('预览包缺少定位和锚点信息');
+  const input = record(value.placement);
+  vector(input.origin, 3);
+  vector(input.pivot, 3);
+  const placement = {
+    origin: [input.origin[0], input.origin[1], input.origin[2]],
+    pivot: [input.pivot[0], input.pivot[1], input.pivot[2]]
+  };
+  const author = value.author;
+  const description = value.description;
+  const version = value.version;
+  const defaultAnimationId = value.defaultAnimationId;
   if (typeof author !== 'string' || author.length > 100 || typeof description !== 'string' || description.length > 2000 || typeof version !== 'string' || !version.trim() || version.length > 50 || defaultAnimationId !== null && (typeof defaultAnimationId !== 'string' || defaultAnimationId.length > 100)) invalid();
-  if (value.previewImage !== undefined && (typeof value.previewImage !== 'string' || value.previewImage.length > 1500000 || !/^data:image\/(?:jpeg;base64,\/9j\/|png;base64,iVBORw0KGgo)[A-Za-z0-9+/]*={0,2}$/.test(value.previewImage))) invalid();
+  if (value.previewImage !== undefined && (typeof value.previewImage !== 'string' || !/^data:image\/(?:jpeg;base64,\/9j\/|png;base64,iVBORw0KGgo)[A-Za-z0-9+/]*={0,2}$/.test(value.previewImage))) invalid();
   const model = record(value.model);
   if (model.version !== 7) invalid();
   const nodes = list(model.nodes, 1024),
@@ -14440,34 +14500,42 @@ function decodeVoxaPlay(bytes) {
     }
   }
   if (defaultAnimationId !== null && model.animations.filter(animation => animation.id === defaultAnimationId).length !== 1) invalid();
-  return Object.assign(Object.assign({
+  return Object.assign(Object.assign(Object.assign(Object.assign({
     format: 'box-voxa-play',
-    formatVersion: 1,
-    name: value.name.trim(),
+    formatVersion: 2,
+    name: value.name.trim()
+  }, value.projectId ? {
+    projectId: value.projectId
+  } : {}), {
+    placement,
     author: author.trim(),
     description: description.trim(),
     version: version.trim(),
     defaultAnimationId
-  }, value.previewImage ? {
+  }), value.previewImage ? {
     previewImage: value.previewImage
   } : {}), {
     model: ModelDataV7Schema.fromJSON(model)
   });
 }
 function encodeVoxaPlay(name, model, previewImage, metadata = {}) {
-  const bytes = new TextEncoder().encode(JSON.stringify(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign(Object.assign({
+  var _a, _b, _c, _d, _e;
+  const bytes = new TextEncoder().encode(JSON.stringify(Object.assign(Object.assign(Object.assign(Object.assign({
     format: 'box-voxa-play',
-    formatVersion: 1,
+    formatVersion: 2,
     name: name.trim().slice(0, 100) || '未命名模型'
-  }, metadata.author !== undefined ? {
-    author: metadata.author
-  } : {}), metadata.description !== undefined ? {
-    description: metadata.description
-  } : {}), metadata.version !== undefined ? {
-    version: metadata.version
-  } : {}), metadata.defaultAnimationId !== undefined ? {
-    defaultAnimationId: metadata.defaultAnimationId
-  } : {}), previewImage ? {
+  }, metadata.projectId !== undefined ? {
+    projectId: metadata.projectId
+  } : {}), {
+    placement: (_a = metadata.placement) !== null && _a !== void 0 ? _a : {
+      origin: [0, 0, 0],
+      pivot: [0, 0, 0]
+    },
+    author: (_b = metadata.author) !== null && _b !== void 0 ? _b : '',
+    description: (_c = metadata.description) !== null && _c !== void 0 ? _c : '',
+    version: (_d = metadata.version) !== null && _d !== void 0 ? _d : 'v1.0.0',
+    defaultAnimationId: (_e = metadata.defaultAnimationId) !== null && _e !== void 0 ? _e : null
+  }), previewImage ? {
     previewImage
   } : {}), {
     model: ModelDataV7Schema.toJSON(model)
@@ -14477,6 +14545,36 @@ function encodeVoxaPlay(name, model, previewImage, metadata = {}) {
 }
 function voxaPlayFileName(name) {
   return `${name.replace(/[\\/:*?"<>|\u0000-\u001f]/g, '_').trim().slice(0, 100) || '未命名模型'}.voxaplay`;
+}
+
+function parse(value) {
+  const match = value.trim().match(/^(v?)(\d+)\.(\d+)\.(\d+)$/i);
+  if (!match) throw new Error('版本号请使用 v1.0.0 这样的三段数字格式');
+  return {
+    prefix: match[1],
+    parts: match.slice(2)
+  };
+}
+function compareVoxaPlayVersions(incoming, installed) {
+  const a = parse(incoming).parts;
+  const b = parse(installed).parts;
+  for (let i = 0; i < 3; i++) {
+    const left = a[i].replace(/^0+(?=\d)/, '');
+    const right = b[i].replace(/^0+(?=\d)/, '');
+    if (left.length !== right.length) return left.length < right.length ? -1 : 1;
+    if (left !== right) return left < right ? -1 : 1;
+  }
+  return 0;
+}
+function nextVoxaPlayVersion(version) {
+  const {
+    prefix,
+    parts
+  } = parse(version);
+  const patch = (BigInt(parts[2]) + BigInt(1)).toString();
+  const next = `${prefix}${parts[0]}.${parts[1]}.${patch}`;
+  if (next.length > 50) throw new Error('版本号过长，请缩短版本号后重试');
+  return next;
 }
 
 exports.AlphaAccessorSchema = AlphaAccessorSchema;
@@ -14490,13 +14588,13 @@ exports.TranslationAccessorSchema = TranslationAccessorSchema;
 exports.Uint16Vec3Schema = Uint16Vec3Schema;
 exports.Uint8Vec3Schema = Uint8Vec3Schema;
 exports.VOXA_MODEL_VERSION = VOXA_MODEL_VERSION;
-exports.VOXA_PLAY_MAX_BYTES = VOXA_PLAY_MAX_BYTES;
 exports.VOXA_SKIN_VERSION = VOXA_SKIN_VERSION;
 exports.Vec3Schema = Vec3Schema;
 exports.Vec4Schema = Vec4Schema;
 exports.bodyPartBytesToSchema = bodyPartBytesToSchema;
 exports.bodyPartSchemaToBytes = bodyPartSchemaToBytes;
 exports.calcEasing = calcEasing;
+exports.compareVoxaPlayVersions = compareVoxaPlayVersions;
 exports.decodeVoxaPlay = decodeVoxaPlay;
 exports.encodeVoxaPlay = encodeVoxaPlay;
 exports.getModelMetaData = getModelMetaData;
@@ -14517,10 +14615,12 @@ exports.modelV4 = schemaV4$1;
 exports.modelV5 = schemaV5$1;
 exports.modelV6 = schemaV6$1;
 exports.modelV7 = schemaV7$1;
+exports.nextVoxaPlayVersion = nextVoxaPlayVersion;
 exports.projectBytesToSchema = projectBytesToSchema;
 exports.projectSchemaToBytes = projectSchemaToBytes;
 exports.projectV1 = schemaV1$1;
 exports.projectV10 = schemaV10;
+exports.projectV11 = schemaV11;
 exports.projectV2 = schemaV2$1;
 exports.projectV3 = schemaV3$1;
 exports.projectV4 = schemaV4;

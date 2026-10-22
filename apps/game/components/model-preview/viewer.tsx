@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Plus, Minus, Play, Pause, Check, ChevronDown, Grid3X3 } from 'lucide-react'
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu'
 import { IconSecondaryLocation, IconLight } from '@box/icons'
-import { VOXA_PLAY_MAX_BYTES, type VoxaPlayBundle } from '@box/voxa-project'
+import type { VoxaPlayBundle } from '@box/voxa-project'
 import { ModelPreviewRenderer } from './renderer'
 import { apiClient } from '../../src/apis/client'
 import styles from './viewer.module.css'
@@ -47,14 +47,12 @@ export default function ModelPreviewViewer({
             parseAs: 'arrayBuffer',
           })
           if (!response.ok) throw new Error('模型预览不存在或已下架')
-          if (Number(response.headers.get('content-length')) > VOXA_PLAY_MAX_BYTES)
-            throw new Error('模型预览包过大')
           if (!bytes) throw new Error('模型预览数据为空')
           return bytes
         },
       })
       if (abort.signal.aborted || !canvas.current) return
-      instance = new ModelPreviewRenderer(canvas.current, data.model)
+      instance = new ModelPreviewRenderer(canvas.current, data.model, data.placement)
       renderer.current = instance
       const initialAnimation =
         data.defaultAnimationId === null

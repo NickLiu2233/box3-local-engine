@@ -6,7 +6,7 @@ import {
   migrateProject,
   projectSchemaToBytes,
   projectV5,
-  projectV10 as P,
+  projectV11 as P,
   ProjectNodeType as T,
   ProjectInterpolationType,
   Vec3Schema,
@@ -14,7 +14,7 @@ import {
 } from '@box/voxa-project'
 import avatar from '../../src/models/project/avatar.json'
 
-export type Project = typeof P.ProjectDataV10Schema.identity
+export type Project = typeof P.ProjectDataV11Schema.identity
 export type Node = typeof P.NodeSchema.identity
 export type Operation = { op: string; [key: string]: unknown }
 export type Kind = 'model' | 'skin'
@@ -102,7 +102,7 @@ export function createProject(kind: Kind): Project {
     check(project, '无法载入标准皮肤模板')
     return project
   }
-  const project = P.ProjectDataV10Schema.alloc()
+  const project = P.ProjectDataV11Schema.clone(P.ProjectDataV11Schema.identity)
   project.nodes.ROOT = makeNode('ROOT', T.Root)
   project.nodes.ROOT_BONE = makeNode('ROOT_BONE', T.Bone, 'ROOT')
   project.nodes.ROOT_SKIN = makeNode('ROOT_SKIN', T.Group, 'ROOT')
@@ -121,7 +121,7 @@ export function createProject(kind: Kind): Project {
 export function applyOperations(input: Project, operations: unknown): Project {
   check(Array.isArray(operations) && operations.length <= 8192, 'operations 需要数组，最多 8192 步')
   // Work on an independent copy; any invalid step leaves the stored project untouched.
-  const project = P.ProjectDataV10Schema.clone(input)
+  const project = P.ProjectDataV11Schema.clone(input)
   // Older empty projects may contain zeroed root scales. They compile into a
   // singular world matrix and fail during CPU preview normal calculation.
   // Normalize legacy transform fields before applying new authoring steps.

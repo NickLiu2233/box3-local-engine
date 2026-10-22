@@ -13,3 +13,4 @@ export * as projectV7 from './schema-v7';
 export * as projectV8 from './schema-v8';
 export * as projectV9 from './schema-v9';
 export * as projectV10 from './schema-v10';
+export * as projectV11 from './schema-v11';

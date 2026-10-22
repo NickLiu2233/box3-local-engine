@@ -1,4 +1,4 @@
-import { Modal } from '@box/box-design'
+import { Button, Input, Modal, Select, TextArea } from '@box/box-design'
 import type { VoxaPlayMetadata } from '@box/voxa-project'
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent, KeyboardEvent } from 'react'
@@ -6,9 +6,10 @@ import styles from './preview-export-dialog.module.css'
 
 type ExportAnimation = { id: string; name: string }
 type PreviewExportOptions = {
-  name: string
   animations: ExportAnimation[]
   activeAnimationId?: string
+  initialSettings?: VoxaPlayMetadata
+  onSettingsChange?: (settings: VoxaPlayMetadata) => void
   onExport: (settings: VoxaPlayMetadata) => Promise<void>
 }
 
@@ -18,21 +19,22 @@ type PreviewExportFormProps = PreviewExportOptions & {
 }
 
 export function PreviewExportForm({
-  name,
   animations,
   activeAnimationId,
+  initialSettings,
+  onSettingsChange,
   onExport,
   onClose,
   onBusyChange,
 }: PreviewExportFormProps) {
   const form = useRef<HTMLFormElement>(null)
-  const [author, setAuthor] = useState('')
-  const [description, setDescription] = useState('')
-  const [version, setVersion] = useState('v1.0.0')
+  const [author, setAuthor] = useState(initialSettings?.author ?? '')
+  const [description, setDescription] = useState(initialSettings?.description ?? '')
+  const [version, setVersion] = useState(initialSettings?.version ?? 'v1.0.0')
   const [defaultAnimationId, setDefaultAnimationId] = useState<string | null>(
-    animations.find((animation) => animation.id === activeAnimationId)?.id ??
-      animations[0]?.id ??
-      null,
+    initialSettings
+      ? animations.find((animation) => animation.id === initialSettings.defaultAnimationId)?.id ?? null
+      : animations.find((animation) => animation.id === activeAnimationId)?.id ?? animations[0]?.id ?? null,
   )
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -40,6 +42,10 @@ export function PreviewExportForm({
   useEffect(() => {
     form.current?.querySelector<HTMLInputElement>('input')?.focus()
   }, [])
+
+  useEffect(() => {
+    onSettingsChange?.({ author, description, version, defaultAnimationId })
+  }, [author, description, version, defaultAnimationId, onSettingsChange])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -93,64 +99,91 @@ export function PreviewExportForm({
       onSubmit={(event) => void submit(event)}
       onKeyDown={handleKeys}
     >
-      <p className={styles.name}>{name}</p>
       <fieldset disabled={busy} className={styles.fields}>
         <div className={styles.row}>
           <label>
             作者
-            <input
+            <Input
+              className={styles.input}
+              type="primary"
+              size="middle"
+              valueType="string"
               value={author}
               maxLength={100}
+              disabled={busy}
+              onBlurValidator={() => true}
               placeholder="填写模型作者"
-              onChange={(event) => setAuthor(event.target.value)}
+              onChange={setAuthor}
             />
           </label>
           <label>
             版本
-            <input
+            <Input
+              className={styles.input}
+              type="primary"
+              size="middle"
+              valueType="string"
               value={version}
               maxLength={50}
+              disabled={busy}
+              onBlurValidator={() => true}
               required
               pattern=".*\S.*"
               placeholder="v1.0.0"
-              onChange={(event) => setVersion(event.target.value)}
+              onChange={setVersion}
             />
           </label>
         </div>
         <label>
           作品简介
-          <textarea
+          <TextArea
+            className={styles.description}
+            style={{ height: 92 }}
             value={description}
             maxLength={2000}
+            disabled={busy}
             rows={4}
             placeholder="介绍你的模型"
-            onChange={(event) => setDescription(event.target.value)}
+            onChange={setDescription}
+            onKeyDownCapture={(event) => {
+              // Keep Enter as a newline instead of the shared field's finish-editing shortcut.
+              if (event.key === 'Enter') event.stopPropagation()
+            }}
           />
         </label>
-        <label>
-          默认动画
-          <select
-            value={defaultAnimationId === null ? 'static' : `motion:${defaultAnimationId}`}
-            disabled={busy || !animations.length}
-            onChange={(event) =>
-              setDefaultAnimationId(
-                event.target.value === 'static' ? null : event.target.value.slice(7),
-              )
-            }
+        <div className={styles.animationField}>
+          <span id="preview-export-animation-label">默认动画</span>
+          <div
+            className={styles.animationSelect}
+            role="group"
+            aria-labelledby="preview-export-animation-label"
+            aria-disabled={busy || !animations.length}
           >
-            <option value="static">静态（不自动播放）</option>
-            {animations.map((animation) => (
-              <option key={animation.id} value={`motion:${animation.id}`}>
-                {animation.name || '未命名动画'}
-              </option>
-            ))}
-          </select>
+            <Select
+              size="small"
+              placement="bottomLeft"
+              align={{ offset: [0, 4] }}
+              disabled={busy || !animations.length}
+              selection={defaultAnimationId === null ? 'static' : `motion:${defaultAnimationId}`}
+              items={[
+                { id: 'static', text: '静态（不自动播放）' },
+                ...animations.map((animation) => ({
+                  id: `motion:${animation.id}`,
+                  text: animation.name || '未命名动画',
+                })),
+              ]}
+              onSelect={({ id }) => {
+                if (busy || !animations.length || typeof id !== 'string') return
+                setDefaultAnimationId(id === 'static' ? null : id.slice(7))
+              }}
+            />
+          </div>
           <small>
             {animations.length
               ? '打开预览时自动播放所选动画。'
-              : '当前模型没有动画，打开预览时显示静态模型。'}
+              : '当前模型无动画，将以静态姿态展示。'}
           </small>
-        </label>
+        </div>
       </fieldset>
       {error ? (
         <p className={styles.error} role="alert">
@@ -158,12 +191,28 @@ export function PreviewExportForm({
         </p>
       ) : null}
       <div className={styles.actions}>
-        <button type="button" disabled={busy} onClick={onClose}>
+        <Button
+          className={styles.action}
+          type="secondary"
+          size="medium"
+          disabled={busy}
+          onClick={(event) => {
+            event.preventDefault()
+            onClose()
+          }}
+        >
           取消
-        </button>
-        <button className={styles.primary} type="submit" disabled={busy}>
-          {busy ? '正在导出…' : '导出预览包'}
-        </button>
+        </Button>
+        <Button
+          className={styles.action}
+          type="primary"
+          size="medium"
+          disabled={busy}
+          loading={busy}
+          aria-label={busy ? '正在导出' : '导出'}
+        >
+          导出
+        </Button>
       </div>
     </form>
   )
@@ -174,7 +223,7 @@ export function openPreviewExportDialog(options: PreviewExportOptions) {
   let busy = false
   const close = Modal.show({
     title: '导出预览包',
-    width: 440,
+    width: 420,
     style: { maxWidth: 'calc(100vw - 32px)' },
     content: (
       <PreviewExportForm

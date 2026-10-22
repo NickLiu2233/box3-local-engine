@@ -406,12 +406,13 @@ function SubMenuExport() {
   const exportPreview = () => {
     if (!editor) return;
     openPreviewExportDialog({
-      name: projectName,
       animations: motionData.motionIds.flatMap((id) => {
         const motion = motionData.motions[id];
         return motion ? [{ id: motion.id, name: motion.name }] : [];
       }),
       activeAnimationId: activeMotionId || undefined,
+      initialSettings: editor.projectManager.getPreviewExportSettings(),
+      onSettingsChange: (settings) => editor.projectManager.setPreviewExportSettings(settings),
       onExport: async (settings) => {
         const bundle = await editor.projectManager.exportPreviewBundle(settings);
         downloadFile(bundle, voxaPlayFileName(projectName));
@@ -442,10 +443,6 @@ function SubMenuExport() {
         }}
         items={[
           {
-            id: SubMenuExportId.ExportPreview,
-            text: '导出预览包 (.voxaplay)',
-          },
-          {
             id: SubMenuExportId.ExportGLTF,
             text: intl.formatMessage({
               description: 'File menu export GLTF',
@@ -458,6 +455,10 @@ function SubMenuExport() {
               description: 'File menu export VOXA project',
               defaultMessage: '导出工程',
             }),
+          },
+          {
+            id: SubMenuExportId.ExportPreview,
+            text: '导出预览包',
           },
         ]}
       />

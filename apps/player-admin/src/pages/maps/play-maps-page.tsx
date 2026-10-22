@@ -1,22 +1,12 @@
 import { DeleteOutlined, EditOutlined, ReloadOutlined, UploadOutlined } from '@ant-design/icons';
-import {
-    Button,
-    Card,
-    Dropdown,
-    Empty,
-    Form,
-    message,
-    Space,
-    Switch,
-    Table as AntTable,
-    Tag,
-} from 'antd';
+import { Button, Dropdown, Form, message, Space, Switch, Tag } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { confirmAdminAction } from '../../components/confirm-admin-action';
 import { useAdminRequest } from '../../hooks/use-admin-request';
 import { reportAdminError } from '../../player-admin-errors';
 import { PageToolbar } from '../../components/page-toolbar';
+import { PlayLibraryName, PlayLibraryPanel } from '../../components/play-library-panel';
 import { playerAdminApi as api } from '../../player-admin-api';
 import { dateTime, formatBytes } from '../../player-admin-format';
 import { buildPlayMapTableRows, groupPlayMaps } from './play-map-table';
@@ -215,174 +205,142 @@ export function PlayMapsPage({ canManage }:{ canManage:boolean }) {
                     }
                 }}
             />
-            {groups.length ? (
-                <Card
-                    className="player-admin-panel player-admin-map-directory"
-                    title="已导入地图"
-                    extra={
-                        <span className="player-admin-muted">
-                            {groups.length} 个地图组 · {worlds.length} 张地图
-                        </span>
-                    }
-                >
-                    <AntTable
-                        className="player-admin-map-table"
-                        tableLayout="fixed"
-                        size="middle"
-                        pagination={false}
-                        rowKey="key"
-                        dataSource={tableRows}
-                        expandable={{
-                            expandRowByClick: false,
-                            rowExpandable: (row) =>
-                                row.kind === 'group' && Boolean(row.children?.length),
-                        }}
-                        columns={[
-                            {
-                                title: '地图',
-                                width: '29%',
-                                render: (_, row:PlayMapTableRow) => (
-                                    <div className="player-admin-map-name">
-                                        <span
-                                            className="player-admin-map-title"
-                                            title={row.map.name}
+            <PlayLibraryPanel
+                title="已导入地图"
+                summary={`${groups.length} 个地图组 · ${worlds.length} 张地图`}
+                items={tableRows}
+                emptyDescription="暂无游玩地图"
+                importLabel="导入游玩包"
+                canManage={canManage}
+                onImport={() => uploadRef.current?.click()}
+                table={{
+                    rowKey: 'key',
+                    expandable: {
+                        expandRowByClick: false,
+                        rowExpandable: (row) =>
+                            row.kind === 'group' && Boolean(row.children?.length),
+                    },
+                    columns: [
+                        {
+                            title: '地图',
+                            width: '28%',
+                            render: (_, row:PlayMapTableRow) => (
+                                <PlayLibraryName name={row.map.name} version={row.map.version} />
+                            ),
+                        },
+                        {
+                            title: '地图 ID',
+                            width: '26%',
+                            render: (_, row:PlayMapTableRow) => (
+                                <code title={row.map.permanentMapId}>{row.map.permanentMapId}</code>
+                            ),
+                        },
+                        {
+                            title: '地图与资源',
+                            width: '16%',
+                            render: (_, row:PlayMapTableRow) =>
+                                row.kind === 'group' ? (
+                                    <span className="player-admin-map-summary">
+                                        {row.mapCount} 张地图 · {formatBytes(row.resourceBytes)}
+                                    </span>
+                                ) : (
+                                    '—'
+                                ),
+                        },
+                        {
+                            title: '导入时间',
+                            width: '16%',
+                            render: (_, row:PlayMapTableRow) =>
+                                dateTime(statuses[row.map.id]?.importedAt),
+                        },
+                        {
+                            title: '状态与操作',
+                            width: '14%',
+                            render: (_, row:PlayMapTableRow) =>
+                                row.kind === 'submap' ? (
+                                    canManage ? (
+                                        <Button
+                                            type="link"
+                                            icon={<EditOutlined />}
+                                            onClick={() => {
+                                                setEditing(row.map);
+                                                form.setFieldsValue({
+                                                    publicId: row.map.publicId,
+                                                });
+                                            }}
                                         >
-                                            {row.map.name}
-                                        </span>
-                                        {row.map.version ? (
-                                            <span className="player-admin-map-version">
-                                                v{row.map.version.replace(/^v/i, '')}
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                ),
-                            },
-                            {
-                                title: '地图 ID',
-                                width: '29%',
-                                render: (_, row:PlayMapTableRow) => (
-                                    <code title={row.map.permanentMapId}>
-                                        {row.map.permanentMapId}
-                                    </code>
-                                ),
-                            },
-                            {
-                                title: '地图与资源',
-                                width: '16%',
-                                render: (_, row:PlayMapTableRow) =>
-                                    row.kind === 'group' ? (
-                                        <span className="player-admin-map-summary">
-                                            {row.mapCount} 张地图 · {formatBytes(row.resourceBytes)}
-                                        </span>
+                                            设置
+                                        </Button>
                                     ) : (
                                         '—'
-                                    ),
-                            },
-                            {
-                                title: '导入时间',
-                                width: '16%',
-                                render: (_, row:PlayMapTableRow) =>
-                                    dateTime(statuses[row.map.id]?.importedAt),
-                            },
-                            {
-                                title: '状态与操作',
-                                width: '10%',
-                                render: (_, row:PlayMapTableRow) =>
-                                    row.kind === 'submap' ? (
-                                        canManage ? (
-                                            <Button
-                                                type="link"
-                                                icon={<EditOutlined />}
-                                                onClick={() => {
-                                                    setEditing(row.map);
-                                                    form.setFieldsValue({
-                                                        publicId: row.map.publicId,
-                                                    });
+                                    )
+                                ) : (
+                                    <Space size={8}>
+                                        {canManage ? (
+                                            <Switch
+                                                checked={row.map.playEnabled !== false}
+                                                checkedChildren="开放"
+                                                unCheckedChildren="关闭"
+                                                onChange={(playEnabled) =>
+                                                    void patchWorld(row.map, { playEnabled })
+                                                        .then(() =>
+                                                            message.success(
+                                                                playEnabled
+                                                                    ? '地图组已开放'
+                                                                    : '地图组已关闭',
+                                                            ),
+                                                        )
+                                                        .catch(reportAdminError)
+                                                }
+                                            />
+                                        ) : (
+                                            <Tag
+                                                color={
+                                                    row.map.playEnabled !== false
+                                                        ? 'success'
+                                                        : 'default'
+                                                }
+                                            >
+                                                {row.map.playEnabled !== false
+                                                    ? '已开放'
+                                                    : '已关闭'}
+                                            </Tag>
+                                        )}{' '}
+                                        {canManage ? (
+                                            <Dropdown
+                                                menu={{
+                                                    items: [
+                                                        {
+                                                            key: 'settings',
+                                                            label: '设置访问 ID',
+                                                            icon: <EditOutlined />,
+                                                            onClick: () => {
+                                                                setEditing(row.map);
+                                                                form.setFieldsValue({
+                                                                    publicId: row.map.publicId,
+                                                                });
+                                                            },
+                                                        },
+                                                        { type: 'divider' },
+                                                        {
+                                                            key: 'delete',
+                                                            label: '删除地图组',
+                                                            danger: true,
+                                                            icon: <DeleteOutlined />,
+                                                            onClick: () => removeWorld(row.map),
+                                                        },
+                                                    ],
                                                 }}
                                             >
-                                                设置
-                                            </Button>
-                                        ) : (
-                                            '—'
-                                        )
-                                    ) : (
-                                        <Space size={8}>
-                                            {canManage ? (
-                                                <Switch
-                                                    checked={row.map.playEnabled !== false}
-                                                    checkedChildren="开放"
-                                                    unCheckedChildren="关闭"
-                                                    onChange={(playEnabled) =>
-                                                        void patchWorld(row.map, { playEnabled })
-                                                            .then(() =>
-                                                                message.success(
-                                                                    playEnabled
-                                                                        ? '地图组已开放'
-                                                                        : '地图组已关闭',
-                                                                ),
-                                                            )
-                                                            .catch(reportAdminError)
-                                                    }
-                                                />
-                                            ) : (
-                                                <Tag
-                                                    color={
-                                                        row.map.playEnabled !== false
-                                                            ? 'success'
-                                                            : 'default'
-                                                    }
-                                                >
-                                                    {row.map.playEnabled !== false
-                                                        ? '已开放'
-                                                        : '已关闭'}
-                                                </Tag>
-                                            )}{' '}
-                                            {canManage ? (
-                                                <Dropdown
-                                                    menu={{
-                                                        items: [
-                                                            {
-                                                                key: 'settings',
-                                                                label: '设置访问 ID',
-                                                                icon: <EditOutlined />,
-                                                                onClick: () => {
-                                                                    setEditing(row.map);
-                                                                    form.setFieldsValue({
-                                                                        publicId: row.map.publicId,
-                                                                    });
-                                                                },
-                                                            },
-                                                            { type: 'divider' },
-                                                            {
-                                                                key: 'delete',
-                                                                label: '删除地图组',
-                                                                danger: true,
-                                                                icon: <DeleteOutlined />,
-                                                                onClick: () => removeWorld(row.map),
-                                                            },
-                                                        ],
-                                                    }}
-                                                >
-                                                    <Button type="text">更多</Button>
-                                                </Dropdown>
-                                            ) : null}
-                                        </Space>
-                                    ),
-                            },
-                        ]}
-                    />
-                </Card>
-            ) : (
-                <Card className="player-admin-panel">
-                    <Empty description="暂无游玩地图">
-                        {canManage ? (
-                            <Button type="primary" onClick={() => uploadRef.current?.click()}>
-                                导入游玩包
-                            </Button>
-                        ) : null}
-                    </Empty>
-                </Card>
-            )}
+                                                <Button type="text">更多</Button>
+                                            </Dropdown>
+                                        ) : null}
+                                    </Space>
+                                ),
+                        },
+                    ],
+                }}
+            />
             <PlayMapDialogs
                 editing={editing}
                 setEditing={setEditing}

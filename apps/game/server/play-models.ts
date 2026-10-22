@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
-import { decodeVoxaPlay, encodeVoxaPlay } from '@box/voxa-project'
+import { compareVoxaPlayVersions, decodeVoxaPlay, encodeVoxaPlay } from '@box/voxa-project'
 import type { PlayModel } from '@box/apis'
 
 const fingerprints = new Map<string, { modified: number; bytes: number; hash: string }>()
@@ -64,8 +64,14 @@ export function listPlayModels(publicOnly = false): PlayModel[] {
 }
 export function importPlayModel(bytes: Uint8Array): PlayModel {
   const bundle = decodeVoxaPlay(bytes)
+  const existing = bundle.projectId ? getPlayModel(bundle.projectId) : undefined
+  if (bundle.projectId) {
+    const order = compareVoxaPlayVersions(bundle.version, existing?.version || bundle.version)
+    if (existing && order <= 0)
+      throw new Error(`模型“${existing.name}”导入版本 ${bundle.version} ${order === 0 ? '与当前版本相同' : '低于当前版本'}（${existing.version}），未覆盖`)
+  }
   const canonical = encodeVoxaPlay(bundle.name, bundle.model, bundle.previewImage, bundle)
-  const id = randomUUID(),
+  const id = bundle.projectId || randomUUID(),
     destination = directory(id)
   fs.mkdirSync(root(), { recursive: true })
   const temporary = fs.mkdtempSync(path.join(root(), '.upload-'))
@@ -75,7 +81,7 @@ export function importPlayModel(bytes: Uint8Array): PlayModel {
     author: bundle.author,
     version: bundle.version,
     description: bundle.description,
-    published: true,
+    published: existing?.published ?? true,
     importedAt: new Date().toISOString(),
     bytes: canonical.length,
     contentHash: createHash('sha256').update(canonical).digest('hex'),
@@ -84,10 +90,22 @@ export function importPlayModel(bytes: Uint8Array): PlayModel {
     previewUrl: previewURL(id),
   }
   if (bundle.previewImage) entry.previewImage = bundle.previewImage
+  let backup: string | undefined
   try {
     fs.writeFileSync(path.join(temporary, 'preview.voxaplay'), canonical, { flag: 'wx' })
     fs.writeFileSync(path.join(temporary, 'entry.json'), JSON.stringify(entry), { flag: 'wx' })
-    fs.renameSync(temporary, destination)
+    if (existing) {
+      backup = path.join(root(), `.previous-${randomUUID()}`)
+      fs.renameSync(destination, backup)
+    }
+    try {
+      fs.renameSync(temporary, destination)
+    } catch (error) {
+      if (backup) fs.renameSync(backup, destination)
+      throw error
+    }
+    fingerprints.delete(path.join(destination, 'preview.voxaplay'))
+    if (backup) fs.rmSync(backup, { recursive: true, force: true })
     return entry
   } finally {
     fs.rmSync(temporary, { recursive: true, force: true })

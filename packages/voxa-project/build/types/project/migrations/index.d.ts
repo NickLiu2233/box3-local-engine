@@ -43,7 +43,7 @@ export declare function projectBytesToSchema(bytes: Uint8Array): {
         }>;
     }>;
 } | {
-    version: 4 | 3 | 8 | 1 | 2 | 5 | 7 | 10 | 6 | 9;
+    version: 4 | 3 | 8 | 1 | 2 | 11 | 5 | 7 | 10 | 6 | 9;
     schema: ProjectDataTypes;
 } | undefined;
 export declare function projectSchemaToBytes(value: ProjectDataTypes): Uint8Array;

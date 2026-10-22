@@ -11,7 +11,7 @@ export default defineConfig({
     // handled by Next.js and return its 404 HTML page instead of CSS/JavaScript.
     base: '/',
     history: { type: 'hash' },
-    publicPath: './player-admin/',
+    publicPath: process.env.NODE_ENV === 'production' ? './player-admin/' : '/',
     proxy: {
         '/api': {
             target: process.env.PLAYER_ADMIN_DEV_API_URL || 'http://127.0.0.1:3124',
@@ -30,6 +30,8 @@ export default defineConfig({
     ],
     // 图标位于本应用的 public 目录；不要传构建机上的绝对文件路径，
     // 否则浏览器会把它当成无法访问的 HTTP 地址。
-    favicons: ['./player-admin/favicon.png'],
+    favicons: [
+        process.env.NODE_ENV === 'production' ? './player-admin/favicon.png' : '/favicon.png',
+    ],
     title: '后台管理',
 });

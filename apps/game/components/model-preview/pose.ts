@@ -11,7 +11,7 @@ export function animationDuration(animation: PreviewModel['animations'][number])
 }
 
 /** Same node transform order and interpolation as the boxes model renderer. */
-export function previewPose(model: PreviewModel, animationIndex = -1, time = 0) {
+export function previewPose(model: PreviewModel, animationIndex = -1, time = 0, origin?: vec3) {
   const transforms = model.nodes.map((node) => ({
     translation: vec3.clone(node.translation),
     rotation: quat.clone(node.rotation),
@@ -77,5 +77,12 @@ export function previewPose(model: PreviewModel, animationIndex = -1, time = 0) 
       parents[index] < 0 ? local : mat4.multiply(local, matrices[parents[index]], local)
     alphas[index] = pose.alpha * (parents[index] < 0 ? 1 : alphas[parents[index]])
   })
+  // Restore editor coordinates once, after composing the complete node hierarchy.
+  if (origin)
+    for (const matrix of matrices) {
+      matrix[12] += origin[0]
+      matrix[13] += origin[1]
+      matrix[14] += origin[2]
+    }
   return { matrices, alphas }
 }

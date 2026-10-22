@@ -1,4 +1,4 @@
-import { decodeVoxaPlay, VOXA_PLAY_MAX_BYTES } from '@box/voxa-project'
+import { decodeVoxaPlay } from '@box/voxa-project'
 
 export const MODEL_PREVIEW_CACHE = 'box-play-models:v1'
 type PreviewCache = Pick<Cache, 'match' | 'put' | 'keys' | 'delete'>
@@ -35,7 +35,6 @@ export async function loadModelPreview({
   key.searchParams.set('hash', contentHash || '')
   const validate = async (bytes: ArrayBuffer) => {
     if (signal?.aborted) throw new DOMException('预览已关闭', 'AbortError')
-    if (bytes.byteLength > VOXA_PLAY_MAX_BYTES) throw new Error('模型预览包过大')
     const data = new Uint8Array(bytes)
     const actualHash = await digest(data)
     if (actualHash && contentHash && actualHash !== contentHash)

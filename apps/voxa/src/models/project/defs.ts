@@ -11,10 +11,11 @@ export {
   HitBoxMode,
 } from '@box/voxa-project';
 
-import { modelV7, skinV3, projectV10 } from '@box/voxa-project';
+import { modelV7, skinV3, projectV11 } from '@box/voxa-project';
 
 export const {
-  ProjectDataV10Schema: ProjectDataSchema,
+  ProjectDataV11Schema: ProjectDataSchema,
+  PreviewExportSchema,
   PaletteItemSchema,
   PaletteGroupsSchema,
   NodeSchema,
@@ -27,7 +28,7 @@ export const {
   MotionNodesSchema,
   HitBoxSchema,
   HitBoxDataSchema,
-} = projectV10;
+} = projectV11;
 
 export const {
   ModelDataV7Schema: ModelDataSchema,

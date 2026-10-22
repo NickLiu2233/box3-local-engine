@@ -8,6 +8,7 @@ import { ProjectDataV7, ProjectDataV7Schema } from './schema-v7';
 import { ProjectDataV8, ProjectDataV8Schema } from './schema-v8';
 import { ProjectDataV9, ProjectDataV9Schema } from './schema-v9';
 import { ProjectDataV10, ProjectDataV10Schema } from './schema-v10';
+import { ProjectDataV11, ProjectDataV11Schema } from './schema-v11';
 
 export type ProjectDataTypes =
   | ProjectDataV1
@@ -19,11 +20,12 @@ export type ProjectDataTypes =
   | ProjectDataV7
   | ProjectDataV8
   | ProjectDataV9
-  | ProjectDataV10;
+  | ProjectDataV10
+  | ProjectDataV11;
 
-export type ProjectData = ProjectDataV10;
+export type ProjectData = ProjectDataV11;
 
-export const VOXA_PROJECT_VERSION = 10;
+export const VOXA_PROJECT_VERSION = 11;
 
 export const PROJECT_SCHEMA = {
   1: ProjectDataV1Schema,
@@ -36,4 +38,5 @@ export const PROJECT_SCHEMA = {
   8: ProjectDataV8Schema,
   9: ProjectDataV9Schema,
   10: ProjectDataV10Schema,
+  11: ProjectDataV11Schema,
 };
