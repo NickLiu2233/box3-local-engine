@@ -52,4 +52,24 @@ describe('player-admin navigation permissions', () => {
       permissions: ['players.view', 'containers.view'],
     }, 'container-creator')).toBe(true);
   });
+  test('model previews have their own view and management permissions', () => {
+    expect(
+      canOpenPlayerAdminView(
+        { role: 'moderator', permissions: ['play-maps.manage'] },
+        'play-models',
+      ),
+    ).toBe(false)
+    expect(
+      canOpenPlayerAdminView(
+        { role: 'moderator', permissions: ['play-models.view'] },
+        'play-models',
+      ),
+    ).toBe(true)
+    expect(
+      canOpenPlayerAdminView(
+        { role: 'moderator', permissions: ['play-models.manage'] },
+        'play-models',
+      ),
+    ).toBe(true)
+  })
 });

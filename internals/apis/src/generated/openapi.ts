@@ -1796,6 +1796,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/play-admin/models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询接口数据
+         * @description 此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。
+         */
+        get: operations["getApiPlayAdminModels"];
+        put?: never;
+        /**
+         * 创建接口数据
+         * @description 此操作用于“创建接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作可能创建资源、更新状态或触发后台任务。 需要有效的玩家管理会话及对应查看或编辑权限。
+         */
+        post: operations["postApiPlayAdminModels"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/play-admin/models/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 删除接口数据
+         * @description 此操作用于“删除接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会删除资源或停止对应运行实例，请先确认目标标识。 需要有效的玩家管理会话及对应查看或编辑权限。
+         */
+        delete: operations["deleteApiPlayAdminModelsId"];
+        options?: never;
+        head?: never;
+        /**
+         * 更新接口数据
+         * @description 此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。
+         */
+        patch: operations["patchApiPlayAdminModelsId"];
+        trace?: never;
+    };
     "/api/play-admin/owner-session": {
         parameters: {
             query?: never;
@@ -2170,6 +2218,46 @@ export interface paths {
          * @description 此操作用于“退出游玩端账号”。该接口用于读取游玩内容并维护当前玩家的游玩会话。 该操作可能创建资源、更新状态或触发后台任务。 该接口不要求额外的 OpenAPI 鉴权信息。
          */
         post: operations["postApiPlayLogout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/play-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询接口数据
+         * @description 此操作用于“查询接口数据”。该接口用于读取游玩内容并维护当前玩家的游玩会话。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        get: operations["getApiPlayModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/play-models/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 查询接口数据
+         * @description 此操作用于“查询接口数据”。该接口用于读取游玩内容并维护当前玩家的游玩会话。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。
+         */
+        get: operations["getApiPlayModelsId"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3128,6 +3216,23 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        PlayModel: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            author: string;
+            version: string;
+            description: string;
+            previewImage?: string;
+            published: boolean;
+            /** Format: date-time */
+            importedAt: string;
+            bytes: number;
+            contentHash: string;
+            animationCount: number;
+            nodeCount: number;
+            previewUrl: string;
+        };
         PlayerSelfProfile: {
             subjectId: string;
             userId: string;
@@ -8147,6 +8252,155 @@ export interface operations {
             };
         };
     };
+    getApiPlayAdminModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 操作成功，返回“查询接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        models: components["schemas"]["PlayModel"][];
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    postApiPlayAdminModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description 执行“创建接口数据”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/octet-stream": Blob;
+            };
+        };
+        responses: {
+            /** @description 模型预览包已上传并发布。 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        model: components["schemas"]["PlayModel"];
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    deleteApiPlayAdminModelsId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description 执行“删除接口数据”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody?: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description 模型预览已删除。 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    patchApiPlayAdminModelsId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description 执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。 */
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    author?: string;
+                    version?: string;
+                    description?: string;
+                    published?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description 操作成功，返回“更新接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        model: components["schemas"]["PlayModel"];
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
     postApiPlayAdminOwnerSession: {
         parameters: {
             query?: never;
@@ -9235,6 +9489,76 @@ export interface operations {
                         [key: string]: unknown;
                     };
                 };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getApiPlayModels: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 操作成功，返回“查询接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        models: components["schemas"]["PlayModel"][];
+                    };
+                };
+            };
+            /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApiError"];
+                };
+            };
+        };
+    };
+    getApiPlayModelsId: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 目标资源 ID。 */
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 操作成功，返回“查询接口数据”的处理结果。 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/vnd.box.voxaplay+json": Blob;
+                };
+            };
+            /** @description 模型预览不存在或尚未发布。 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description 请求失败，返回可供界面展示或日志排查的错误信息。 */
             default: {

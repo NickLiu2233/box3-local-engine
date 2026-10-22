@@ -117,7 +117,7 @@ export class ApiClient {
 ${methods
   .map(
     ({ apiPath, method, operationId }) => {
-      if (method === 'GET' && ['/api/play-admin/library/import', '/api/play-admin/players/export'].includes(apiPath)) {
+      if (method === 'GET' && ['/api/play-admin/library/import', '/api/play-admin/players/export', '/api/play-models/{id}'].includes(apiPath)) {
         const parameters = `Parameters<PathBasedClient<paths>[${JSON.stringify(apiPath)}]["GET"]>`
         const response = `FetchResponse<paths[${JSON.stringify(apiPath)}]["get"], Init[0], \`\${string}/\${string}\`>`
         return `  ${operationId}Raw<const Init extends ${parameters}>(...init: Init): Promise<${response}> {

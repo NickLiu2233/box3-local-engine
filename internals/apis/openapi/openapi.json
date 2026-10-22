@@ -7913,6 +7913,293 @@
         ]
       }
     },
+    "/api/play-admin/models": {
+      "get": {
+        "operationId": "getApiPlayAdminModels",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作只读取数据，不修改服务状态。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          },
+          {
+            "internalBearer": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service",
+          "play"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "models"
+                  ],
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PlayModel"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      },
+      "post": {
+        "operationId": "postApiPlayAdminModels",
+        "summary": "创建接口数据",
+        "description": "此操作用于“创建接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作可能创建资源、更新状态或触发后台任务。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          },
+          {
+            "internalBearer": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service",
+          "play"
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "模型预览包已上传并发布。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "model"
+                  ],
+                  "properties": {
+                    "model": {
+                      "$ref": "#/components/schemas/PlayModel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          },
+          "description": "执行“创建接口数据”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/play-admin/models/{id}": {
+      "patch": {
+        "operationId": "patchApiPlayAdminModelsId",
+        "summary": "更新接口数据",
+        "description": "此操作用于“更新接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会更新现有配置或资源。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          },
+          {
+            "internalBearer": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service",
+          "play"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“更新接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "model"
+                  ],
+                  "properties": {
+                    "model": {
+                      "$ref": "#/components/schemas/PlayModel"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "author": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "version": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "published": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "description": "执行“更新接口数据”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteApiPlayAdminModelsId",
+        "summary": "删除接口数据",
+        "description": "此操作用于“删除接口数据”。该接口供服主和获授权管理员使用，用于管理玩家、地图、安全策略和容器配置。 该操作会删除资源或停止对应运行实例，请先确认目标标识。 需要有效的玩家管理会话及对应查看或编辑权限。",
+        "tags": [
+          "玩家管理"
+        ],
+        "security": [
+          {
+            "adminSession": []
+          },
+          {
+            "internalBearer": []
+          }
+        ],
+        "x-box-deployment-modes": [
+          "player-service",
+          "play"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "模型预览已删除。"
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            }
+          },
+          "description": "执行“删除接口数据”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
     "/api/play-admin/owner-session": {
       "post": {
         "operationId": "postApiPlayAdminOwnerSession",
@@ -10040,6 +10327,111 @@
             }
           },
           "description": "执行“退出游玩端账号”所需的请求数据。具体字段以请求模型为准。"
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/play-models": {
+      "get": {
+        "operationId": "getApiPlayModels",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口用于读取游玩内容并维护当前玩家的游玩会话。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "游玩端"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "play"
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "models"
+                  ],
+                  "properties": {
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PlayModel"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        },
+        "x-box-services": [
+          "engine-web"
+        ]
+      }
+    },
+    "/api/play-models/{id}": {
+      "get": {
+        "operationId": "getApiPlayModelsId",
+        "summary": "查询接口数据",
+        "description": "此操作用于“查询接口数据”。该接口用于读取游玩内容并维护当前玩家的游玩会话。 该操作只读取数据，不修改服务状态。 该接口不要求额外的 OpenAPI 鉴权信息。",
+        "tags": [
+          "游玩端"
+        ],
+        "security": [],
+        "x-box-deployment-modes": [
+          "play"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "目标资源 ID。",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功，返回“查询接口数据”的处理结果。",
+            "content": {
+              "application/vnd.box.voxaplay+json": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "模型预览不存在或尚未发布。"
+          },
+          "default": {
+            "description": "请求失败，返回可供界面展示或日志排查的错误信息。",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
         },
         "x-box-services": [
           "engine-web"
@@ -13942,6 +14334,72 @@
       }
     },
     "schemas": {
+      "PlayModel": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "author",
+          "version",
+          "description",
+          "published",
+          "importedAt",
+          "bytes",
+          "contentHash",
+          "animationCount",
+          "nodeCount",
+          "previewUrl"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "author": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "description": {
+            "type": "string"
+          },
+          "previewImage": {
+            "type": "string",
+            "maxLength": 1500000
+          },
+          "published": {
+            "type": "boolean"
+          },
+          "importedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "bytes": {
+            "type": "integer"
+          },
+          "contentHash": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          },
+          "animationCount": {
+            "type": "integer"
+          },
+          "nodeCount": {
+            "type": "integer"
+          },
+          "previewUrl": {
+            "type": "string"
+          }
+        }
+      },
       "PlayerSelfProfile": {
         "type": "object",
         "required": [
@@ -15447,6 +15905,24 @@
       "source": "apps/game/pages/api/play-admin/maintenance.ts"
     },
     {
+      "path": "/api/play-admin/models/{id}",
+      "methods": [
+        "PATCH",
+        "DELETE"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/play-admin/models/[id].ts"
+    },
+    {
+      "path": "/api/play-admin/models",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/play-admin/models/index.ts"
+    },
+    {
       "path": "/api/play-admin/owner-session",
       "methods": [
         "POST"
@@ -15591,6 +16067,22 @@
       ],
       "service": "engine-web",
       "source": "apps/game/pages/api/play-logout.ts"
+    },
+    {
+      "path": "/api/play-models/{id}",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/play-models/[id].ts"
+    },
+    {
+      "path": "/api/play-models",
+      "methods": [
+        "GET"
+      ],
+      "service": "engine-web",
+      "source": "apps/game/pages/api/play-models/index.ts"
     },
     {
       "path": "/api/play-presence",

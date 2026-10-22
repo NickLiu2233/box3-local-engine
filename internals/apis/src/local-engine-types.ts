@@ -18,3 +18,5 @@ export type ContainerMap = Schemas['ContainerMap'];
 export type ContainerCatalog = Schemas['ContainerCatalog'];
 export type PlayMap = Schemas['PlayMap'];
 export type PlayMapResourceStatus = Schemas['PlayMapResourceStatus'];
+
+export type PlayModel = Schemas['PlayModel'];

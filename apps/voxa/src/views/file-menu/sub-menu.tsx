@@ -32,6 +32,9 @@ import {
   readProjectBundle,
 } from '../../models/file-tools/project-bundle';
 import { deleteLocalDraft, listLocalDrafts } from '../../local-draft';
+import { voxaPlayFileName } from '@box/voxa-project';
+import { FileMenuContext } from './context';
+import { openPreviewExportDialog } from './preview-export-dialog';
 
 export const SubMenu = memo(SubMenuView);
 
@@ -336,6 +339,7 @@ function SubMenuImport() {
 enum SubMenuExportId {
   ExportGLTF = 'EXPORT_GLTF',
   ExportProject = 'EXPORT_PROJECT',
+  ExportPreview = 'EXPORT_PREVIEW',
 }
 
 function SubMenuExport() {
@@ -396,6 +400,28 @@ function SubMenuExport() {
     }
   }, [editor, editType, intl, projectName]);
 
+  const { onClose: closeFileMenu } = useContext(FileMenuContext);
+  const motionData = useAppSelector(({ animator }) => animator.motionData);
+  const activeMotionId = useAppSelector(({ animator }) => animator.activeMotionId);
+  const exportPreview = () => {
+    if (!editor) return;
+    openPreviewExportDialog({
+      name: projectName,
+      animations: motionData.motionIds.flatMap((id) => {
+        const motion = motionData.motions[id];
+        return motion ? [{ id: motion.id, name: motion.name }] : [];
+      }),
+      activeAnimationId: activeMotionId || undefined,
+      onExport: async (settings) => {
+        const bundle = await editor.projectManager.exportPreviewBundle(settings);
+        downloadFile(bundle, voxaPlayFileName(projectName));
+        Toast.success({ content: '预览包已导出，可在后台「游玩管理 → 模型预览」上传' });
+      },
+    });
+    closeFileMenu();
+  };
+
+
   return (
     <div className={className}>
       <Menu
@@ -406,12 +432,19 @@ function SubMenuExport() {
             case SubMenuExportId.ExportGLTF:
               exportGLTF();
               break;
+            case SubMenuExportId.ExportPreview:
+              void exportPreview();
+              break;
             case SubMenuExportId.ExportProject:
               exportProject();
               break;
           }
         }}
         items={[
+          {
+            id: SubMenuExportId.ExportPreview,
+            text: '导出预览包 (.voxaplay)',
+          },
           {
             id: SubMenuExportId.ExportGLTF,
             text: intl.formatMessage({

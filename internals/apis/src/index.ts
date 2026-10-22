@@ -14,6 +14,7 @@ export type {
   ContainerResourceGroup,
   Group,
   IdentityBan,
+  PlayModel,
   PlayMap,
   PlayMapResourceStatus,
   Player,

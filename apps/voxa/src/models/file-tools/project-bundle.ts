@@ -62,6 +62,9 @@ export async function createProjectBundle(params: {
 }
 
 export async function readProjectBundle(file: File): Promise<ImportedProjectBundle> {
+  if (file.name.toLowerCase().endsWith('.voxaplay')) {
+    throw new Error('预览包不包含可编辑工程数据，请导入 .voxaproject 工程文件');
+  }
   if (file.size <= 0 || file.size > MAX_PROJECT_FILE_SIZE) {
     throw new Error('INVALID_PROJECT_FILE_SIZE');
   }

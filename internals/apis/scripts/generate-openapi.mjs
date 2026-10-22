@@ -73,6 +73,8 @@ const outputFile = path.join(packageRoot, 'openapi/openapi.json')
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 const METHOD_OVERRIDES = new Map([
+  ['/api/play-admin/models', ['GET', 'POST']],
+  ['/api/play-admin/models/{id}', ['PATCH', 'DELETE']],
   ['/api/creator/v1/health', ['GET']],
   ['/api/creator-profile', ['PATCH']],
   ['/api/play-admin/library/{section}/{id}', ['GET', 'POST', 'PATCH', 'DELETE']],
@@ -160,6 +162,7 @@ function deploymentModes(apiPath, service = 'engine-web') {
   if (service === 'game-runtime') return ['game-runtime']
   if (service === 'auth-portal') return ['auth-portal']
   if (apiPath.startsWith('/api/player-login/')) return ['creator', 'play']
+  if (apiPath.startsWith('/api/play-admin/models')) return ['player-service', 'play']
   if (apiPath.startsWith('/api/play-admin/') || apiPath.startsWith('/api/player-')) {
     return ['player-service']
   }
@@ -183,6 +186,7 @@ function securityFor(apiPath, service) {
   if (['/api/auth/profile', '/api/auth/password'].includes(apiPath)) return [{ playerSession: [] }]
   if (apiPath.startsWith('/api/player-auth/') && apiPath !== '/api/player-auth/login-required') return [{ playerAuthKey: [] }]
   if (apiPath === '/api/play-admin/login' || apiPath === '/api/player-auth/login-required') return []
+  if (apiPath.startsWith('/api/play-admin/models')) return [{ adminSession: [] }, { internalBearer: [] }]
   if (apiPath.startsWith('/api/play-admin/')) return [{ adminSession: [] }]
   if (['/api/player-internal/script-moderation','/api/player-internal/script-metadata','/api/player-internal/map-admission'].includes(apiPath)) return [{moderationRuntime:[]}]
   if (apiPath.startsWith('/api/player-internal/')) return [{ internalBearer: [] }]

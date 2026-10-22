@@ -19,8 +19,8 @@
     "dist"
   ],
   "scripts": {
-    "generate": "node scripts/generate-openapi.mjs && openapi-typescript openapi/openapi.json -o src/generated/openapi.ts && node scripts/generate-client.mjs",
-    "check:openapi": "node scripts/generate-openapi.mjs --check && node scripts/generate-client.mjs --check && node scripts/check-openapi.mjs",
+    "generate": "node scripts/generate-openapi.mjs && node scripts/generate-types.mjs && node scripts/generate-client.mjs",
+    "check:openapi": "node scripts/generate-openapi.mjs --check && node scripts/generate-types.mjs --check && node scripts/generate-client.mjs --check && node scripts/check-openapi.mjs",
     "docs": "npm run generate && node scripts/serve-docs.mjs",
     "test": "node --test test/*.test.mjs",
     "build": "npm run generate && rm -rf dist && tsc --emitDeclarationOnly && rollup --config rollup.config.mjs",

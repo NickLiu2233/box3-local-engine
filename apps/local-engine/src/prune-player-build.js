@@ -50,6 +50,8 @@ const playerServiceRoutes = new Set([
     '/api/play-admin/admins',
     '/api/play-admin/admins/[id]',
     '/api/play-admin/identity-bans',
+    '/api/play-admin/models',
+    '/api/play-admin/models/[id]',
     '/api/play-admin/import',
     '/api/play-admin/import-resource',
     '/api/play-admin/library/[section]/[[...id]]',

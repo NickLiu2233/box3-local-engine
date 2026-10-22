@@ -17,6 +17,8 @@ export const PLAYER_ADMIN_CAPABILITIES = [
     'creator-tokens.manage',
     'play-maps.view',
     'play-maps.manage',
+    'play-models.view',
+    'play-models.manage',
     'containers.view',
     'containers.manage',
     'audit.view',
@@ -71,6 +73,11 @@ export const PLAYER_ADMIN_CAPABILITY_META:Record<
         description: '查看已导入的游玩地图、状态和资源统计',
     },
     'play-maps.manage': { label: '管理游玩地图', description: '导入、设置、开放或删除游玩地图' },
+    'play-models.view': { label: '查看模型预览', description: '查看已上传的模型预览包与发布状态' },
+    'play-models.manage': {
+        label: '管理模型预览',
+        description: '上传、发布、编辑或删除模型预览包',
+    },
     'containers.view': {
         label: '查看容器运行状态',
         description: '查看创作端和游玩端当前已启动的地图运行时',
@@ -119,6 +126,9 @@ export function effectivePlayerAdminCapabilities(
     }
     if (capabilities.includes('play-maps.manage')) {
         capabilities.push('play-maps.view');
+    }
+    if (capabilities.includes('play-models.manage')) {
+        capabilities.push('play-models.view');
     }
     if (capabilities.includes('containers.manage')) {
         capabilities.push('containers.view');

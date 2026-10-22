@@ -71,6 +71,10 @@ export const apiOperations = {
     "path": "/api/play-admin/library/{section}/{id}",
     "method": "DELETE"
   },
+  "deleteApiPlayAdminModelsId": {
+    "path": "/api/play-admin/models/{id}",
+    "method": "DELETE"
+  },
   "deleteApiPlayAdminPermissionGroupsId": {
     "path": "/api/play-admin/permission-groups/{id}",
     "method": "DELETE"
@@ -287,6 +291,10 @@ export const apiOperations = {
     "path": "/api/play-admin/library/{section}/{id}",
     "method": "GET"
   },
+  "getApiPlayAdminModels": {
+    "path": "/api/play-admin/models",
+    "method": "GET"
+  },
   "getApiPlayAdminPermissionGroups": {
     "path": "/api/play-admin/permission-groups",
     "method": "GET"
@@ -369,6 +377,14 @@ export const apiOperations = {
   },
   "getApiPlayLibrary": {
     "path": "/api/play-library",
+    "method": "GET"
+  },
+  "getApiPlayModels": {
+    "path": "/api/play-models",
+    "method": "GET"
+  },
+  "getApiPlayModelsId": {
+    "path": "/api/play-models/{id}",
     "method": "GET"
   },
   "getApiPlayPresence": {
@@ -465,6 +481,10 @@ export const apiOperations = {
   },
   "patchApiPlayAdminLibrarySectionId": {
     "path": "/api/play-admin/library/{section}/{id}",
+    "method": "PATCH"
+  },
+  "patchApiPlayAdminModelsId": {
+    "path": "/api/play-admin/models/{id}",
     "method": "PATCH"
   },
   "patchApiPlayAdminPermissionGroupsId": {
@@ -657,6 +677,10 @@ export const apiOperations = {
   },
   "postApiPlayAdminMaintenance": {
     "path": "/api/play-admin/maintenance",
+    "method": "POST"
+  },
+  "postApiPlayAdminModels": {
+    "path": "/api/play-admin/models",
     "method": "POST"
   },
   "postApiPlayAdminOwnerSession": {
@@ -1053,6 +1077,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/library/{section}/{id}"]["DELETE"]>
   ) {
     return this.unwrap(this.deleteApiPlayAdminLibrarySectionIdRaw(...init));
+  }
+
+  deleteApiPlayAdminModelsIdRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models/{id}"]["DELETE"]>
+  ) {
+    return this.paths["/api/play-admin/models/{id}"].DELETE(...init);
+  }
+
+  deleteApiPlayAdminModelsId(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models/{id}"]["DELETE"]>
+  ) {
+    return this.unwrap(this.deleteApiPlayAdminModelsIdRaw(...init));
   }
 
   deleteApiPlayAdminPermissionGroupsIdRaw(
@@ -1700,6 +1736,18 @@ export class ApiClient {
     return this.unwrap(this.getApiPlayAdminLibrarySectionIdRaw(...init));
   }
 
+  getApiPlayAdminModelsRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models"]["GET"]>
+  ) {
+    return this.paths["/api/play-admin/models"].GET(...init);
+  }
+
+  getApiPlayAdminModels(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayAdminModelsRaw(...init));
+  }
+
   getApiPlayAdminPermissionGroupsRaw(
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/permission-groups"]["GET"]>
   ) {
@@ -1947,6 +1995,27 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-library"]["GET"]>
   ) {
     return this.unwrap(this.getApiPlayLibraryRaw(...init));
+  }
+
+  getApiPlayModelsRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-models"]["GET"]>
+  ) {
+    return this.paths["/api/play-models"].GET(...init);
+  }
+
+  getApiPlayModels(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-models"]["GET"]>
+  ) {
+    return this.unwrap(this.getApiPlayModelsRaw(...init));
+  }
+
+  getApiPlayModelsIdRaw<const Init extends Parameters<PathBasedClient<paths>["/api/play-models/{id}"]["GET"]>>(...init: Init): Promise<FetchResponse<paths["/api/play-models/{id}"]["get"], Init[0], `${string}/${string}`>> {
+    // Preserve parseAs when callers download text or binary resources.
+    return this.paths["/api/play-models/{id}"].GET(...(init as Parameters<PathBasedClient<paths>["/api/play-models/{id}"]["GET"]>)) as Promise<FetchResponse<paths["/api/play-models/{id}"]["get"], Init[0], `${string}/${string}`>>;
+  }
+
+  getApiPlayModelsId<const Init extends Parameters<PathBasedClient<paths>["/api/play-models/{id}"]["GET"]>>(...init: Init): Promise<NonNullable<FetchResponse<paths["/api/play-models/{id}"]["get"], Init[0], `${string}/${string}`>["data"]>> {
+    return this.unwrap(this.getApiPlayModelsIdRaw(...init)) as Promise<NonNullable<FetchResponse<paths["/api/play-models/{id}"]["get"], Init[0], `${string}/${string}`>["data"]>>;
   }
 
   getApiPlayPresenceRaw(
@@ -2235,6 +2304,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/library/{section}/{id}"]["PATCH"]>
   ) {
     return this.unwrap(this.patchApiPlayAdminLibrarySectionIdRaw(...init));
+  }
+
+  patchApiPlayAdminModelsIdRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models/{id}"]["PATCH"]>
+  ) {
+    return this.paths["/api/play-admin/models/{id}"].PATCH(...init);
+  }
+
+  patchApiPlayAdminModelsId(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models/{id}"]["PATCH"]>
+  ) {
+    return this.unwrap(this.patchApiPlayAdminModelsIdRaw(...init));
   }
 
   patchApiPlayAdminPermissionGroupsIdRaw(
@@ -2811,6 +2892,18 @@ export class ApiClient {
     ...init: Parameters<PathBasedClient<paths>["/api/play-admin/maintenance"]["POST"]>
   ) {
     return this.unwrap(this.postApiPlayAdminMaintenanceRaw(...init));
+  }
+
+  postApiPlayAdminModelsRaw(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models"]["POST"]>
+  ) {
+    return this.paths["/api/play-admin/models"].POST(...init);
+  }
+
+  postApiPlayAdminModels(
+    ...init: Parameters<PathBasedClient<paths>["/api/play-admin/models"]["POST"]>
+  ) {
+    return this.unwrap(this.postApiPlayAdminModelsRaw(...init));
   }
 
   postApiPlayAdminOwnerSessionRaw(

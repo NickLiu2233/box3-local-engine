@@ -1,0 +1,178 @@
+.viewer {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  color: rgba(255, 255, 255, 0.75);
+  background: #000;
+}
+.canvasArea {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+.canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+}
+.canvas:active {
+  cursor: grabbing;
+}
+.controls {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  display: flex;
+  max-width: calc(100% - 24px);
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  transform: translateX(-50%);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 12px;
+  background: rgba(38, 38, 38, 0.92);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+.zoom {
+  display: flex;
+  gap: 2px;
+}
+.controls button {
+  display: inline-flex;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  cursor: pointer;
+}
+.animationLabel {
+  padding-left: 4px;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 12px;
+}
+.controls .animationTrigger {
+  width: auto;
+  min-width: 72px;
+  max-width: 160px;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 8px;
+  background: #333;
+  font-size: 12px;
+  text-align: left;
+}
+.animationTrigger > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.animationTrigger svg {
+  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.45);
+}
+.animationMenu {
+  box-sizing: border-box;
+  z-index: 50;
+  width: max-content;
+  min-width: max(140px, var(--radix-select-trigger-width));
+  max-width: min(280px, calc(100vw - 24px));
+  max-height: min(280px, var(--radix-select-content-available-height));
+  overflow: hidden;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  outline: none;
+  color: #f5f5f5;
+  background: #262626;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color-scheme: dark;
+}
+.animationOptions {
+  max-height: min(264px, calc(var(--radix-select-content-available-height) - 10px));
+}
+.animationOption {
+  position: relative;
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  padding: 7px 30px 7px 10px;
+  border-radius: 4px;
+  outline: none;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.animationOption[data-highlighted] {
+  color: #fff;
+  background: #404040;
+}
+.selectedAnimation {
+  position: absolute;
+  right: 9px;
+  display: flex;
+  color: #ffdb00;
+}
+.divider {
+  width: 1px;
+  height: 18px;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.1);
+}
+.controls button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.controls button:focus-visible,
+.controls .animationTrigger:focus-visible {
+  outline: 2px solid #ffdb00;
+  outline-offset: 1px;
+}
+.controls button:active:not(:disabled) {
+  transform: scale(0.94);
+}
+.status {
+  position: absolute;
+  top: 50%;
+  left: 20px;
+  right: 20px;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 13px;
+  text-align: center;
+}
+@media (hover: hover) and (pointer: fine) {
+  .controls button:hover:not(:disabled) {
+    color: #fff;
+    background: #404040;
+  }
+}
+@media (max-width: 800px) {
+  .controls .animationTrigger {
+    max-width: 110px;
+  }
+}
+@media (max-width: 560px) {
+  .controls {
+    bottom: 16px;
+    gap: 6px;
+  }
+}
+
+.controls .activeTool {
+  color: #ffdb00;
+  background: rgba(255, 219, 0, 0.1);
+}

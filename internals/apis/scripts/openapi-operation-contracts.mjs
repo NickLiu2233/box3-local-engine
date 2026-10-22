@@ -214,6 +214,62 @@ export function applyOperationContracts(paths) {
     }
     moderation.responses[429].headers = { 'Retry-After': { description: '建议等待的秒数。', schema: { type: 'integer', minimum: 1 } } }
   }
+  const publicModels = paths['/api/play-models']?.get
+  if (publicModels)
+    publicModels.responses[200].content['application/json'].schema = object({
+      models: array('PlayModel'),
+    })
+  const previewData = paths['/api/play-models/{id}']?.get
+  if (previewData) {
+    previewData.responses[200].content = {
+      'application/vnd.box.voxaplay+json': { schema: { type: 'string', format: 'binary' } },
+    }
+    previewData.responses[404] = { description: '模型预览不存在或尚未发布。' }
+  }
+  const models = paths['/api/play-admin/models']
+  if (models?.get)
+    models.get.responses[200].content['application/json'].schema = object({
+      models: array('PlayModel'),
+    })
+  if (models?.post) {
+    models.post.requestBody = {
+      required: true,
+      content: { 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } },
+    }
+    models.post.responses[201] = {
+      description: '模型预览包已上传并发布。',
+      content: { 'application/json': { schema: object({ model: ref('PlayModel') }) } },
+    }
+    delete models.post.responses[200]
+  }
+  const model = paths['/api/play-admin/models/{id}']
+  if (model?.patch) {
+    model.patch.requestBody = {
+      required: true,
+      content: {
+        'application/json': {
+          schema: {
+            type: 'object',
+            additionalProperties: false,
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 100 },
+              author: { type: 'string', maxLength: 100 },
+              version: { type: 'string', minLength: 1, maxLength: 50 },
+              description: { type: 'string', maxLength: 2000 },
+              published: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    }
+    model.patch.responses[200].content['application/json'].schema = object({
+      model: ref('PlayModel'),
+    })
+  }
+  if (model?.delete) {
+    delete model.delete.responses[200]
+    model.delete.responses[204] = { description: '模型预览已删除。' }
+  }
   const libraryUpdate = paths['/api/play-library']?.patch
   if (libraryUpdate) {
     delete libraryUpdate.responses[200]

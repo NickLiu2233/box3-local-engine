@@ -33,6 +33,8 @@ import {
   type ImportDiagnostic,
 } from '../server/import-diagnostics'
 import { apiClient } from '../src/apis/client'
+import { listPlayModels } from '../server/play-models'
+import { PlayWorkCenter, WorkCenterHeading, WorkCenterCollections, WorkCenterGrid, WorkCenterCard, WorkCenterEmpty } from '../components/play-work-center/work-center'
 
 const TOKEN_KEY = 'box-play-admin-token'
 const DEFAULT_MAP_COVER = '/map-templates/blank-template.png'
@@ -159,6 +161,8 @@ function formatImportedAt(value: string) {
 
 type HomePageProps = {
   worlds: PlayWorld[]
+  modelCount: number
+  mapCount: number
   uiPreview: boolean
   mapStats: Record<string, MapDiscoveryStats>
 }
@@ -173,6 +177,8 @@ export default function HomePage(props: HomePageProps) {
 
 function HomePageContent({
   worlds,
+  modelCount,
+  mapCount,
   uiPreview,
   mapStats,
 }: HomePageProps) {
@@ -840,30 +846,11 @@ function HomePageContent({
       <Head>
         <title>游玩作品中心</title>
       </Head>
-      <main className="page boxWorkCenter playWorkCenter">
-        <header className="siteHeader">
-          <Link
-            className="siteBrand"
-            href="/"
-            aria-label="BOX3 Engine 游玩作品中心"
-            style={{
-              alignItems: 'center',
-              color: '#f5f5f5',
-              display: 'inline-flex',
-              flexDirection: 'row',
-              flexWrap: 'nowrap',
-              gap: 9,
-              textDecoration: 'none',
-              whiteSpace: 'nowrap',
-            }}
-          >
-            <img className="siteMark" src="/logo512.png" alt="" aria-hidden="true" />
-            <span className="siteBrandName" style={{ color: '#f5f5f5' }}>
-              BOX3 Engine
-            </span>
-          </Link>
-
-          {playerName || playerUserId || playerBoxId || previewSignedIn ? (
+      <PlayWorkCenter
+        current="maps"
+        counts={{ maps: mapCount, models: modelCount }}
+        account={
+          playerName || playerUserId || playerBoxId || previewSignedIn ? (
             <PlayerAccount
               identity={{
                 displayName: playerName,
@@ -887,37 +874,20 @@ function HomePageContent({
                 </Link>
               )}
             </div>
-          )}
-        </header>
-
-        <div className="header">
-          <div className="title">
-            <h1>{t('playHome.maps')}</h1>
-            <span>{`${worldGroups.length} 个地图`}</span>
-          </div>
-        </div>
-
+          )
+        }
+      >
+        <WorkCenterHeading title={t('playHome.maps')} count={`${worldGroups.length} 个地图`} />
         {libraryEnabled && worldList.length ? (
-          <nav className="collectionNav">
-            <button
-              className={collectionView === 'all' ? 'active' : ''}
-              onClick={() => setCollectionView('all')}
-            >
-              {t('playHome.all')}
-            </button>
-            <button
-              className={collectionView === 'recent' ? 'active' : ''}
-              onClick={() => setCollectionView('recent')}
-            >
-              {t('playHome.recent')}
-            </button>
-            <button
-              className={collectionView === 'favorites' ? 'active' : ''}
-              onClick={() => setCollectionView('favorites')}
-            >
-              {t('playHome.favorites')}
-            </button>
-          </nav>
+          <WorkCenterCollections
+            value={collectionView}
+            onChange={setCollectionView}
+            options={[
+              { value: 'all', label: t('playHome.all') },
+              { value: 'recent', label: t('playHome.recent') },
+              { value: 'favorites', label: t('playHome.favorites') },
+            ]}
+          />
         ) : null}
 
         {notice ? (
@@ -929,26 +899,48 @@ function HomePageContent({
 
         {worldList.length ? (
           playerGroups.length ? (
-            <div className="playerGrid" aria-label={t('playHome.mapList')}>
+            <WorkCenterGrid label={t('playHome.mapList')}>
               {libraryGroups.map(({ groupId, main }) => (
-                <article className="card" key={groupId}>
-                  {libraryEnabled ? <button className="favoriteButton" aria-label={t('playHome.favoriteMap')} onClick={() => toggleFavorite(main.publicId)}>{favoriteIds.has(main.publicId) ? '★' : '☆'}</button> : null}
-                  {!isPlayEnabled(main) ? <span className="mapClosed">{t('playHome.temporarilyClosed')}</span> : null}
-                  <Link className="cardLink" href={`/p/${encodeURIComponent(main.publicId)}`} onClick={(event) => {
+                <WorkCenterCard
+                  key={groupId}
+                  href={`/p/${encodeURIComponent(main.publicId)}`}
+                  title={main.name}
+                  cover={main.cover || DEFAULT_MAP_COVER}
+                  metadata={`${main.author || t('playHome.unnamed')} · ${main.version}`}
+                  description={main.description}
+                  actionLabel={t('playHome.playNow')}
+                  badge={
+                    liveMapStats[main.publicId]
+                      ? t('playHome.onlineCount', {
+                          count: liveMapStats[main.publicId].onlineCount,
+                        })
+                      : undefined
+                  }
+                  status={!isPlayEnabled(main) ? t('playHome.temporarilyClosed') : undefined}
+                  favorite={
+                    libraryEnabled
+                      ? {
+                          active: favoriteIds.has(main.publicId),
+                          label: t('playHome.favoriteMap'),
+                          onToggle: () => toggleFavorite(main.publicId),
+                        }
+                      : undefined
+                  }
+                  onOpen={(event) => {
                     if (!isPlayEnabled(main)) {
                       event.preventDefault()
                       return
                     }
                     recordRecent(main.publicId)
-                  }}>
-                    <div className="cover"><img src={main.cover || DEFAULT_MAP_COVER} alt="" />{liveMapStats[main.publicId] ? <span className="mapOnline">{t('playHome.onlineCount', { count: liveMapStats[main.publicId].onlineCount })}</span> : null}</div>
-                    <div className="info"><strong>{main.name}</strong><small>{main.author || t('playHome.unnamed')} · {main.version}</small>{main.description ? <p>{main.description}</p> : null}<span className="playCta">{t('playHome.playNow')} <ArrowUpRight size={15} aria-hidden="true" /></span></div>
-                  </Link>
-                </article>
+                  }}
+                />
               ))}
-            </div>
+            </WorkCenterGrid>
           ) : (
-            <div className="empty"><strong>{t('playHome.noMatchingMaps')}</strong><small>{t('playHome.noMatchingMapsHint')}</small></div>
+            <WorkCenterEmpty
+              title={t('playHome.noMatchingMaps')}
+              hint={t('playHome.noMatchingMapsHint')}
+            />
           )
         ) : worldList.length ? (
           <div className="groups">
@@ -1084,18 +1076,16 @@ function HomePageContent({
             })}
           </div>
         ) : (
-          <div className="empty">
-            <strong>暂无地图</strong>
-            <small>导入地图后会显示在这里</small>
+          <WorkCenterEmpty title="暂无地图" hint="导入地图后会显示在这里">
             {verified ? (
               <button className="button primary" onClick={() => importInput.current?.click()}>
                 导入地图组游玩包
               </button>
             ) : null}
-          </div>
+          </WorkCenterEmpty>
         )}
 
-      </main>
+      </PlayWorkCenter>
 
       {loginOpen ? (
         <div className="backdrop playWorkOverlay" onMouseDown={() => setLoginOpen(false)}>
@@ -2898,6 +2888,8 @@ export const getServerSideProps: GetServerSideProps = async () => {
     return {
       props: {
         worlds: worlds.length ? worlds : previewWorlds,
+        modelCount: process.env.BOX_PLAY_LIBRARY_PATH ? listPlayModels(true).length : 0,
+        mapCount: worlds.length,
         uiPreview: true,
         mapStats: previewMapStats,
       },
@@ -2918,6 +2910,8 @@ export const getServerSideProps: GetServerSideProps = async () => {
   return {
     props: {
       worlds,
+      modelCount: listPlayModels(true).length,
+      mapCount: worlds.length,
       uiPreview: false,
       mapStats: getPlayPresenceCounts(worlds.map((world) => world.publicId), groupByMap),
     },

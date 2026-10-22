@@ -3,6 +3,39 @@ const optionalString = string
 const stringArray = { type: 'array', items: string }
 
 export const localEngineSchemas = {
+  PlayModel: {
+    type: 'object',
+    additionalProperties: false,
+    required: [
+      'id',
+      'name',
+      'author',
+      'version',
+      'description',
+      'published',
+      'importedAt',
+      'bytes',
+      'contentHash',
+      'animationCount',
+      'nodeCount',
+      'previewUrl',
+    ],
+    properties: {
+      id: { type: 'string', format: 'uuid' },
+      name: string,
+      author: { type: 'string', maxLength: 100 },
+      version: { type: 'string', minLength: 1, maxLength: 50 },
+      description: string,
+      previewImage: { type: 'string', maxLength: 1500000 },
+      published: { type: 'boolean' },
+      importedAt: { type: 'string', format: 'date-time' },
+      bytes: { type: 'integer' },
+      contentHash: { type: 'string', pattern: '^[a-f0-9]{64}$' },
+      animationCount: { type: 'integer' },
+      nodeCount: { type: 'integer' },
+      previewUrl: string,
+    },
+  },
   PlayerSelfProfile: {
     type: 'object',
     required: ['subjectId', 'userId', 'username', 'displayName'],

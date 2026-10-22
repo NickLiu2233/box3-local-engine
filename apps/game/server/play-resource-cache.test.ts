@@ -65,6 +65,18 @@ afterEach(() => {
 })
 
 describe('Play resource cache manifest', () => {
+  test('unchanged releases keep their cache version while a new release invalidates it', () => {
+    const world = createWorld()
+    const initial = getPlayResourceCacheManifest(world.id)
+    expect(getPlayResourceCacheManifest(world.id).version).toBe(initial.version)
+    const manifestFile = path.join(process.env.BOX_PLAY_LIBRARY_PATH!, world.id, 'manifest.json')
+    const published = JSON.parse(fs.readFileSync(manifestFile, 'utf8'))
+    published.version = 'v2'
+    fs.writeFileSync(manifestFile, JSON.stringify(published))
+    const updated = getPlayResourceCacheManifest(world.id)
+    expect(updated.version).not.toBe(initial.version)
+    expect(updated.hashes).toEqual(initial.hashes)
+  })
   test('publishes signed static blobs by default but never private script blobs', () => {
     const world = createWorld()
     const manifest = getPlayResourceCacheManifest(world.id)

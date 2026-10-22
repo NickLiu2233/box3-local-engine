@@ -82,6 +82,11 @@ export const PLAYER_ADMIN_PERMISSION_MENU:readonly PlayerAdminPermissionMenuCate
                 title: '游玩地图',
                 capabilities: ['play-maps.view', 'play-maps.manage'],
             },
+            {
+                key: 'play-models',
+                title: '模型预览',
+                capabilities: ['play-models.view', 'play-models.manage'],
+            },
         ],
     },
     {

@@ -6,6 +6,7 @@ import { ContainerManagementPage } from '../containers/container-management-page
 import { ContainerProfilesPage } from '../containers/container-profiles-page';
 import { OverviewPage } from '../dashboard/overview-page';
 import { PlayMapsPage } from '../maps/play-maps-page';
+import { PlayModelsPage } from '../models/play-models-page';
 import { SecurityActivityPage } from '../security/security-activity-page';
 import { IdentityBansPage } from '../security/identity-bans-page';
 import { AdminAccountsPage } from '../access/admin-accounts-page';
@@ -58,6 +59,8 @@ export function PlayerAdminContent({
         body = <CreatorManagementPage mode={view} controller={creatorPageController} />;
     } else if (view === 'play-maps') {
         body = <PlayMapsPage canManage={can('play-maps.manage')} />;
+    } else if (view === 'play-models') {
+        body = <PlayModelsPage canManage={can('play-models.manage')} />;
     } else if (view === 'container-play') {
         body = <ContainerManagementPage mode="play" canManage={can('containers.manage')} />;
     } else if (view === 'container-creator') {

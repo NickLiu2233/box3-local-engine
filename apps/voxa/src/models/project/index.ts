@@ -4,6 +4,8 @@ import {
   bodyPartSchemaToBytes,
   migrateProject,
   modelSchemaToBytes,
+  encodeVoxaPlay,
+  type VoxaPlayMetadata,
   projectSchemaToBytes,
   VOXA_SKIN_VERSION,
   projectV5,
@@ -1024,6 +1026,30 @@ export class ProjectManager {
       url.searchParams.delete('modelId');
       window.history.replaceState({}, '', url);
     }
+  }
+
+  /** Export renderer data without uploading or changing the editable project. */
+  public async exportPreviewBundle(settings: VoxaPlayMetadata) {
+    const basic = await this.getBasicModelData()
+    if (!basic.meshCount) throw new Error('当前模型为空，无法导出预览包')
+    const model = ModelDataSchema.clone(ModelDataSchema.identity)
+    model.nodes = basic.nodes
+    model.meshes = basic.mesher.getMeshes()
+    model.texture = await basic.mesher.getTexture(basic.paletteList, basic.emissiveList)
+    model.animations = basic.animations
+    model.texture.palette = model.texture.palette.map((value) => value >>> 0)
+    const snapshot = await this.getScreenshot(model, basic.bounds)
+    const previewImage =
+      snapshot && snapshot.size < 1024 * 1024
+        ? await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(String(reader.result))
+            reader.onerror = () => reject(new Error('模型封面生成失败'))
+            reader.readAsDataURL(snapshot)
+          })
+        : undefined
+    const bytes = encodeVoxaPlay(store.getState().app.projectName, model, previewImage, settings)
+    return new Blob([bytes], { type: 'application/vnd.box.voxaplay+json' })
   }
 
   /** Save the editable project bytes locally without creating server blobs. */
