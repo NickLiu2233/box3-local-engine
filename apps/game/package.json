@@ -41,6 +41,7 @@
     "@box/iframe-event-bus": "workspace:~0.1.1",
     "@box/mesher": "workspace:1.0.0",
     "@box/mudb": "workspace:1.0.4",
+    "@box/regl": "workspace:2.1.0",
     "@box/rewgpu": "workspace:~0.0.1",
     "@box/schema": "workspace:~0.4.3",
     "@box/script-api": "workspace:~0.3.0",

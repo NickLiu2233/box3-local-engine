@@ -14414,13 +14414,11 @@ function decodeVoxaPlay(bytes) {
   if (value.format !== 'box-voxa-play' || value.formatVersion !== 2) throw new Error('预览包格式不支持');
   if (typeof value.name !== 'string' || !value.name.trim() || value.name.length > 100) invalid();
   if (value.projectId !== undefined && (typeof value.projectId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.projectId))) invalid();
-  if (!value.placement) throw new Error('预览包缺少定位和锚点信息');
+  if (!value.placement) throw new Error('预览包缺少模型定位信息');
   const input = record(value.placement);
   vector(input.origin, 3);
-  vector(input.pivot, 3);
   const placement = {
-    origin: [input.origin[0], input.origin[1], input.origin[2]],
-    pivot: [input.pivot[0], input.pivot[1], input.pivot[2]]
+    origin: [input.origin[0], input.origin[1], input.origin[2]]
   };
   const author = value.author;
   const description = value.description;
@@ -14528,8 +14526,7 @@ function encodeVoxaPlay(name, model, previewImage, metadata = {}) {
     projectId: metadata.projectId
   } : {}), {
     placement: (_a = metadata.placement) !== null && _a !== void 0 ? _a : {
-      origin: [0, 0, 0],
-      pivot: [0, 0, 0]
+      origin: [0, 0, 0]
     },
     author: (_b = metadata.author) !== null && _b !== void 0 ? _b : '',
     description: (_c = metadata.description) !== null && _c !== void 0 ? _c : '',

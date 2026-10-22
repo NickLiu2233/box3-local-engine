@@ -1088,7 +1088,6 @@ export class ProjectManager {
       ...settings,
       projectId: this.previewExport!.projectId,
       placement: {
-        pivot: [...store.getState().animator.modelPivot],
         // Baked nodes use the model's lower corner as their origin. Restore editor space.
         origin: basic.bounds.map((size, axis) =>
           store.getState().animator.modelPivot[axis] + basic.renderBoxOffset[axis] - size / 2,

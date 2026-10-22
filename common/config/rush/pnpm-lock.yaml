@@ -83,6 +83,9 @@ importers:
       '@box/mudb':
         specifier: workspace:1.0.4
         version: link:../../packages/mudb
+      '@box/regl':
+        specifier: workspace:2.1.0
+        version: link:../../packages/regl
       '@box/player-policy':
         specifier: workspace:0.1.0
         version: link:../../packages/player-policy

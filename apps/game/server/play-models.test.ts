@@ -75,7 +75,15 @@ describe('preview-only VOXA packages and persistent Play model library', () => {
     const bytes = encodeVoxaPlay('机器人', fixture())
     const envelope = JSON.parse(new TextDecoder().decode(bytes))
     expect(Object.keys(envelope).sort()).toEqual([
-      'author', 'defaultAnimationId', 'description', 'format', 'formatVersion', 'model', 'name', 'placement', 'version',
+      'author',
+      'defaultAnimationId',
+      'description',
+      'format',
+      'formatVersion',
+      'model',
+      'name',
+      'placement',
+      'version',
     ])
     expect(Object.keys(envelope.model).sort()).toEqual([
       'animations',
@@ -108,18 +116,26 @@ describe('preview-only VOXA packages and persistent Play model library', () => {
     expect(decodeVoxaPlay(fs.readFileSync(playModelFile(first.id))).version).toBe('v1.0.10')
   })
   test('projects sharing a name remain separate works', () => {
-    const first = importPlayModel(encodeVoxaPlay('同名作品', fixture(), undefined, {
-      projectId: '7a6cd28a-c922-4418-bacd-c36b62d13fff', version: 'v1.0.0',
-    }))
-    const second = importPlayModel(encodeVoxaPlay('同名作品', fixture(), undefined, {
-      projectId: '7a6cd28a-c922-4418-bacd-c36b62d13ffe', version: 'v1.0.0',
-    }))
+    const first = importPlayModel(
+      encodeVoxaPlay('同名作品', fixture(), undefined, {
+        projectId: '7a6cd28a-c922-4418-bacd-c36b62d13fff',
+        version: 'v1.0.0',
+      }),
+    )
+    const second = importPlayModel(
+      encodeVoxaPlay('同名作品', fixture(), undefined, {
+        projectId: '7a6cd28a-c922-4418-bacd-c36b62d13ffe',
+        version: 'v1.0.0',
+      }),
+    )
     expect(first.id).not.toBe(second.id)
     expect(listPlayModels()).toHaveLength(2)
   })
   test('a failed replacement restores the installed preview', () => {
     const projectId = '7a6cd28a-c922-4418-bacd-c36b62d13fff'
-    const first = importPlayModel(encodeVoxaPlay('原作品', fixture(), undefined, { projectId, version: 'v1.0.0' }))
+    const first = importPlayModel(
+      encodeVoxaPlay('原作品', fixture(), undefined, { projectId, version: 'v1.0.0' }),
+    )
     const originalBytes = fs.readFileSync(playModelFile(first.id))
     const rename = fs.renameSync
     const spy = jest.spyOn(fs, 'renameSync').mockImplementation((from, to) => {
@@ -127,7 +143,11 @@ describe('preview-only VOXA packages and persistent Play model library', () => {
       rename(from, to)
     })
     try {
-      expect(() => importPlayModel(encodeVoxaPlay('更新作品', fixture(), undefined, { projectId, version: 'v1.0.1' }))).toThrow('模拟写入失败')
+      expect(() =>
+        importPlayModel(
+          encodeVoxaPlay('更新作品', fixture(), undefined, { projectId, version: 'v1.0.1' }),
+        ),
+      ).toThrow('模拟写入失败')
       expect(getPlayModel(first.id)?.version).toBe('v1.0.0')
       expect(fs.readFileSync(playModelFile(first.id))).toEqual(originalBytes)
     } finally {
@@ -162,31 +182,45 @@ describe('preview-only VOXA packages and persistent Play model library', () => {
     const envelope = JSON.parse(new TextDecoder().decode(encodeVoxaPlay('旧模型', fixture())))
     envelope.formatVersion = 1
     delete envelope.placement
-    expect(() => importPlayModel(new TextEncoder().encode(JSON.stringify(envelope)))).toThrow('格式不支持')
+    expect(() => importPlayModel(new TextEncoder().encode(JSON.stringify(envelope)))).toThrow(
+      '格式不支持',
+    )
     envelope.formatVersion = 2
-    expect(() => importPlayModel(new TextEncoder().encode(JSON.stringify(envelope)))).toThrow('缺少定位和锚点信息')
+    expect(() => importPlayModel(new TextEncoder().encode(JSON.stringify(envelope)))).toThrow(
+      '缺少模型定位信息',
+    )
     expect(listPlayModels()).toHaveLength(0)
   })
   test('keeps render placement through import while excluding game and engineering metadata', () => {
-    const placement = { origin: [-30, -40, -50], pivot: [2, 3, 4] } as const
+    const placement = { origin: [-30, -40, -50] } as const
     const envelope = JSON.parse(new TextDecoder().decode(encodeVoxaPlay('锚点模型', fixture())))
     Object.assign(envelope, {
-      placement, hitBox: { size: [99, 99, 99] }, bounds: [99, 99, 99],
-      physics: { mass: 1 }, project: { voxels: 'editable data' },
+      placement,
+      hitBox: { size: [99, 99, 99] },
+      bounds: [99, 99, 99],
+      physics: { mass: 1 },
+      project: { voxels: 'editable data' },
     })
     const entry = importPlayModel(new TextEncoder().encode(JSON.stringify(envelope)))
     const storedBytes = fs.readFileSync(playModelFile(entry.id))
     const stored = JSON.parse(storedBytes.toString())
     expect(decodeVoxaPlay(storedBytes).placement).toEqual(placement)
-    for (const field of ['bounds', 'hitBox', 'physics', 'project']) expect(stored[field]).toBeUndefined()
-    expect(Object.keys(stored.model).sort()).toEqual(['animations', 'meshes', 'nodes', 'texture', 'version'])
+    for (const field of ['bounds', 'hitBox', 'physics', 'project'])
+      expect(stored[field]).toBeUndefined()
+    expect(Object.keys(stored.model).sort()).toEqual([
+      'animations',
+      'meshes',
+      'nodes',
+      'texture',
+      'version',
+    ])
   })
   test('invalid anchor or origin coordinates are rejected before storage', () => {
     const envelope = JSON.parse(new TextDecoder().decode(encodeVoxaPlay('锚点模型', fixture())))
     for (const placement of [
-      { origin: [0, 0], pivot: [0, 0, 0] },
-      { origin: [0, 0, 0], pivot: [0, null, 0] },
-      { origin: [0, 0, 0], pivot: [0, 1e20, 0] },
+      { origin: [0, 0] },
+      { origin: [0, null, 0] },
+      { origin: [0, 1e20, 0] },
     ]) {
       envelope.placement = placement
       expect(() => importPlayModel(new TextEncoder().encode(JSON.stringify(envelope)))).toThrow()

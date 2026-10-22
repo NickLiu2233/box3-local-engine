@@ -10,7 +10,6 @@ export type VoxaPlayMetadata = {
 }
 export type VoxaPlayPlacement = {
   origin: [number, number, number]
-  pivot: [number, number, number]
 }
 export type VoxaPlayBundle = VoxaPlayMetadata & {
   format: 'box-voxa-play'
@@ -73,13 +72,11 @@ export function decodeVoxaPlay(bytes: Uint8Array): VoxaPlayBundle {
       !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/.test(value.projectId))
   )
     invalid()
-  if (!value.placement) throw new Error('预览包缺少定位和锚点信息')
+  if (!value.placement) throw new Error('预览包缺少模型定位信息')
   const input = record(value.placement)
   vector(input.origin, 3)
-  vector(input.pivot, 3)
   const placement: VoxaPlayPlacement = {
     origin: [input.origin[0], input.origin[1], input.origin[2]],
-    pivot: [input.pivot[0], input.pivot[1], input.pivot[2]],
   }
   const author = value.author
   const description = value.description
@@ -256,7 +253,7 @@ export function encodeVoxaPlay(
       formatVersion: 2,
       name: name.trim().slice(0, 100) || '未命名模型',
       ...(metadata.projectId !== undefined ? { projectId: metadata.projectId } : {}),
-      placement: metadata.placement ?? { origin: [0, 0, 0], pivot: [0, 0, 0] },
+      placement: metadata.placement ?? { origin: [0, 0, 0] },
       author: metadata.author ?? '',
       description: metadata.description ?? '',
       version: metadata.version ?? 'v1.0.0',

@@ -8,7 +8,6 @@ export type VoxaPlayMetadata = {
 };
 export type VoxaPlayPlacement = {
     origin: [number, number, number];
-    pivot: [number, number, number];
 };
 export type VoxaPlayBundle = VoxaPlayMetadata & {
     format: 'box-voxa-play';

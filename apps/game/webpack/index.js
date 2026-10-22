@@ -111,6 +111,11 @@ function getWebpackConfig(config,
   ];
   config.resolve = {
     ...config.resolve,
+    // Reused VOXA rendering sources must also resolve in a Play-only installation.
+    modules: [
+      ...(config.resolve?.modules || ['node_modules']),
+      join(__dirname, '../node_modules'),
+    ],
     alias: {
       ...config.resolve?.alias,
       ...(isPlayBuild
