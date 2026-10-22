@@ -25,8 +25,10 @@ export function PlayWorkCenter({
           font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
         }
       `}</style>
-      <PlaySiteHeader account={account} />
-      <PlayWorkNavigation current={current} counts={counts} />
+      <PlaySiteHeader
+        account={account}
+        navigation={<PlayWorkNavigation current={current} counts={counts} />}
+      />
       {children}
     </main>
   )

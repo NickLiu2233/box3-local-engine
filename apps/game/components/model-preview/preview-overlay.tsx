@@ -1,5 +1,4 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { ArrowLeft } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import type { PlayModel } from '@box/apis'
 import styles from './preview-overlay.module.css'
@@ -45,10 +44,6 @@ export function ModelPreviewOverlay({
           }}
         >
           <Dialog.Title className={styles.hidden}>{model?.name} · 模型预览</Dialog.Title>
-          <Dialog.Close className={styles.close}>
-            <ArrowLeft size={16} aria-hidden="true" />
-            返回模型
-          </Dialog.Close>
           {model ? (
             <iframe
               ref={frame}

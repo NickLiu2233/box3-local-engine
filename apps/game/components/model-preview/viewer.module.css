@@ -55,11 +55,6 @@
   background: transparent;
   cursor: pointer;
 }
-.animationLabel {
-  padding-left: 4px;
-  color: rgba(255, 255, 255, 0.45);
-  font-size: 12px;
-}
 .controls .animationTrigger {
   width: auto;
   min-width: 72px;
@@ -169,7 +164,28 @@
 }
 @media (max-width: 560px) {
   .controls {
-    bottom: 16px;
+    bottom: var(--preview-controls-bottom, 16px);
+    gap: 4px;
+    padding: 4px;
+    border-radius: 12px;
+  }
+  .controls button {
+    position: relative;
+    width: 32px;
+    height: 32px;
+    border-radius: 7px;
+  }
+  .controls button::before {
+    position: absolute;
+    inset: -6px 0;
+    content: '';
+  }
+  .zoom {
+    gap: 0;
+  }
+  .controls .animationTrigger {
+    min-width: 72px;
+    max-width: 100px;
     gap: 6px;
   }
 }
@@ -185,9 +201,9 @@
   fill: currentColor;
 }
 
-@media (max-width: 420px) {
+@media (max-width: 360px) {
   .controls {
-    gap: 4px;
+    gap: 2px;
     padding: 4px;
   }
   .controls button {
@@ -197,13 +213,10 @@
   .zoom {
     gap: 0;
   }
-  .animationLabel {
-    display: none;
-  }
   .controls .animationTrigger {
     width: auto;
     min-width: 64px;
-    max-width: 100px;
-    gap: 6px;
+    max-width: 72px;
+    gap: 4px;
   }
 }

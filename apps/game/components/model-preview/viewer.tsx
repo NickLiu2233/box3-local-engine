@@ -153,9 +153,6 @@ export default function ModelPreviewViewer({
         {bundle?.model.animations.length ? (
           <>
             <span className={styles.divider} />
-            <span className={styles.animationLabel} aria-hidden="true">
-              动画
-            </span>
             <DropdownMenu.Root modal={false}>
               <DropdownMenu.Trigger className={styles.animationTrigger} aria-label="动画">
                 <span>

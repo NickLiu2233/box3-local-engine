@@ -56,13 +56,16 @@
 }
 .navigation {
   display: flex;
+  align-items: center;
   gap: 24px;
-  margin-bottom: 24px;
+  margin-left: 24px;
   font-size: 14px;
 }
 .navigation a {
+  padding: 12px 0;
   color: rgba(255, 255, 255, 0.55);
   text-decoration: none;
+  white-space: nowrap;
 }
 .navigation a[aria-current] {
   color: #ffdb00;
@@ -85,7 +88,17 @@
 }
 @media (max-width: 640px) {
   .header {
-    gap: 12px;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 14px 0;
+  }
+  .navigation {
+    order: 3;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .navigation a {
+    padding: 8px 0;
   }
 }
 @media (prefers-reduced-motion: reduce) {

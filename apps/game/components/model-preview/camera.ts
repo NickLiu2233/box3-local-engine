@@ -6,6 +6,7 @@ export class PreviewCameraControls extends OrbitControls {
   private fixedOrigin = false
   private screenPan = vec2.create()
   private modelRadius = 1
+  private viewportScale = 1
 
   constructor(
     public camera: PerspectiveCamera,
@@ -37,6 +38,13 @@ export class PreviewCameraControls extends OrbitControls {
   public syncView() {
     const width = Math.max(1, this.domElement.clientWidth)
     const height = Math.max(1, this.domElement.clientHeight)
+    const viewportScale = Math.max(1, height / width)
+    if (viewportScale !== this.viewportScale) {
+      const scale = viewportScale / this.viewportScale
+      vec3.scale(this.camera.position, this.camera.position, scale)
+      vec2.scale(this.screenPan, this.screenPan, scale)
+      this.viewportScale = viewportScale
+    }
     const distance = vec3.length(this.camera.position)
     this.camera.near = Math.max(this.modelRadius * 0.001, distance / 10000)
     this.camera.far = distance + Math.max(this.modelRadius * 4, 640)
@@ -57,6 +65,7 @@ export class PreviewCameraControls extends OrbitControls {
     const aspect =
       Math.max(1, this.domElement.clientWidth) / Math.max(1, this.domElement.clientHeight)
     const actualDistance = distance * Math.max(1, 1 / aspect)
+    this.viewportScale = Math.max(1, 1 / aspect)
     new Spherical(actualDistance, Math.PI / 4, Math.PI / 6).applyToVec3(this.camera.position)
     this.camera.near = Math.max(0.001, radius * 0.001)
     this.camera.far = actualDistance + Math.max(radius * 4, 640)

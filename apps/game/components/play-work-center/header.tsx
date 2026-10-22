@@ -69,13 +69,20 @@ function PlayAccountMenu() {
 }
 
 /** Shared brand and account entry across the Play work center. */
-export function PlaySiteHeader({ account }: { account?: ReactNode }) {
+export function PlaySiteHeader({
+  account,
+  navigation,
+}: {
+  account?: ReactNode
+  navigation?: ReactNode
+}) {
   return (
     <header className={styles.header}>
       <Link className={styles.brand} href="/" aria-label="BOX3 Engine 游玩作品中心">
         <img className={styles.mark} src="/logo512.png" alt="" aria-hidden="true" />
         <span>BOX3 Engine</span>
       </Link>
+      {navigation}
       <div className={styles.account} aria-label="账户入口">
         {account ?? <PlayAccountMenu />}
       </div>

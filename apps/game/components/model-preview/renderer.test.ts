@@ -36,7 +36,7 @@ function controls() {
     handlers.get('pointermove')!({ ...event, clientX: 500 + dx, clientY: 400 + dy })
     handlers.get('pointerup')!(event)
   }
-  return { camera, controller, origin, drag, handlers }
+  return { camera, controller, origin, drag, handlers, canvas }
 }
 
 describe('VOXA controls with a fixed preview origin', () => {
@@ -69,6 +69,51 @@ describe('VOXA controls with a fixed preview origin', () => {
     controller.zoomBy(1000)
     expect(vec3.length(camera.position)).toBeGreaterThan(distance * 900)
     expect(camera.far).toBeGreaterThan(vec3.length(camera.position))
+    controller.destroy()
+  })
+
+  test('adapts to viewport changes without accumulating zoom', () => {
+    const { camera, controller, canvas } = controls()
+    controller.zoomBy(0.5)
+    const distance = vec3.length(camera.position)
+    Object.assign(canvas, { clientWidth: 400, clientHeight: 800 })
+    controller.syncView()
+    expect(camera.aspect).toBe(0.5)
+    expect(vec3.length(camera.position)).toBeCloseTo(distance * 2, 3)
+    Object.assign(canvas, { clientWidth: 1000, clientHeight: 800 })
+    controller.syncView()
+    expect(vec3.length(camera.position)).toBeCloseTo(distance, 3)
+    controller.destroy()
+  })
+
+  test('touch gestures rotate with one finger and pan or pinch with two', () => {
+    const { camera, controller, handlers, origin } = controls()
+    const touch = (type: string, pointerId: number, x: number, y: number) =>
+      handlers.get(type)!({ pointerId, pointerType: 'touch', pageX: x, pageY: y })
+    const initial = vec3.clone(camera.position)
+    touch('pointerdown', 1, 400, 400)
+    touch('pointermove', 1, 450, 420)
+    touch('pointerup', 1, 450, 420)
+    expect(vec3.distance(initial, camera.position)).toBeGreaterThan(1)
+
+    controller.resetAtOrigin(300, 100)
+    touch('pointerdown', 1, 450, 400)
+    touch('pointerdown', 2, 550, 400)
+    touch('pointermove', 1, 430, 400)
+    touch('pointermove', 2, 570, 400)
+    expect(vec3.length(camera.position)).toBeLessThan(300)
+    touch('pointerup', 1, 430, 400)
+    touch('pointerup', 2, 570, 400)
+
+    controller.resetAtOrigin(300, 100)
+    touch('pointerdown', 1, 450, 400)
+    touch('pointerdown', 2, 550, 400)
+    touch('pointermove', 1, 490, 420)
+    touch('pointermove', 2, 590, 420)
+    expect(Math.abs(origin()[0])).toBeGreaterThan(0.01)
+    expect(Array.from(controller.target)).toEqual([0, 0, 0])
+    touch('pointerup', 1, 490, 420)
+    touch('pointerup', 2, 590, 420)
     controller.destroy()
   })
 
