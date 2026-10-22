@@ -5,7 +5,6 @@ const WebpackBar = require('webpackbar');
 
 function getWebpackConfig(config,
   { buildId, dev, isServer, defaultLoaders, nextRuntime, webpack }) {
-  const isProd = config.mode === 'production';
   const isPlayBuild = process.env.BOX_PLAY_BUILD === 'true';
 
   const plugins = [
@@ -67,11 +66,6 @@ function getWebpackConfig(config,
     );
   }
 
-  if (isProd) {
-    plugins.push(
-      new webpack.NormalModuleReplacementPlugin(/regl\.js$/, './regl.min.js'),
-    );
-  }
   const rules = [
     {
       test: /\.(glsl|vs|fs|vert|frag)$/,
