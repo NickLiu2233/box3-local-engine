@@ -43,7 +43,7 @@ export function PlayLibraryPanel<T extends object>(props:PlayLibraryPanelProps<T
                 tableLayout="fixed"
                 size="middle"
                 pagination={false}
-        scroll={{ x: 900 }}
+                scroll={{ x: 900 }}
                 dataSource={items}
             />
         </Card>

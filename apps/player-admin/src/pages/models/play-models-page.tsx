@@ -27,7 +27,10 @@ export function PlayModelsPage({ canManage }:{ canManage:boolean }) {
         void load();
     }, [load]);
     const patch = async (model:PlayModel, published:boolean) => {
-        await api.patchApiPlayAdminModelsId({ params: { path: { id: model.id } }, body: { published } });
+        await api.patchApiPlayAdminModelsId({
+            params: { path: { id: model.id } },
+            body: { published },
+        });
         await load();
     };
     return (
